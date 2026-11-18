@@ -1,0 +1,22 @@
+[Unit]
+Description=desk - dashboard (port 8787)
+After=network-online.target
+
+[Service]
+Type=simple
+User=desk
+Group=desk
+WorkingDirectory=/opt/desk
+ExecStart=/usr/bin/python3 -m desk serve
+Restart=always
+RestartSec=5
+Environment=PYTHONUNBUFFERED=1
+EnvironmentFile=-/etc/desk/desk.env
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/opt/desk/data
+
+[Install]
+WantedBy=multi-user.target
