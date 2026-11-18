@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1115">
+<title>Papirdesk</title>
+<style>
+:root{
+  --bg:#f6f7f9; --card:#ffffff; --ink:#15181d; --muted:#667085; --line:#e4e7ec;
+  --up:#0e8a5f; --down:#c4362d; --accent:#3557d6; --soft:#eef1f7;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#0f1115; --card:#171a21; --ink:#e7e9ee; --muted:#8b93a3; --line:#262b35;
+         --up:#35c48f; --down:#ff6b5e; --accent:#7f9bff; --soft:#1e232c; }
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);
+  font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-text-size-adjust:100%}
+header{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line);
+  padding:10px 16px 0}
+.top{display:flex;align-items:center;gap:10px;justify-content:space-between}
+h1{font-size:18px;margin:0}
+.paper{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
+  color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:2px 8px}
+.pill{font-size:12px;border-radius:999px;padding:2px 9px;background:var(--soft);color:var(--muted)}
+.pill.ok{color:var(--up)} .pill.bad{color:var(--down)}
+nav{display:flex;gap:4px;overflow-x:auto;margin-top:8px;scrollbar-width:none}
+nav button{flex:0 0 auto;border:0;background:none;color:var(--muted);font:inherit;font-weight:600;
+  padding:8px 12px;border-bottom:2px solid transparent;cursor:pointer}
+nav button.on{color:var(--ink);border-bottom-color:var(--accent)}
+main{max-width:1100px;margin:0 auto;padding:16px}
+section{display:none} section.on{display:block}
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(160px,1fr))}
+.cards{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(280px,1fr))}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}
+.k{font-size:12px;color:var(--muted)} .v{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums}
+.up{color:var(--up)} .down{color:var(--down)} .muted{color:var(--muted)}
+h2{font-size:15px;margin:22px 0 10px}
+.chartwrap{position:relative} svg{display:block;width:100%;height:auto;overflow:visible}
+.tip{position:absolute;pointer-events:none;background:var(--ink);color:var(--bg);font-size:12px;
+  padding:4px 8px;border-radius:8px;transform:translate(-50%,-120%);white-space:nowrap;display:none}
+select{font:inherit;background:var(--card);color:var(--ink);border:1px solid var(--line);
+  border-radius:8px;padding:4px 8px;max-width:100%}
+.row{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px}
+.stats div{background:var(--soft);border-radius:10px;padding:6px 8px}
+.stats b{display:block;font-variant-numeric:tabular-nums}
+.desc{font-size:13px;color:var(--muted);margin:4px 0 0}
+.pos{font-size:13px;margin-top:8px;display:flex;flex-wrap:wrap;gap:6px}
+.pos span{background:var(--soft);border-radius:8px;padding:2px 8px;font-variant-numeric:tabular-nums}
+table{width:100%;border-collapse:collapse;font-size:14px;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:12px;color:var(--muted);font-weight:600}
+td.n,th.n{text-align:right}
+.tablewrap{overflow-x:auto;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:4px 10px}
+.flow{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:13px}
+.flow span{background:var(--soft);border-radius:8px;padding:4px 8px}
+.foot{font-size:12px;color:var(--muted);margin:24px 0 8px;text-align:center}
+@media (max-width:560px){ .hide-s{display:none} .v{font-size:20px} }
+</style>
+</head>
+<body>
+<header>
+  <div class="top">
+    <h1>Papirdesk</h1>
+    <span class="paper">Kun papirpenge</span>
+    <span id="status" class="pill">…</span>
+  </div>
+  <nav id="tabs">
+    <button data-t="oversigt" class="on">Oversigt</button>
+    <button data-t="strategier">Strategier</button>
+    <button data-t="handler">Handler</button>
+    <button data-t="regler">Regler</button>
+  </nav>
+</header>
+<main>
+<section id="oversigt" class="on">
+  <div class="grid" id="kpis"></div>
+  <div class="row"><h2>Afkast over tid</h2>
+    <select id="chartsel" aria-label="Vælg strategi"></select></div>
+  <div class="card chartwrap"><svg id="chart" viewBox="0 0 800 300" role="img" aria-label="Afkast over tid"></svg><div class="tip" id="tip"></div></div>
+  <h2>Seneste scan</h2>
+  <div class="card" id="scan"></div>
+  <h2>Skyggehandler – resultat pr. score</h2>
+  <div class="tablewrap"><table id="shadow"></table></div>
+</section>
+<section id="strategier"><div class="cards" id="cards"></div></section>
+<section id="handler">
+  <h2>Åbne positioner</h2>
+  <div class="tablewrap"><table id="open"></table></div>
+  <h2>Lukkede handler</h2>
+  <div class="tablewrap"><table id="closed"></table></div>
+  <h2>Seneste skyggehandler</h2>
+  <div class="tablewrap"><table id="shadowtr"></table></div>
+</section>
+<section id="regler"><div id="rules"></div></section>
+<p class="foot">Simulering med fiktive penge. Alle tal er procent af den virtuelle konto.</p>
+</main>
+<script>
+const $ = s => document.querySelector(s);
+const nf = new Intl.NumberFormat('da-DK',{minimumFractionDigits:2,maximumFractionDigits:2});
+const pct = (x,sign=true) => x==null ? '–' : (sign && x>0 ? '+' : '') + nf.format(x) + ' %';
+const cls = x => x==null ? '' : x>0 ? 'up' : x<0 ? 'down' : '';
+const dt = ts => ts ? new Date(ts*1000).toLocaleString('da-DK',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '–';
+const dur = s => { s=Math.max(0,s|0); const h=s/3600|0, m=(s%3600)/60|0; return h>=24 ? (h/24|0)+' d '+(h%24)+' t' : h ? h+' t '+m+' m' : m+' m'; };
+const esc = s => String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const get = u => fetch(u,{cache:'no-store'}).then(r=>r.json());
+
+let tab = localStorage.getItem('tab') || 'oversigt';
+function show(t){ tab=t; try{localStorage.setItem('tab',t)}catch(e){}
+  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
+  document.querySelectorAll('section').forEach(s=>s.classList.toggle('on',s.id===t)); load(); }
+$('#tabs').onclick = e => { if(e.target.dataset.t) show(e.target.dataset.t); };
+
+/* Blød kurve: monoton kubisk interpolation (Fritsch–Carlson) – ingen overshoot */
+function smooth(pts){
+  const n=pts.length; if(n<2) return n? `M${pts[0][0]},${pts[0][1]}` : '';
+  const dx=[],dy=[],m=[],t=[];
+  for(let i=0;i<n-1;i++){dx[i]=pts[i+1][0]-pts[i][0]; dy[i]=pts[i+1][1]-pts[i][1]; m[i]=dx[i]?dy[i]/dx[i]:0;}
+  t[0]=m[0]; t[n-1]=m[n-2];
+  for(let i=1;i<n-1;i++) t[i] = m[i-1]*m[i]<=0 ? 0 : (m[i-1]+m[i])/2;
+  for(let i=0;i<n-1;i++){ if(m[i]===0){t[i]=t[i+1]=0;continue;}
+    const a=t[i]/m[i], b=t[i+1]/m[i], h=a*a+b*b; if(h>9){const s=3/Math.sqrt(h); t[i]=s*a*m[i]; t[i+1]=s*b*m[i];} }
+  let d=`M${pts[0][0].toFixed(1)},${pts[0][1].toFixed(1)}`;
+  for(let i=0;i<n-1;i++){ const h=dx[i]/3;
+    d+=`C${(pts[i][0]+h).toFixed(1)},${(pts[i][1]+t[i]*h).toFixed(1)} ${(pts[i+1][0]-h).toFixed(1)},${(pts[i+1][1]-t[i+1]*h).toFixed(1)} ${pts[i+1][0].toFixed(1)},${pts[i+1][1].toFixed(1)}`; }
+  return d;
+}
+function spark(vals){
+  if(!vals || vals.length<2) return '<svg viewBox="0 0 120 30"></svg>';
+  const lo=Math.min(0,...vals), hi=Math.max(0,...vals), r=(hi-lo)||1;
+  const pts=vals.map((v,i)=>[i/(vals.length-1)*120, 28-(v-lo)/r*26]);
+  const last=vals[vals.length-1], c=last>0?'var(--up)':last<0?'var(--down)':'var(--muted)', z=28-(0-lo)/r*26;
+  return `<svg viewBox="0 0 120 30" preserveAspectRatio="none" style="height:30px"><line x1="0" x2="120" y1="${z}" y2="${z}" stroke="var(--line)"/><path d="${smooth(pts)}" fill="none" stroke="${c}" stroke-width="1.6" vector-effect="non-scaling-stroke"/></svg>`;
+}
+
+let eq = null, chartKey = localStorage.getItem('chart') || '__avg__';
+$('#chartsel').onchange = e => { chartKey=e.target.value; try{localStorage.setItem('chart',chartKey)}catch(_){} drawChart(); };
+function drawChart(){
+  const svg=$('#chart'), W=800, H=300, L=52, R=12, T=12, B=28;
+  if(!eq){svg.innerHTML='';return;}
+  let keys = chartKey==='__all__' ? Object.keys(eq.series).filter(k=>k!=='__avg__') : [chartKey];
+  keys = keys.filter(k=>eq.series[k] && eq.series[k].length);
+  if(!keys.length){ svg.innerHTML=`<text x="${W/2}" y="${H/2}" text-anchor="middle" fill="var(--muted)" font-size="14">Ingen data endnu – kurven vises efter første minut.</text>`; return; }
+  let xs=[],ys=[0]; keys.forEach(k=>eq.series[k].forEach(([t,v])=>{xs.push(t);ys.push(v)}));
+  const x0=Math.min(...xs), x1=Math.max(...xs)||x0+1; let y0=Math.min(...ys), y1=Math.max(...ys);
+  const pad=(y1-y0)*0.1||0.5; y0-=pad; y1+=pad;
+  const X=t=>L+(t-x0)/((x1-x0)||1)*(W-L-R), Y=v=>T+(y1-v)/(y1-y0)*(H-T-B);
+  let g='';
+  for(let i=0;i<=4;i++){ const v=y0+(y1-y0)*i/4, y=Y(v);
+    g+=`<line x1="${L}" x2="${W-R}" y1="${y}" y2="${y}" stroke="var(--line)"/><text x="${L-6}" y="${y+4}" text-anchor="end" font-size="11" fill="var(--muted)">${pct(v)}</text>`; }
+  g+=`<line x1="${L}" x2="${W-R}" y1="${Y(0)}" y2="${Y(0)}" stroke="var(--muted)" stroke-dasharray="3 3"/>`;
+  for(let i=0;i<=3;i++){ const t=x0+(x1-x0)*i/3; g+=`<text x="${X(t)}" y="${H-8}" text-anchor="${i==0?'start':i==3?'end':'middle'}" font-size="11" fill="var(--muted)">${dt(t)}</text>`; }
+  const many = keys.length>1;
+  keys.forEach(k=>{ const s=eq.series[k], last=s[s.length-1][1];
+    const col = many ? 'var(--muted)' : (last>=0?'var(--up)':'var(--down)');
+    const d=smooth(s.map(([t,v])=>[X(t),Y(v)]));
+    if(!many) g+=`<path d="${d}L${X(s[s.length-1][0])},${Y(0)}L${X(s[0][0])},${Y(0)}Z" fill="${col}" opacity=".08"/>`;
+    g+=`<path d="${d}" fill="none" stroke="${col}" stroke-width="${many?1.2:2.2}" opacity="${many?.55:1}"><title>${esc(eq.labels[k]||'Gennemsnit')}</title></path>`; });
+  g+=`<circle id="dot" r="4" fill="var(--accent)" style="display:none"/>`;
+  svg.innerHTML=g;
+  const s=eq.series[keys[0]], tip=$('#tip');
+  svg.onpointermove = e => { if(many) return; const r=svg.getBoundingClientRect(), px=(e.clientX-r.left)/r.width*W;
+    let best=s[0]; for(const p of s) if(Math.abs(X(p[0])-px)<Math.abs(X(best[0])-px)) best=p;
+    const dot=svg.querySelector('#dot'); dot.setAttribute('cx',X(best[0])); dot.setAttribute('cy',Y(best[1])); dot.style.display='';
+    tip.style.display='block'; tip.style.left=(X(best[0])/W*100)+'%'; tip.style.top=(Y(best[1])/H*r.height)+'px';
+    tip.textContent=`${dt(best[0])} · ${pct(best[1])}`; };
+  svg.onpointerleave = () => { tip.style.display='none'; const d=svg.querySelector('#dot'); if(d) d.style.display='none'; };
+}
+
+async function loadOverview(){
+  const [o,e] = await Promise.all([get('/api/overview'), get('/api/equity')]);
+  eq=e;
+  const k=(t,v,c='')=>`<div class="card"><div class="k">${t}</div><div class="v ${c}">${v}</div></div>`;
+  $('#kpis').innerHTML =
+    k('Gns. afkast (alle strategier)', pct(o.avg_return_pct), cls(o.avg_return_pct)) +
+    k('Bedste: '+esc(o.best?.label||'–'), pct(o.best?.return_pct), cls(o.best?.return_pct)) +
+    k('Dårligste: '+esc(o.worst?.label||'–'), pct(o.worst?.return_pct), cls(o.worst?.return_pct)) +
+    k('Åbne positioner', o.open_positions) +
+    k('Handler i alt', o.total_trades) +
+    k('Andel vundne', o.win_rate==null?'–':pct(o.win_rate,false));
+  const sel=$('#chartsel'), opts=[['__avg__','Gennemsnit af alle'],['__all__','Alle strategier']]
+    .concat(Object.keys(e.labels).map(n=>[n,e.labels[n]]));
+  if(sel.options.length!==opts.length) sel.innerHTML=opts.map(([v,l])=>`<option value="${v}">${esc(l)}</option>`).join('');
+  sel.value=chartKey; if(sel.value!==chartKey){chartKey='__avg__';sel.value=chartKey;}
+  drawChart();
+  const s=o.last_scan;
+  $('#scan').innerHTML = s ? `<div class="flow"><span>Scout ${s.scout}</span>→<span>Filter ${s.filter}</span>→<span>Analyst ${s.analyst}</span>→<span>Risk ${s.risk}</span>→<span>Executor ${s.executor}</span></div>
+    <p class="desc">${dt(s.ts)} · ${String(s.seconds).replace('.',',')} s · BTC-filter: <b class="${s.btc_ok?'up':'down'}">${s.btc_ok?'grønt':'rødt'}</b> · epoch ${o.epoch} · startet ${dt(o.started)}</p>
+    <div class="pos">${(s.top||[]).map(t=>`<span>${esc(t.symbol)} ${Math.round(t.score)}</span>`).join('')}</div>`
+    : '<span class="muted">Intet scan endnu.</span>';
+  $('#shadow').innerHTML = `<tr><th>Score</th><th class="n">Handler</th><th class="n">Gns. resultat</th><th class="n">Andel vundne</th></tr>` +
+    o.shadow_stats.map(b=>`<tr><td>${b.range}</td><td class="n">${b.n}</td><td class="n ${cls(b.avg_pct)}">${pct(b.avg_pct)}</td><td class="n">${b.win_rate==null?'–':pct(b.win_rate,false)}</td></tr>`).join('') +
+    `<tr><td colspan="4" class="muted" style="font-size:12px">${o.shadow_open} åbne skyggehandler. De følger hver scoret coin uden at røre kontiene.</td></tr>`;
+}
+
+async function loadStrategies(){
+  const rows = await get('/api/strategies');
+  $('#cards').innerHTML = rows.map(r=>`<div class="card">
+    <div class="row"><b>${esc(r.label)}</b><span class="v ${cls(r.return_pct)}">${pct(r.return_pct)}</span></div>
+    <p class="desc">${esc(r.description)}</p>
+    ${spark(r.spark)}
+    <div class="stats"><div><span class="k">Handler</span><b>${r.trades}</b></div>
+      <div><span class="k">Vundne</span><b>${r.win_rate==null?'–':pct(r.win_rate,false)}</b></div>
+      <div><span class="k">Største fald</span><b class="${r.max_dd_pct>0?'down':''}">${pct(r.max_dd_pct>0?-r.max_dd_pct:0)}</b></div></div>
+    <div class="pos">${r.positions.length ? r.positions.map(p=>`<span>${esc(p.symbol)} <b class="${cls(p.pnl_pct)}">${pct(p.pnl_pct)}</b></span>`).join('') : '<span class="muted">Ingen åbne positioner</span>'}</div>
+  </div>`).join('');
+}
+
+async function loadTrades(){
+  const [s,t] = await Promise.all([get('/api/strategies'), get('/api/trades')]);
+  const open=[]; s.forEach(r=>r.positions.forEach(p=>open.push({...p,label:r.label})));
+  $('#open').innerHTML = `<tr><th>Coin</th><th>Strategi</th><th class="n">Resultat</th><th class="n hide-s">Størrelse</th><th class="n hide-s">Til stop</th><th class="n">Åben i</th></tr>` +
+    (open.length ? open.map(p=>`<tr><td><b>${esc(p.symbol)}</b>${p.trail_active?' <span class="muted">↗</span>':''}</td><td>${esc(p.label)}</td><td class="n ${cls(p.pnl_pct)}">${pct(p.pnl_pct)}</td><td class="n hide-s">${pct(p.size_pct,false)}</td><td class="n hide-s">${p.stop_dist_pct==null?'–':pct(p.stop_dist_pct,false)}</td><td class="n">${dur(Date.now()/1000-p.since)}</td></tr>`).join('')
+      : '<tr><td colspan="6" class="muted">Ingen åbne positioner.</td></tr>');
+  const row = (r,acct) => `<tr><td><b>${esc(r.symbol)}</b></td><td>${esc(r.label)}</td><td class="n ${cls(r.pnl_pct)}">${pct(r.pnl_pct)}</td>${acct?`<td class="n hide-s ${cls(r.account_pct)}">${pct(r.account_pct)}</td>`:`<td class="n hide-s">${Math.round(r.score??0)}</td>`}<td class="hide-s">${esc(r.reason_text)}</td><td class="n">${dt(r.ts_close)}</td><td class="n hide-s">${dur(r.ts_close-r.ts_open)}</td></tr>`;
+  $('#closed').innerHTML = `<tr><th>Coin</th><th>Strategi</th><th class="n">Handel</th><th class="n hide-s">Konto</th><th class="hide-s">Årsag</th><th class="n">Lukket</th><th class="n hide-s">Varighed</th></tr>` +
+    (t.closed.length ? t.closed.map(r=>row(r,true)).join('') : '<tr><td colspan="7" class="muted">Ingen lukkede handler endnu.</td></tr>');
+  $('#shadowtr').innerHTML = `<tr><th>Coin</th><th>Type</th><th class="n">Resultat</th><th class="n hide-s">Score</th><th class="hide-s">Årsag</th><th class="n">Lukket</th><th class="n hide-s">Varighed</th></tr>` +
+    (t.shadow.length ? t.shadow.map(r=>row({...r,label:'Skygge'},false)).join('') : '<tr><td colspan="7" class="muted">Ingen lukkede skyggehandler endnu.</td></tr>');
+}
+
+async function loadRules(){
+  const r = await get('/api/rules');
+  const f = x => nf.format(x).replace(/,00$/,'') + ' %';
+  $('#rules').innerHTML = r.groups.map(g=>`<h2>${esc(g.title)}</h2><div class="tablewrap"><table>${g.rows.map(([k,v])=>`<tr><td>${esc(k)}</td><td class="n"><b>${esc(v)}</b></td></tr>`).join('')}</table></div>`).join('') +
+    `<h2>Strategier (${r.strategies.length})</h2><div class="cards">` + r.strategies.map(s=>`<div class="card"><b>${esc(s.label)}</b><p class="desc">${esc(s.description)}</p>
+    <table><tr><td>Profil</td><td class="n">${esc(s.profile)}</td></tr><tr><td>Min. score</td><td class="n">${s.min_score}</td></tr>
+    <tr><td>Position</td><td class="n">${f(s.position_pct)} af kontoen</td></tr><tr><td>Maks. positioner</td><td class="n">${s.max_positions}</td></tr>
+    <tr><td>Stop</td><td class="n">${s.stop_pct?f(s.stop_pct):'ingen'}</td></tr>
+    <tr><td>Trailing</td><td class="n">${s.trail_pct?`${f(s.trail_pct)} fra top, fra ${f(s.trail_activate_pct)}`:'ingen'}</td></tr>
+    <tr><td>Maks. holdetid</td><td class="n">${s.max_hold_hours?s.max_hold_hours+' t':'ingen'}</td></tr>
+    <tr><td>Karantæne</td><td class="n">${s.quarantine_minutes} min</td></tr><tr><td>BTC-filter</td><td class="n">${s.btc_filter?'ja':'nej'}</td></tr>
+    ${s.extra?`<tr><td>Ekstra</td><td class="n">${esc(s.extra)}</td></tr>`:''}</table></div>`).join('') + '</div>';
+}
+
+function setStatus(alive){ const st=$('#status'); st.textContent=alive?'Kører':'Stoppet'; st.className='pill '+(alive?'ok':'bad'); }
+let busy=false;
+async function load(){ if(busy) return; busy=true;
+  try{ get('/api/status').then(s=>setStatus(s.alive)).catch(()=>{}); await ({oversigt:loadOverview,strategier:loadStrategies,handler:loadTrades,regler:loadRules}[tab])(); }
+  catch(e){ const st=$('#status'); st.textContent='Ingen forbindelse'; st.className='pill bad'; }
+  finally{ busy=false; } }
+show(tab);
+setInterval(()=>{ if(tab!=='regler' && !document.hidden) load(); }, 10000);
+</script>
+</body>
+</html>
