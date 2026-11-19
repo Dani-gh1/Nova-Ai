@@ -84,6 +84,8 @@ Historikken bevares i SQLite under det gamle epoch-nummer.
 * Netadgang til `fapi.binance.com` + `fstream.binance.com` (eller `api.bybit.com` +
   `stream.bybit.com`). Begge børser blokerer visse lande (bl.a. USA) – brug den der virker,
   hvor botten kører (`DESK_EXCHANGE=bybit`).
+  Standarden er `DESK_EXCHANGE=auto`: botten prøver Binance og skifter selv til Bybit, hvis Binance er spærret (og skifter
+  igen, hvis den børs senere bliver spærret). Brug `binance` eller `bybit` for at låse valget.
 
 ## Kom i gang
 

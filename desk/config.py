@@ -12,7 +12,7 @@ import os
 from pathlib import Path
 
 # --------------------------------------------------------------------------- drift
-EXCHANGE = "binance"            # "binance" eller "bybit"
+EXCHANGE = "auto"               # "auto" (Binance, ellers Bybit hvis den er spærret), "binance" eller "bybit"
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 DB_PATH = DATA_DIR / "desk.sqlite"
 STATE_PATH = DATA_DIR / "state.json"

@@ -406,7 +406,100 @@ class BybitFeed(MarketFeed):
                       float(k[5]), float(k[6])) for k in d]
 
 
+class FailoverFeed(MarketFeed):
+    """Prøver børserne efter tur og holder sig til den første, der svarer.
+
+    Binance og Bybit spærrer nogle lande og datacentre (HTTP 451/403). Her skifter botten selv til den anden børs, i
+    stedet for at stå stille og ikke scanne. Er en børs for nylig faldet fra, springes den over i 10 minutter.
+    """
+    PING = {"binance": "https://fapi.binance.com/fapi/v1/ping", "bybit": "https://api.bybit.com/v5/market/time"}
+    RETRY_AFTER_S = 600
+    MAX_FAILS = 3
+
+    def __init__(self, names=("binance", "bybit"), start_ws: bool = True, factory=None):
+        self.names, self.start_ws = tuple(names), start_ws
+        self.factory = factory or {"binance": BinanceFeed, "bybit": BybitFeed}
+        self.active: str | None = None
+        self.feed: MarketFeed | None = None
+        self.bad: dict[str, float] = {}
+        self.fails = 0
+        self._pick()
+
+    # -- valg af børs
+    def _pick(self) -> None:
+        now = time.time()
+        candidates = [n for n in self.names if now - self.bad.get(n, 0) > self.RETRY_AFTER_S] or list(self.names)
+        for name in candidates:
+            try:
+                get_json(self.PING.get(name, ""), timeout=8) if name in self.PING else None
+            except HttpError as e:
+                log.warning("Børsen %s svarer ikke (%s) – prøver næste", name, str(e)[-60:])
+                self.bad[name] = now
+                continue
+            self.active, self.fails = name, 0
+            self.feed = self.factory[name](start_ws=self.start_ws)
+            config.EXCHANGE = name                      # dashboard og log skal vise den børs, der bruges
+            log.info("Bruger børsen %s", name)
+            return
+        self.active = self.feed = None
+
+    def _drop(self, reason: str) -> None:
+        log.warning("Skifter væk fra %s: %s", self.active, reason)
+        if self.active:
+            self.bad[self.active] = time.time()
+        liqs = getattr(self.feed, "liqs", None)
+        if liqs is not None and hasattr(liqs, "stop"):
+            liqs.stop()
+        self.active = self.feed = None
+
+    def _call(self, method: str, *args, **kw):
+        last: Exception | None = None
+        for _ in range(len(self.names) + 1):
+            if self.feed is None:
+                self._pick()
+                if self.feed is None:
+                    raise HttpError(f"Ingen børs svarer ({'/'.join(self.names)}): spærret eller nede? {last or ''}".strip())
+            try:
+                out = getattr(self.feed, method)(*args, **kw)
+                self.fails = 0
+                return out
+            except HttpError as e:
+                last = e
+                blocked = any(c in str(e) for c in ("HTTP Error 451", "HTTP Error 403"))
+                self.fails += 1
+                if blocked or self.fails >= self.MAX_FAILS:
+                    self._drop("spærret" if blocked else f"{self.fails} fejl i træk")
+                    continue
+                raise
+        raise HttpError(f"Ingen børs svarer: {last}")
+
+    # -- MarketFeed
+    def universe(self):
+        return self._call("universe")
+
+    def mark_prices(self):
+        return self._call("mark_prices")
+
+    def funding_rates(self):
+        return self._call("funding_rates")
+
+    def orderbook(self, symbol):
+        return self._call("orderbook", symbol)
+
+    def klines(self, symbol, limit=120):
+        return self._call("klines", symbol, limit)
+
+    def ticker(self):
+        return self._call("ticker")
+
+    def minute_range(self, symbol, since_ms):
+        return self._call("minute_range", symbol, since_ms)
+
+
 def make_feed(start_ws: bool = True) -> MarketFeed:
-    if config.EXCHANGE.lower() == "bybit":
+    name = config.EXCHANGE.lower()
+    if name == "bybit":
         return BybitFeed(start_ws=start_ws)
-    return BinanceFeed(start_ws=start_ws)
+    if name == "binance":
+        return BinanceFeed(start_ws=start_ws)
+    return FailoverFeed(start_ws=start_ws)            # "auto": Binance først, Bybit hvis Binance er spærret
