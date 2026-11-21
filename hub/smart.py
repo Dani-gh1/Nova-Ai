@@ -83,8 +83,9 @@ def score(c: dict, now: float, lookback_h: float = LOOKBACK_H) -> float | None:
 
 
 class SmartBot:
-    def __init__(self, path: Path | None = None, now=time.time, log=print, expected: int = 0):
+    def __init__(self, path: Path | None = None, now=time.time, log=print, expected: int = 0, allow: set | None = None):
         self.path, self.now, self.log = path or state_file(), now, log
+        self.allow = allow                                   # kun disse botter (Live-Smart: dem, der kan handles for rigtigt)
         self.expected, self.started = expected, now()     # så mange botter venter den på efter start
         self.lock = threading.Lock()
         self.snap: dict[str, dict] = {}        # bot -> {"at": tid, "fresh": scanner, "cands": [...]} (seneste svar)
@@ -117,6 +118,8 @@ class SmartBot:
     # ---------- data fra botterne ----------
     def feed(self, bot: str, cands: list[dict], fresh: bool = True) -> None:
         """Seneste svar fra én bot. Bot, der ikke svarer, beholder deres sidste svar (med det gamle tidspunkt)."""
+        if self.allow is not None and bot not in self.allow:
+            return
         with self.lock:
             self.snap[bot] = {"at": self.now(), "fresh": fresh, "cands": cands}
 

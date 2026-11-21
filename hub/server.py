@@ -15,6 +15,7 @@ import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 
 from .adapters import normalize
+from .live import LiveAccount, live_bots, targets_for
 from .smart import SmartBot
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -267,6 +268,8 @@ class Overview:
         self.build = build or (lambda: self._build())
         self.rows: list | None = None
         self.smart_bot = smart                 # Smart-botten: følger den bedste strategi på tværs af alle botter
+        self.live_smart: SmartBot | None = None    # Live-Smart: samme regler, men kun strategier, der kan handles for rigtigt
+        self.live: LiveAccount | None = None       # live-kontoen hos børsen
         self.at = 0.0
         self.lock = threading.Lock()
         self.busy = False
@@ -282,9 +285,10 @@ class Overview:
                 if not isinstance(r, dict) or "_cands" not in r:
                     continue                   # botten svarede ikke: Smart-botten beholder dens seneste svar
                 cands = r.pop("_cands") or []
-                if self.smart_bot is not None:
-                    fresh = not r.get("idle") and r.get("scan_age") is not None and r["scan_age"] <= STALE_AFTER_S   # lukket marked kan ikke vælges
-                    self.smart_bot.feed(r["key"], cands, fresh)
+                fresh = not r.get("idle") and r.get("scan_age") is not None and r["scan_age"] <= STALE_AFTER_S   # lukket marked kan ikke vælges
+                for sb in (self.smart_bot, self.live_smart):
+                    if sb is not None:
+                        sb.feed(r["key"], cands, fresh)
             with self.lock:
                 self.rows, self.at = rows, self.now()
         finally:
@@ -476,6 +480,10 @@ def make_handler(bots: list[dict], throttle: Throttle | None = None, ratelimit: 
                     return self._send(200, "application/json", json.dumps(out).encode())
                 if path == "/api/overview":
                     return self._send(200, "application/json", json.dumps(overview.get()).encode())
+                if path == "/api/live":
+                    ov = overview
+                    out = None if ov.live is None else {**ov.live.view(), "smart": ov.live_smart.view() if ov.live_smart else None}
+                    return self._send(200, "application/json", json.dumps(out).encode())
                 if path == "/api/smart":
                     overview.get()
                     return self._send(200, "application/json", json.dumps(overview.smart()).encode())
@@ -513,6 +521,32 @@ def make_handler(bots: list[dict], throttle: Throttle | None = None, ratelimit: 
     return Handler
 
 
+def start_live(ov: "Overview", bots: list[dict]) -> None:
+    """Live-kontoen (rigtige penge), hvis HUB_LIVE er sat: Live-Smart vælger, live-kontoen ejer de samme mønter."""
+    if not os.environ.get("HUB_LIVE", "").strip() or os.environ.get("HUB_LIVE", "").strip() in ("0", "off"):
+        return
+    say = lambda m: print(m, flush=True)
+    allow = live_bots(bots)
+    by_key = {b["key"]: b for b in bots}
+    ov.live_smart = SmartBot(Path(os.environ.get("HUB_LIVE_SMART_FILE") or ROOT / "logs" / "smart-live.json"), log=say,
+                             expected=len(allow), allow=allow)
+    ov.live = LiveAccount(log=say)
+    say(f"Live-konto: {('SIMULERING' if ov.live.mode == 'dry' else 'RIGTIGE PENGE')} hos {ov.live.broker.venue}, "
+        f"budget {ov.live.budget:.0f} USD, vælger blandt {len(allow)} botter: {', '.join(sorted(allow))}")
+
+    def loop():
+        while True:
+            try:
+                ov.live_smart.step()
+                h = ov.live_smart.state.get("held")
+                data = bot_data(by_key[h["bot"]]) if h and h["bot"] in by_key else {}
+                ov.live.sync(targets_for(h, data), h and f"{h['name']} ({h['bot_name']})")
+            except Exception as e:
+                say(f"Live: fejl i runden: {e!r}")
+            time.sleep(60)
+    threading.Thread(target=loop, daemon=True, name="live").start()
+
+
 def serve(host: str, port: int, bots: list[dict] | None = None) -> None:
     bots = bots if bots is not None else load_bots()
     host, problem = check_public_config({**os.environ, "HUB_HOST": host})
@@ -530,6 +564,7 @@ def serve(host: str, port: int, bots: list[dict] | None = None) -> None:
     ov.smart_bot = SmartBot(log=lambda m: print(m, flush=True), expected=expected)
     # Smart-botten kører hele tiden, også når ingen kigger: henter friske tal fra botterne og tager et skridt hvert minut
     threading.Thread(target=ov.smart_bot.run, args=(ov.fresh,), daemon=True, name="smart-bot").start()
+    start_live(ov, bots)
     httpd = ThreadingHTTPServer((host, port), handler)
     httpd.daemon_threads = True
     print(f"Hub: http://{host}:{port}", flush=True)
