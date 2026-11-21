@@ -2,7 +2,7 @@
  "bots": [
   {
    "key": "atlas",
-   "name": "Atlas AI",
+   "name": "Aktier USA",
    "repo": "Dani-gh1/Atlas",
    "port": 8801,
    "desc": "Aktier og ETF'er",
@@ -16,7 +16,6 @@
      "DESK_HOST": "127.0.0.1"
     }
    },
-   "short": "aktier",
    "invests": "Amerikanske aktier og ETF'er (S&P 500)",
    "adapter": "stocks",
    "hosts": [
@@ -31,7 +30,7 @@
   },
   {
    "key": "meridian",
-   "name": "Meridian AI",
+   "name": "Forex og råvarer",
    "repo": "Dani-gh1/Meridian-AI",
    "port": 8802,
    "desc": "Papirdesk",
@@ -43,7 +42,6 @@
     ]
    },
    "hide": "nav[role=tablist]",
-   "short": "forex",
    "invests": "Forex og råvarer (EUR/USD, guld, olie)",
    "adapter": "forex",
    "hosts": [
@@ -55,7 +53,7 @@
   },
   {
    "key": "comet",
-   "name": "Comet AI",
+   "name": "Nye tokens",
    "repo": "Dani-gh1/Comet-AI",
    "port": 8803,
    "desc": "Nye tokens på Base, Ethereum og BNB Chain",
@@ -67,7 +65,6 @@
     ]
    },
    "hide": "header nav",
-   "short": "nye tokens",
    "invests": "Nye tokens på Base, Ethereum og BNB Chain",
    "adapter": "comet",
    "hosts": [
@@ -81,7 +78,7 @@
   },
   {
    "key": "delphi",
-   "name": "Delphi AI",
+   "name": "Prognosemarkeder",
    "repo": "Dani-gh1/Delphi-AI",
    "port": 8804,
    "desc": "Polymarket og Kalshi",
@@ -98,7 +95,6 @@
     ]
    },
    "hide": "nav[role=tablist]",
-   "short": "prognosemarkeder",
    "invests": "Prognosemarkeder (Polymarket og Kalshi)",
    "adapter": "delphi",
    "hosts": [
@@ -112,7 +108,7 @@
   },
   {
    "key": "quasar",
-   "name": "Quasar AI",
+   "name": "Krypto-futures",
    "repo": "Dani-gh1/Quasar-AI",
    "port": 8805,
    "desc": "Krypto-perpetuals",
@@ -124,7 +120,6 @@
     ]
    },
    "hide": "header nav, body > nav, nav",
-   "short": "krypto-futures",
    "invests": "Krypto-futures med gearing (Binance/Bybit)",
    "adapter": "quasar",
    "hosts": [
@@ -137,7 +132,7 @@
   },
   {
    "key": "orion",
-   "name": "Orion AI",
+   "name": "Krypto",
    "repo": "Dani-gh1/Orion-AI",
    "port": 8806,
    "desc": "Store kryptovalutaer på Binance",
@@ -149,7 +144,6 @@
     ]
    },
    "hide": "#tabs",
-   "short": "krypto",
    "invests": "Store kryptovalutaer (BTC, ETH, SOL m.fl.)",
    "adapter": "orion",
    "hosts": [
@@ -162,7 +156,7 @@
   },
   {
    "key": "nova",
-   "name": "Nova AI",
+   "name": "Memecoins",
    "repo": "Dani-gh1/Coins",
    "port": 8807,
    "desc": "Solana-memecoins",
@@ -175,7 +169,6 @@
     ]
    },
    "hide": "#tabs",
-   "short": "memecoins",
    "invests": "Nye Solana-memecoins",
    "adapter": "nova",
    "hosts": [
@@ -191,7 +184,7 @@
   },
   {
    "key": "atlasglobal",
-   "name": "Atlas Global AI",
+   "name": "Globale aktier",
    "repo": "Dani-gh1/Atlas",
    "port": 8808,
    "desc": "Aktier og ETF'er fra hele verden",
@@ -258,7 +251,6 @@
      }
     }
    },
-   "short": "global",
    "invests": "Udenlandske aktier (ADR'er) og ETF'er fra Europa, Asien og nye markeder",
    "adapter": "stocks",
    "hosts": [
@@ -279,7 +271,7 @@
   },
   {
    "key": "orionmid",
-   "name": "Orion Mid AI",
+   "name": "Små krypto",
    "repo": "Dani-gh1/Orion-AI",
    "port": 8809,
    "desc": "Mellemstore og små kryptovalutaer på Binance",
@@ -337,7 +329,6 @@
     }
    },
    "hide": "#tabs",
-   "short": "små krypto",
    "invests": "Mellemstore og små kryptovalutaer (alt uden for de ca. 25 største)",
    "adapter": "orion",
    "hosts": [
@@ -356,7 +347,7 @@
   },
   {
    "key": "novaclassic",
-   "name": "Nova Classic AI",
+   "name": "Ældre memecoins",
    "repo": "Dani-gh1/Coins",
    "port": 8810,
    "desc": "Etablerede Solana-memecoins",
@@ -371,7 +362,6 @@
     ]
    },
    "hide": "#tabs",
-   "short": "gamle memecoins",
    "invests": "Etablerede Solana-memecoins (over 30 dage gamle, med rigtig likviditet)",
    "adapter": "nova",
    "hosts": [
@@ -388,7 +378,7 @@
   },
   {
    "key": "bondai",
-   "name": "Bond AI",
+   "name": "Obligationer",
    "repo": "Dani-gh1/Atlas",
    "port": 8811,
    "desc": "Obligationer og renter",
@@ -441,7 +431,6 @@
      }
     }
    },
-   "short": "obligationer",
    "invests": "Statsobligationer, virksomhedsobligationer og rente-ETF'er (TLT, IEF, AGG, LQD, HYG m.fl.)",
    "adapter": "stocks",
    "hosts": [
@@ -462,7 +451,7 @@
   },
   {
    "key": "metalai",
-   "name": "Metal AI",
+   "name": "Metaller",
    "repo": "Dani-gh1/Atlas",
    "port": 8812,
    "desc": "Guld, sølv og metaller",
@@ -505,7 +494,6 @@
      }
     }
    },
-   "short": "metaller",
    "invests": "Guld, sølv, kobber, platin og minefirmaer (GLD, SLV, COPX, GDX, NEM m.fl.)",
    "adapter": "stocks",
    "hosts": [
@@ -526,7 +514,7 @@
   },
   {
    "key": "energiai",
-   "name": "Energi AI",
+   "name": "Energi",
    "repo": "Dani-gh1/Atlas",
    "port": 8813,
    "desc": "Olie, gas, uran og energi",
@@ -567,7 +555,6 @@
      }
     }
    },
-   "short": "energi",
    "invests": "Olie, gas, uran og energiaktier (XOM, CVX, SLB, CCJ, USO, URA m.fl.)",
    "adapter": "stocks",
    "hosts": [
@@ -588,7 +575,7 @@
   },
   {
    "key": "temaai",
-   "name": "Tema AI",
+   "name": "Tema-aktier",
    "repo": "Dani-gh1/Atlas",
    "port": 8814,
    "desc": "Temaer: AI, forsvar, grøn energi, biotek",
@@ -640,7 +627,6 @@
      }
     }
    },
-   "short": "temaer",
    "invests": "Aktier og ETF'er inden for AI, forsvar, grøn energi, cybersikkerhed, droner og biotek",
    "adapter": "stocks",
    "hosts": [
@@ -661,7 +647,7 @@
   },
   {
    "key": "smallcapai",
-   "name": "Small Cap AI",
+   "name": "Småaktier",
    "repo": "Dani-gh1/Atlas",
    "port": 8815,
    "desc": "Små amerikanske aktier",
@@ -705,7 +691,6 @@
      }
     }
    },
-   "short": "småaktier",
    "invests": "Små og mellemstore amerikanske aktier (Russell 2000/S&P 600) og ETF'er som IWM og IJR",
    "adapter": "stocks",
    "hosts": [
@@ -726,7 +711,7 @@
   },
   {
    "key": "udbytteai",
-   "name": "Udbytte AI",
+   "name": "Udbytteaktier",
    "repo": "Dani-gh1/Atlas",
    "port": 8816,
    "desc": "Aktier med stabilt udbytte",
@@ -772,7 +757,6 @@
      }
     }
    },
-   "short": "udbytte",
    "invests": "Aktier og ETF'er med stabilt og stigende udbytte (SCHD, VIG, KO, PEP, JNJ, O m.fl.)",
    "adapter": "stocks",
    "hosts": [
@@ -793,7 +777,7 @@
   },
   {
    "key": "danskai",
-   "name": "Dansk AI",
+   "name": "Danske aktier",
    "repo": "Dani-gh1/Atlas",
    "port": 8817,
    "desc": "Danske aktier",
@@ -828,7 +812,6 @@
      }
     }
    },
-   "short": "danske aktier",
    "invests": "Danske selskaber, handlet som amerikanske ADR'er og i ETF'en EDEN (Novo, Ørsted, Vestas, Mærsk, DSV m.fl.)",
    "adapter": "stocks",
    "hosts": [
@@ -849,7 +832,7 @@
   },
   {
    "key": "regnskabai",
-   "name": "Regnskab AI",
+   "name": "Regnskabsaktier",
    "repo": "Dani-gh1/Atlas",
    "port": 8818,
    "desc": "Aktier efter regnskaber",
@@ -886,7 +869,6 @@
      }
     }
    },
-   "short": "regnskaber",
    "invests": "S&P 500-aktier, der reagerer kraftigt (gap og volumen), fx lige efter regnskaber",
    "adapter": "stocks",
    "hosts": [
@@ -907,7 +889,7 @@
   },
   {
    "key": "stakingai",
-   "name": "Staking AI",
+   "name": "Staking",
    "repo": "Dani-gh1/Orion-AI",
    "port": 8819,
    "desc": "Krypto med staking",
@@ -954,7 +936,6 @@
     ]
    },
    "hide": "#tabs",
-   "short": "staking",
    "invests": "Kryptovalutaer med staking: ETH, SOL, ADA, DOT, ATOM, AVAX, NEAR, TIA m.fl.",
    "adapter": "orion",
    "hosts": [
@@ -973,7 +954,7 @@
   },
   {
    "key": "defiai",
-   "name": "DeFi AI",
+   "name": "DeFi",
    "repo": "Dani-gh1/Orion-AI",
    "port": 8820,
    "desc": "DeFi-tokens",
@@ -1020,7 +1001,6 @@
     ]
    },
    "hide": "#tabs",
-   "short": "DeFi",
    "invests": "DeFi-tokens: AAVE, UNI, MKR, CRV, COMP, LDO, PENDLE, DYDX, JUP m.fl.",
    "adapter": "orion",
    "hosts": [
@@ -1039,7 +1019,7 @@
   },
   {
    "key": "aitokenai",
-   "name": "AI-token AI",
+   "name": "AI-tokens",
    "repo": "Dani-gh1/Orion-AI",
    "port": 8821,
    "desc": "Krypto med AI-tema",
@@ -1080,7 +1060,6 @@
     ]
    },
    "hide": "#tabs",
-   "short": "AI-tokens",
    "invests": "AI-tokens: FET, RENDER, TAO, WLD, ARKM, NEAR, GRT m.fl.",
    "adapter": "orion",
    "hosts": [
@@ -1099,7 +1078,7 @@
   },
   {
    "key": "valutaai",
-   "name": "Valuta AI",
+   "name": "Valuta",
    "repo": "Dani-gh1/Meridian-AI",
    "port": 8822,
    "desc": "Valutapar inkl. nye markeder",
@@ -1302,7 +1281,6 @@
     }
    },
    "hide": "nav[role=tablist]",
-   "short": "valuta",
    "invests": "Rene valutapar: majors, krydskurser og nye markeder (MXN, ZAR, TRY, BRL, INR, NOK, SEK)",
    "adapter": "forex",
    "hosts": [

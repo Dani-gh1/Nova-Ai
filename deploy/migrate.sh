@@ -44,9 +44,9 @@ if [ -n "$MEM" ] && [ "$MEM" -lt 6000 ]; then
 fi
 
 HOME_OLD="$(quiet "$OLD" 'echo $HOME')"; HOME_OLD="${HOME_OLD:-/home/$U}"
-NOVA_DIR="$(quiet "$OLD" "grep '^HUB_UPDATE_NOVA_DIR=' /etc/hub.env 2>/dev/null | cut -d= -f2-")"; NOVA_DIR="${NOVA_DIR:-$HOME_OLD/Coins}"
+NOVA_DIR="$(quiet "$OLD" "grep '^HUB_UPDATE_NOVA_DIR=' /etc/nova-ai.env 2>/dev/null | cut -d= -f2-")"; NOVA_DIR="${NOVA_DIR:-$HOME_OLD/Coins}"
 NOVA_UNIT="$(quiet "$OLD" "systemctl show -p FragmentPath --value desk.service 2>/dev/null")"
-echo "• Hubben: $HOME_OLD/Hub-AI   Nova: $NOVA_DIR${NOVA_UNIT:+ (tjenesten desk: $NOVA_UNIT)}"
+echo "• Hubben: $HOME_OLD/Nova-AI   Nova: $NOVA_DIR${NOVA_UNIT:+ (tjenesten desk: $NOVA_UNIT)}"
 
 if [ "$DRY" != 1 ]; then
   echo
@@ -59,13 +59,13 @@ step "2/8 Gør den nye server klar (git, Python, tidszoner)"
 on "$NEW" "sudo apt-get update -qq && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq git python3 tzdata curl >/dev/null && python3 --version"
 
 step "3/8 Stopper den gamle server (kan tage op til 3 minutter, fordi botterne gør deres scanning færdig)"
-on "$OLD" "sudo systemctl stop hub-update.timer hub; sudo systemctl stop desk 2>/dev/null; echo '✓ stoppet'"
+on "$OLD" "sudo systemctl stop nova-ai-update.timer nova-ai; sudo systemctl stop desk 2>/dev/null; echo '✓ stoppet'"
 
 step "4/8 Kopierer hubben, botterne, deres data og Nova direkte fra den gamle til den nye server"
-PATHS="${HOME_OLD#/}/Hub-AI etc/hub.env"
+PATHS="${HOME_OLD#/}/Nova-AI etc/nova-ai.env"
 quiet "$OLD" "test -d '$NOVA_DIR'" >/dev/null 2>&1 && PATHS="$PATHS ${NOVA_DIR#/}"
 [ -n "$NOVA_UNIT" ] && PATHS="$PATHS ${NOVA_UNIT#/}"
-TAR="sudo tar -C / --exclude='*/__pycache__' --exclude='${HOME_OLD#/}/Hub-AI/backups' -czf - $PATHS"
+TAR="sudo tar -C / --exclude='*/__pycache__' --exclude='${HOME_OLD#/}/Nova-AI/backups' -czf - $PATHS"
 if [ "$DRY" = 1 ]; then
   echo "  [$OLD] $TAR  |  [$NEW] sudo tar -C / -xzf -"
 else
@@ -75,23 +75,23 @@ fi
 
 step "5/8 Tænder alle 22 botter på den nye server"
 SEDX="-e '/^HUB_LITE=/d'"; for k in $NEW_BOTS; do SEDX="$SEDX -e '/^HUB_DISABLE_$k=/d'"; done      # fuld fart på den store server
-on "$NEW" "sudo sed -i $SEDX /etc/hub.env && echo '✓ de 15 nye botter er slået til'"
+on "$NEW" "sudo sed -i $SEDX /etc/nova-ai.env && echo '✓ de 15 nye botter er slået til'"
 
 step "6/8 Starter Nova og installerer hubben"
 if [ -n "$NOVA_UNIT" ]; then
   on "$NEW" "sudo systemctl daemon-reload && sudo systemctl enable --now desk && echo '✓ Nova kører'"
 fi
-on "$NEW" "cd ~/Hub-AI && git pull --ff-only -q; HUB_NOVA_DIR='$NOVA_DIR' ./deploy/install.sh"
+on "$NEW" "cd ~/Nova-AI && git pull --ff-only -q; HUB_NOVA_DIR='$NOVA_DIR' ./deploy/install.sh"
 
 step "7/8 Tailscale på den nye server (åbn linket, den viser, og log ind med samme konto som før)"
-on "$NEW" "command -v tailscale >/dev/null || curl -fsSL https://tailscale.com/install.sh | sh; sudo tailscale up --hostname=hub-a1 && cd ~/Hub-AI && ./deploy/public.sh private"
+on "$NEW" "command -v tailscale >/dev/null || curl -fsSL https://tailscale.com/install.sh | sh; sudo tailscale up --hostname=hub-a1 && cd ~/Nova-AI && ./deploy/public.sh private"
 
 step "8/8 Slår den gamle server fra for altid (data bliver liggende som en ekstra kopi)"
-on "$OLD" "sudo systemctl disable hub hub-update.timer desk 2>/dev/null; true"
-on "$NEW" "sleep 20; cd ~/Hub-AI && python3 -m hub status | grep -cE ' kører +port' | xargs -I{} echo '✓ {} botter kører allerede (resten starter en ad gangen de næste minutter)'; free -m"
+on "$OLD" "sudo systemctl disable nova-ai nova-ai-update.timer desk 2>/dev/null; true"
+on "$NEW" "sleep 20; cd ~/Nova-AI && python3 -m hub status | grep -cE ' kører +port' | xargs -I{} echo '✓ {} botter kører allerede (resten starter en ad gangen de næste minutter)'; free -m"
 
 echo
 echo "Færdig. Dashboardet ligger nu på den nye server (adressen står ovenfor, hub-a1.<dit-net>.ts.net)."
 echo "Vil du beholde den gamle adresse (instance-20261116-1234…), så kør på den GAMLE server:  sudo tailscale logout"
-echo "og derefter på den NYE:  sudo tailscale set --hostname=instance-20261116-1234 && cd ~/Hub-AI && ./deploy/public.sh private"
+echo "og derefter på den NYE:  sudo tailscale set --hostname=instance-20261116-1234 && cd ~/Nova-AI && ./deploy/public.sh private"
 echo "Når alt har kørt fint i et par dage, kan den gamle server slettes i Oracle Cloud."

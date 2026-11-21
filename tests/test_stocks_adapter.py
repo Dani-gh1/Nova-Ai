@@ -64,8 +64,8 @@ class StocksAdapterTests(unittest.TestCase):
 
     def test_atlas_is_configured_as_the_stock_bot_and_meridian_as_forex(self):
         by = {b["key"]: b for b in server.load_bots()}
-        self.assertEqual((by["atlas"]["adapter"], by["atlas"]["short"]), ("stocks", "aktier"))
-        self.assertEqual((by["meridian"]["adapter"], by["meridian"]["short"]), ("forex", "forex"))
+        self.assertEqual((by["atlas"]["adapter"], by["atlas"]["name"]), ("stocks", "Aktier USA"))
+        self.assertEqual((by["meridian"]["adapter"], by["meridian"]["name"]), ("forex", "Forex og råvarer"))
         self.assertNotEqual(by["atlas"]["invests"], by["meridian"]["invests"])
         self.assertEqual(by["atlas"]["launch"]["kind"], "env")
 

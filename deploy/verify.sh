@@ -12,9 +12,9 @@ FIX=1; [ "${1:-}" = "--no-fix" ] && FIX=0
 SYSTEMCTL="${HUB_SYSTEMCTL:-systemctl}"; CURL="${HUB_CURL:-curl}"
 PUBLIC_CMD="${HUB_PUBLIC_CMD:-$HUB_DIR/deploy/public.sh}"
 TS="${HUB_TAILSCALE:-$(command -v tailscale || true)}"
-ENV_FILE="${HUB_ENV_FILE:-/etc/hub.env}"
+ENV_FILE="${HUB_ENV_FILE:-/etc/nova-ai.env}"
 ACCESS="${VERIFY_ACCESS:-open}"
-UNIT_FILE="${HUB_UNIT_DIR:-/etc/systemd/system}/hub.service"; BOT_WAIT="${HUB_BOT_WAIT:-60}"
+UNIT_FILE="${HUB_UNIT_DIR:-/etc/systemd/system}/nova-ai.service"; BOT_WAIT="${HUB_BOT_WAIT:-60}"
 SUDO=""; [ "$(id -u)" -eq 0 ] || SUDO="sudo"; [ -n "${HUB_NO_SUDO:-}" ] && SUDO=""
 READ=""; [ -r "$ENV_FILE" ] || READ="$SUDO"
 getvar() { $READ grep "^$1=" "$ENV_FILE" 2>/dev/null | head -1 | cut -d= -f2- || true; }
@@ -44,11 +44,11 @@ echo; echo "1. Kører dashboardet 24/7?"
 if [ "$OS" = Darwin ]; then
   bad "Hubben kører på en Mac. En Mac går i dvale og har lukkede låg. Kør scriptet på serveren."; R1=nej
 else
-  check "Hubben starter automatisk ved boot" "$SYSTEMCTL is-enabled hub | grep -q '^enabled'" "$SUDO $SYSTEMCTL enable hub" || R1=nej
-  check "Hubben kører som tjeneste (uafhængigt af et Terminal-vindue)" "$SYSTEMCTL is-active --quiet hub" "$SUDO $SYSTEMCTL restart hub" 20 || R1=nej
+  check "Hubben starter automatisk ved boot" "$SYSTEMCTL is-enabled nova-ai | grep -q '^enabled'" "$SUDO $SYSTEMCTL enable nova-ai" || R1=nej
+  check "Hubben kører som tjeneste (uafhængigt af et Terminal-vindue)" "$SYSTEMCTL is-active --quiet nova-ai" "$SUDO $SYSTEMCTL restart nova-ai" 20 || R1=nej
   check "Systemet genstarter hubben, hvis den går ned" "grep -qs 'Restart=always' $UNIT_FILE" "" || R1=nej
   check "Hubben svarer" "healthy" "" 30 || R1=nej
-  check "Opdatering hvert kvarter er slået til (nye rettelser kommer af sig selv)" "$SYSTEMCTL is-enabled hub-update.timer | grep -q '^enabled'" "$SUDO $SYSTEMCTL enable --now hub-update.timer" || R1=nej
+  check "Opdatering hvert kvarter er slået til (nye rettelser kommer af sig selv)" "$SYSTEMCTL is-enabled nova-ai-update.timer | grep -q '^enabled'" "$SUDO $SYSTEMCTL enable --now nova-ai-update.timer" || R1=nej
 fi
 
 echo; echo "2. Kører alle botter uden problem?"
@@ -58,7 +58,7 @@ eval_bots() {   # skriver en linje pr. bot og returnerer antal botter med proble
 OUT="$(eval_bots)"; RC=$?
 if [ $RC -ne 0 ] && [ "$FIX" = 1 ] && [ "$R1" = ja ]; then
   echo "$OUT"; echo "  … nogle botter mangler: henter nyeste kode og genstarter hubben, venter et minut"
-  $SUDO $SYSTEMCTL restart hub >/dev/null 2>&1; sleep "$BOT_WAIT"; OUT="$(eval_bots)"; RC=$?
+  $SUDO $SYSTEMCTL restart nova-ai >/dev/null 2>&1; sleep "$BOT_WAIT"; OUT="$(eval_bots)"; RC=$?
 fi
 echo "$OUT"
 if [ $RC -ne 0 ]; then
@@ -69,7 +69,7 @@ fi
 echo; echo "3. Er det uafhængigt af dine enheder?"
 if [ "$OS" = Darwin ]; then bad "Hubben kører på din Mac, så den afhænger af den."; R3=nej
 else
-  check "Hubben ligger på serveren og kører under systemd, ikke i din Mac eller telefon" "$SYSTEMCTL is-active --quiet hub" "" || R3=nej
+  check "Hubben ligger på serveren og kører under systemd, ikke i din Mac eller telefon" "$SYSTEMCTL is-active --quiet nova-ai" "" || R3=nej
   if [ -n "$TS" ]; then
     check "Tailscale kører som tjeneste på serveren og starter ved boot" "$SYSTEMCTL is-enabled tailscaled | grep -q '^enabled' && $SYSTEMCTL is-active --quiet tailscaled" "$SUDO $SYSTEMCTL enable --now tailscaled" || R3=nej
     check "Serveren er logget ind på Tailscale" "$TS status" "" || R3=nej
@@ -106,5 +106,5 @@ echo "  1. Dashboardet kører 24/7:                 $(yn $R1)"
 echo "  2. Alle botter kører uden problem:         $(yn $R2)"
 echo "  3. Uafhængigt af dine enheder:             $(yn $R3)"
 echo "  4. Alle kan komme ind, hvor de end er:     $(yn $R4)"
-if [ -n "$URL" ]; then echo; echo "  Adresse:        $URL"; echo "  Til telefonen:  https://dani-gh1.github.io/Hub-AI/?server=$URL"; fi
+if [ -n "$URL" ]; then echo; echo "  Adresse:        $URL"; echo "  Til telefonen:  https://dani-gh1.github.io/Nova-AI/?server=$URL"; fi
 [ "$R1$R2$R3$R4" = jajajaja ]

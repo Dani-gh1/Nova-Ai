@@ -36,7 +36,7 @@ class PublicScriptTests(unittest.TestCase):
         ts = self.d / "bin" / "tailscale"
         ts.write_text(STUB)
         ts.chmod(0o755)
-        self.env_file = self.d / "hub.env"
+        self.env_file = self.d / "nova-ai.env"
         self.env_file.write_text("HUB_HOST=0.0.0.0\nHUB_PORT=8080\nHUB_PASSWORD=\n")
         self.log = self.d / "log"
         self.serve = self.d / "serve"

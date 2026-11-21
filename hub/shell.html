@@ -8,13 +8,13 @@
 <meta name="color-scheme" content="light dark">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Hub AI">
+<meta name="apple-mobile-web-app-title" content="Nova AI">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
 <link rel="icon" href="/static/favicon-32.png" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
-<title>Hub AI</title>
+<title>Nova AI</title>
 <style>
 :root{
   --bg:#f6f7fb;--surface:#fff;--ink:#0f172a;--ink2:#475569;--mute:#94a3b8;--line:#e8ebf2;--soft:#f1f4f9;
@@ -185,7 +185,7 @@ a.ext:hover{color:var(--ink);background:var(--soft)}
 <body>
 <header>
   <div class="bar">
-    <div class="brand"><img class="logo" src="/static/logo.svg" width="30" height="30" alt=""><b>Hub AI</b>
+    <div class="brand"><img class="logo" src="/static/logo.svg" width="30" height="30" alt=""><b>Nova AI</b>
       <button class="pill home" id="home" type="button" role="tab"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"/></svg>Alle botter</button>
       <span class="badge">Kun papirhandel · fiktive penge</span></div>
     <nav class="scroller" id="tabs" role="tablist" aria-label="Botter"></nav>
@@ -246,10 +246,10 @@ setInterval(() => document.querySelectorAll("[data-since]").forEach((e) => { e.t
 
 /* ---------- topnavigation ---------- */
 function drawTabs() {
-  const mk = (key, text, state, small) => h("button", { class: "pill", role: "tab", "aria-selected": String(key === curKey), type: "button", onclick: () => go(key) },
-    state != null && h("span", { class: "dot " + state }), h("span", { class: "t" }, text, small && h("small", {}, `(${small})`)));
+  const mk = (key, text, state) => h("button", { class: "pill", role: "tab", "aria-selected": String(key === curKey), type: "button", onclick: () => go(key) },
+    state != null && h("span", { class: "dot " + state }), h("span", { class: "t" }, text));
   const home = $("home"); home.setAttribute("aria-selected", String(curKey === OV)); home.onclick = () => go(OV);
-  $("tabs").replaceChildren(...BOTS.map((b) => mk(b.key, b.name, !b.configured ? "" : b.up ? "up" : "down", b.short)));
+  $("tabs").replaceChildren(...BOTS.map((b) => mk(b.key, b.name, !b.configured ? "" : b.up ? "up" : "down")));
   const cur = BOTS.find((x) => x.key === curKey);
   $("subbar").hidden = curKey === OV || !(cur && cur.configured && cur.up);
   $("subs").replaceChildren(...SUBS.map(([id, text, icon]) => h("button", { class: "sub", role: "tab", type: "button",
@@ -299,7 +299,7 @@ function botHead() {
   const b = bot();
   if (curKey === OV || !b) return null;
   return h("div", { class: "bothead" }, h("a", { class: "back", href: "#overblik" }, "← Alle botter"),
-    h("b", {}, b.name), b.short ? h("small", {}, `(${b.short})`) : null);
+    h("b", {}, b.name));
 }
 function view(...kids) { $("main").replaceChildren(h("div", { class: "view" }, botHead(), ...kids)); }
 
@@ -309,7 +309,7 @@ function render(keepScroll) {
   if (!b) { go(OV); return; }
   if (b.note) return view(h("div", { class: "msg" }, h("h2", {}, b.note_short || "Ikke tilgængelig"), h("p", {}, b.note)));
   if (!b.configured) return view(h("div", { class: "msg" }, h("h2", {}, "Ikke koblet på endnu"), h("p", {}, "Koden er ikke hentet eller sat op."),
-    h("p", {}, "Sæt ", h("code", {}, "repo"), " i ", h("code", {}, "bots.json"), " og kør ", h("code", {}, "python3 -m hub fetch"), ".")));
+    h("p", {}, "Kør ", h("code", {}, "git pull"), " i Nova AI-mappen.")));
   if (!b.up) return view(h("div", { class: "msg" }, h("h2", {}, `${b.name} kører ikke`), h("p", {}, "Start den med ", h("code", {}, "python3 -m hub run"), ".")));
   if (!DATA) { load(true); return; }
   const y = window.scrollY;

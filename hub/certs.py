@@ -44,7 +44,7 @@ def build_pem(run=subprocess.run) -> str:
 
 def conf_dir() -> Path:
     if sys.platform == "darwin":
-        return Path.home() / "Library" / "Application Support" / "Hub AI"
+        return Path.home() / "Library" / "Application Support" / "Nova AI"
     return Path.home() / ".hub-ai"
 
 

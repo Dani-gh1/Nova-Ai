@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Installerer Hub AI, så alt kører uden at nogen gør noget:
+# Installerer Nova AI, så alt kører uden at nogen gør noget:
 #   * starter automatisk (ved boot på en Linux-server, ved login på en Mac) og genstarter sig selv, hvis den går ned
 #   * vagthunden i hubben genstarter botter, der går ned eller hænger
 #   * henter nye versioner fra GitHub hvert kvarter (testet, med automatisk tilbagerulning)
@@ -19,10 +19,10 @@ newpass() { head -c 24 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 20; 
 # =========================================================================== macOS
 if [ "$OS" = Darwin ]; then
   if [ "$(id -u)" -eq 0 ] && [ "$DRY" != 1 ]; then echo "Kør uden sudo på en Mac:  ./deploy/install.sh"; exit 1; fi
-  CONF="${HUB_CONF_DIR:-$HOME/Library/Application Support/Hub AI}"
+  CONF="${HUB_CONF_DIR:-$HOME/Library/Application Support/Nova AI}"
   LA="${HUB_LA_DIR:-$HOME/Library/LaunchAgents}"
-  ENV_FILE="$CONF/hub.env"
-  echo "== Hub AI installeres på din Mac (mappe: $HUB_DIR)"
+  ENV_FILE="$CONF/nova-ai.env"
+  echo "== Nova AI installeres på din Mac (mappe: $HUB_DIR)"
   mkdir -p "$CONF" "$LA" "$HUB_DIR/logs"; touch "$ENV_FILE"; chmod 600 "$ENV_FILE"
   add HUB_HOST 0.0.0.0
   add HUB_PORT 8080
@@ -71,7 +71,7 @@ if [ "$OS" = Darwin ]; then
   fi
   PORT="$(grep '^HUB_PORT=' "$ENV_FILE" | cut -d= -f2)"
   for _ in $(seq 1 30); do curl -fs -m 2 "http://127.0.0.1:$PORT/healthz" >/dev/null 2>&1 && break; sleep 1; done
-  curl -fs -m 2 "http://127.0.0.1:$PORT/healthz" >/dev/null 2>&1 && echo "✓ hub kører" || { echo "✗ hubben svarer ikke endnu: se $HUB_DIR/logs/ai.hub.dashboard.log"; exit 1; }
+  curl -fs -m 2 "http://127.0.0.1:$PORT/healthz" >/dev/null 2>&1 && echo "✓ Nova AI kører" || { echo "✗ hubben svarer ikke endnu: se $HUB_DIR/logs/ai.hub.dashboard.log"; exit 1; }
   LAN="$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || true)"
   echo
   echo "Færdig. Åbn på denne Mac:  http://localhost:$PORT"
@@ -87,14 +87,14 @@ if [ "$OS" = Darwin ]; then
 fi
 
 # =========================================================================== Linux (Ubuntu-server)
-ENV_FILE="${HUB_ENV_FILE:-/etc/hub.env}"
+ENV_FILE="${HUB_ENV_FILE:-/etc/nova-ai.env}"
 UNIT_DIR="${HUB_UNIT_DIR:-/etc/systemd/system}"
 if [ "$(id -u)" -ne 0 ]; then exec sudo -E bash "$0" "$@"; fi
 RUN_USER="${HUB_USER:-$(stat -c %U "$HUB_DIR")}"
 RUN_HOME="$(getent passwd "$RUN_USER" | cut -d: -f6)"
 as_user() { if [ "$RUN_USER" != root ]; then runuser -u "$RUN_USER" -- "$@"; else "$@"; fi; }
 
-echo "== Hub AI installeres (bruger: $RUN_USER, mappe: $HUB_DIR)"
+echo "== Nova AI installeres (bruger: $RUN_USER, mappe: $HUB_DIR)"
 
 # --- Nova kører måske allerede som egen service (så må hubben ikke starte en ekstra kopi) ---
 NOVA_DIR="${HUB_NOVA_DIR:-$RUN_HOME/Coins}"
@@ -121,7 +121,7 @@ fi
 if [ -n "$NOVA_PORT" ]; then export HUB_EXTERNAL_NOVA="$NOVA_PORT"; fi
 ( cd "$HUB_DIR" && as_user env ${HUB_EXTERNAL_NOVA:+HUB_EXTERNAL_NOVA="$HUB_EXTERNAL_NOVA"} "$PY" -m hub fetch )
 
-# --- /etc/hub.env: oprettes første gang; eksisterende værdier overskrives aldrig ---
+# --- /etc/nova-ai.env: oprettes første gang; eksisterende værdier overskrives aldrig ---
 touch "$ENV_FILE"; chmod 600 "$ENV_FILE"
 add HUB_HOST 0.0.0.0
 add HUB_PORT 8080
@@ -137,18 +137,18 @@ chown "root:$RUN_USER" "$ENV_FILE" 2>/dev/null && chmod 640 "$ENV_FILE"       # 
 # --- systemd ---
 sub() { sed -e "s#@USER@#$RUN_USER#g" -e "s#@DIR@#$HUB_DIR#g" -e "s#@PY@#$PY#g" "$1" > "$UNIT_DIR/$(basename "$1")"; }
 mkdir -p "$UNIT_DIR"
-for f in hub.service hub-update.service hub-update.timer; do sub "$HUB_DIR/deploy/$f"; done
+for f in nova-ai.service nova-ai-update.service nova-ai-update.timer; do sub "$HUB_DIR/deploy/$f"; done
 chmod +x "$HUB_DIR/deploy/update.sh"
 if [ "$DRY" = 1 ]; then echo "(tør kørsel: systemd røres ikke)"; exit 0; fi
 systemctl daemon-reload
-systemctl enable --now hub.service hub-update.timer
+systemctl enable --now nova-ai.service nova-ai-update.timer
 sleep 5
-systemctl is-active --quiet hub.service && echo "✓ hub kører" || { echo "✗ hub startede ikke: sudo journalctl -u hub -n 30"; exit 1; }
+systemctl is-active --quiet nova-ai.service && echo "✓ Nova AI kører" || { echo "✗ Nova AI startede ikke: sudo journalctl -u nova-ai -n 30"; exit 1; }
 
 IP="$(tailscale ip -4 2>/dev/null | head -1 || true)"; IP="${IP:-$(hostname -I | awk '{print $1}')}"
 PORT="$(grep '^HUB_PORT=' "$ENV_FILE" | cut -d= -f2)"
 echo
 echo "Færdig. Hubben åbner på:  http://$IP:$PORT"
 echo "Brugernavn: valgfrit   Adgangskode: ${NEWPASS:-(den står i $ENV_FILE)}"
-echo "Logs:    sudo journalctl -u hub -f      og botternes egne i $HUB_DIR/logs/"
-echo "Status:  systemctl status hub           Opdatering: systemctl list-timers hub-update"
+echo "Logs:    sudo journalctl -u nova-ai -f      og botternes egne i $HUB_DIR/logs/"
+echo "Status:  systemctl status nova-ai           Opdatering: systemctl list-timers nova-ai-update"

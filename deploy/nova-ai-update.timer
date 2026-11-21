@@ -1,5 +1,5 @@
 [Unit]
-Description=Tjek for nye versioner af Papirdesk Hub hvert kvarter
+Description=Tjek for nye versioner af Nova AI hvert kvarter
 
 [Timer]
 OnBootSec=5min

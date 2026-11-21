@@ -129,7 +129,7 @@ class HubTests(unittest.TestCase):
 
     def test_every_bot_has_label(self):
         for b in load_bots():
-            self.assertTrue(b["short"] and b["invests"], b["key"])
+            self.assertTrue(b["name"] and b["invests"], b["key"])
 
     def test_best_of(self):
         rows = [{"name": "X", "return_pct": -1.5, "trades": 4}, {"name": "Y", "return_pct": 2.345, "trades": 30},

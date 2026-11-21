@@ -10,7 +10,7 @@ from hub import __main__ as cli
 class EnvFileTests(unittest.TestCase):
     def test_hub_env_is_loaded_without_overriding_and_comments_are_ignored(self):
         with tempfile.TemporaryDirectory() as d:
-            f = Path(d) / "hub.env"
+            f = Path(d) / "nova-ai.env"
             f.write_text("# kommentar\nHUB_EXTERNAL_NOVA=8787\nHUB_PORT=8080   # port\n#OANDA_TOKEN=\nHUB_PASSWORD=\nHUB_KEEP=fra-filen\n")
             with mock.patch.dict(os.environ, {"HUB_ENV_FILE": str(f), "HUB_KEEP": "fra-miljøet"}, clear=False):
                 for k in ("HUB_EXTERNAL_NOVA", "HUB_PORT", "HUB_PASSWORD", "OANDA_TOKEN"):
@@ -25,7 +25,7 @@ class EnvFileTests(unittest.TestCase):
                     os.environ.pop(k, None)
 
     def test_an_unreadable_or_missing_file_is_not_an_error(self):
-        with mock.patch.dict(os.environ, {"HUB_ENV_FILE": "/findes/ikke/hub.env"}):
+        with mock.patch.dict(os.environ, {"HUB_ENV_FILE": "/findes/ikke/nova-ai.env"}):
             self.assertIsNone(cli.load_env_file())
 
     def test_status_explains_why_a_bot_is_down(self):

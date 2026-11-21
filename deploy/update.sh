@@ -12,7 +12,7 @@ RUN_USER="${HUB_USER:-$OWNER}"
 TO=""; command -v timeout >/dev/null 2>&1 && TO="timeout 180"      # macOS har ikke timeout som standard
 
 as_user() { if [ "$(id -u)" -eq 0 ] && [ "$RUN_USER" != root ]; then runuser -u "$RUN_USER" -- "$@"; else "$@"; fi; }
-say() { echo "[hub-update] $*"; }
+say() { echo "[nova-ai-update] $*"; }
 
 # Kører testene i en ren kopi af den committede kode (git archive), aldrig i selve botten. Nogle botters tests bruger
 # botternes rigtige datamappe, og de kunne ellers slette eller fylde den rigtige papirbog med syntetiske handler.
@@ -69,7 +69,7 @@ for d in "$HUB_DIR"/bots/*/; do
   [ -L "${d%/}" ] && continue                      # symlinks (fx Nova) opdateres for sig selv nedenfor
   update_dir "$d"; [ $? -eq 1 ] && hub_changed=1
 done
-[ "$hub_changed" = 1 ] && restart hub
+[ "$hub_changed" = 1 ] && restart nova-ai
 
 if [ -n "${HUB_UPDATE_NOVA_DIR:-}" ]; then
   update_dir "$HUB_UPDATE_NOVA_DIR" "${HUB_UPDATE_NOVA_BRANCH:-}"; [ $? -eq 1 ] && restart "${HUB_UPDATE_NOVA_SERVICE:-desk}"

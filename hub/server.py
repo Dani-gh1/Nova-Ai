@@ -263,7 +263,7 @@ def collecting_since(key: str, up: bool) -> float | None:
 
 
 def bot_overview(bot: dict) -> dict:
-    out = {"key": bot["key"], "name": bot["name"], "short": bot.get("short", ""), "invests": bot.get("invests", ""),
+    out = {"key": bot["key"], "name": bot["name"], "invests": bot.get("invests", ""),
            "configured": bool(bot.get("repo")) and not bot.get("disabled"), "note": bot.get("note", ""),
            "up": not bot.get("disabled") and port_open(bot["port"], bot_host(bot)), "mode": "live", "best": None}
     ln = bot.get("launch") or {}
@@ -274,7 +274,7 @@ def bot_overview(bot: dict) -> dict:
     out["note_short"] = "Slået fra her" if bot.get("disabled") else ""
     if not_installed(bot):
         out["configured"], out["up"] = False, False
-        out["note"], out["note_short"] = "Mangler på denne maskine. Kør: git pull i hubbens mappe", "Ikke hentet her"
+        out["note"], out["note_short"] = "Mangler på denne maskine. Kør: git pull i Nova AI-mappen", "Ikke hentet her"
     if out["up"]:
         data: dict = {}      # ellers crasher `data.get` nedenfor, hvis bot_data fejler, og hele overblikket (og Smart strategi) går i stå
         try:
@@ -506,7 +506,6 @@ def make_handler(bots: list[dict], throttle: Throttle | None = None, ratelimit: 
                     return self._send(200, "text/html; charset=utf-8", SHELL.read_bytes())
                 if path == "/api/bots":
                     out = [{"key": b["key"], "name": b["name"], "desc": b.get("desc", ""),
-                            "short": b.get("short", ""),
                             "configured": bool(b.get("repo")) and not b.get("disabled"), "note": b.get("note", ""), "note_short": "Slået fra her" if b.get("disabled") else "",
                             "up": not b.get("disabled") and port_open(b["port"], bot_host(b))} for b in bots]
                     for o, b in zip(out, bots):

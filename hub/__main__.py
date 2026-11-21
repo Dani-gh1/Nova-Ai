@@ -2,7 +2,7 @@
 
 serve  kun hubben (botterne kører allerede på deres egne porte)
 run    starter alle installerede botter og hubben
-fetch  tjekker, at alle botter er der (de ligger i Hub-AI-repoet under bots/)
+fetch  tjekker, at alle botter er der (de ligger i Nova-AI-repoet under bots/)
 status viser hvad der er installeret og kører
 report  samler alt til fejlfinding i én udskrift (versioner, datakilder, status, logs)
 doctor tester botternes datakilder og forklarer, hvis noget er spærret eller overvåget på dit netværk
@@ -25,11 +25,11 @@ BOTS_DIR = Path(os.environ.get("HUB_BOTS_DIR", ROOT / "bots"))
 def env_files() -> list[Path]:
     home = Path.home()
     return [Path(os.environ["HUB_ENV_FILE"])] if os.environ.get("HUB_ENV_FILE") else [
-        Path("/etc/hub.env"), home / "Library" / "Application Support" / "Hub AI" / "hub.env"]
+        Path("/etc/nova-ai.env"), home / "Library" / "Application Support" / "Nova AI" / "nova-ai.env"]
 
 
 def load_env_file() -> str | None:
-    """Læser hub.env (KEY=VALUE) ind i miljøet, uden at overskrive noget, der allerede er sat. Returnerer filens sti, hvis den blev læst.
+    """Læser nova-ai.env (KEY=VALUE) ind i miljøet, uden at overskrive noget, der allerede er sat. Returnerer filens sti, hvis den blev læst.
     Så ser `hub status` og `hub report` det samme som tjenesten (fx HUB_EXTERNAL_NOVA)."""
     for f in env_files():
         try:
@@ -119,7 +119,7 @@ def cmd_fetch(bots) -> None:
         elif bot_dir(b).exists():
             pass                                   # botter med eget git opdateres nedenfor
         else:
-            print(f"! {b['name']}: mangler i {bot_dir(b)}. Botterne ligger i Hub-AI-repoet: kør  git pull  i hubbens mappe")
+            print(f"! {b['name']}: mangler i {bot_dir(b)}. Botterne ligger i Nova-AI-repoet: kør  git pull  i Nova AI-mappen")
     from .updater import update_bots
     update_bots(bots, bot_dir, backup_root=ROOT)   # hentede botter får også den nyeste kode
 
@@ -146,7 +146,7 @@ def cmd_status(bots) -> None:
             elif why:
                 print(f"             sidste fejl: {why}")
             elif inst == "mangler":
-                print("             mangler på denne maskine: kør  git pull  i hubbens mappe")
+                print("             mangler på denne maskine: kør  git pull  i Nova AI-mappen")
             else:
                 print(f"             ingen fejl i loggen. Se: tail -20 {ROOT / 'logs' / (b['key'] + '.log')}")
 

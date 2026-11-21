@@ -1,12 +1,12 @@
 [Unit]
-Description=Papirdesk Hub (alle botter og dashboardet)
+Description=Nova AI (alle botter og dashboardet)
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 User=@USER@
 WorkingDirectory=@DIR@
-EnvironmentFile=/etc/hub.env
+EnvironmentFile=/etc/nova-ai.env
 ExecStart=@PY@ -m hub run
 Restart=always
 RestartSec=5

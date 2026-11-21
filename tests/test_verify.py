@@ -54,7 +54,7 @@ class VerifyScriptTests(unittest.TestCase):
         threading.Thread(target=self.srv.serve_forever, daemon=True).start()
         self.addCleanup(self.srv.shutdown)
         self.port = self.srv.server_address[1]
-        self.env_file = self.d / "hub.env"
+        self.env_file = self.d / "nova-ai.env"
         self.write_env(HUB_PUBLIC="1", HUB_OPEN="1", HUB_PASSWORD="", HUB_TS_HTTPS="8443")
         # falsk systemctl: tilstand i filer (enabled-<enhed>, active-<enhed>); enable/restart/start sætter dem
         sc = self.d / "systemctl"
@@ -90,11 +90,11 @@ exit 0
         curl = self.d / "curl"                          # sender kald til URL'en på tailnettet videre til vores lokale server
         curl.write_text(f'#!/bin/bash\nargs=("$@"); out=()\nfor a in "${{args[@]}}"; do out+=("${{a/https:\\/\\/server.tail1.ts.net:8443/http://127.0.0.1:{self.port}}}"); done\nexec /usr/bin/env curl "${{out[@]}}"\n')
         curl.chmod(0o755)
-        for unit in ("hub", "hub-update.timer", "tailscaled"):
+        for unit in ("nova-ai", "nova-ai-update.timer", "tailscaled"):
             (self.d / "state" / f"enabled-{unit}").touch()
             (self.d / "state" / f"active-{unit}").touch()
         (self.d / "state" / "funnel").touch()
-        (self.d / "hub.service").write_text("[Service]\nRestart=always\n")
+        (self.d / "nova-ai.service").write_text("[Service]\nRestart=always\n")
 
     def write_env(self, **kv):
         self.env_file.write_text(f"HUB_PORT={self.port}\n" + "".join(f"{k}={v}\n" for k, v in kv.items()))
@@ -115,16 +115,16 @@ exit 0
         self.assertIn("?server=https://server.tail1.ts.net:8443", r.stdout)
 
     def test_a_stopped_disabled_hub_is_fixed(self):
-        (self.d / "state" / "enabled-hub").unlink()
-        (self.d / "state" / "active-hub").unlink()
+        (self.d / "state" / "enabled-nova-ai").unlink()
+        (self.d / "state" / "active-nova-ai").unlink()
         r = self.run_script()
-        self.assertIn("systemctl enable hub", self.calls())
-        self.assertIn("systemctl restart hub", self.calls())
+        self.assertIn("systemctl enable nova-ai", self.calls())
+        self.assertIn("systemctl restart nova-ai", self.calls())
         self.assertIn("(rettet)", r.stdout)
         self.assertEqual(r.returncode, 0, r.stdout)
 
     def test_no_fix_mode_only_reports(self):
-        (self.d / "state" / "enabled-hub").unlink()
+        (self.d / "state" / "enabled-nova-ai").unlink()
         r = self.run_script("--no-fix")
         self.assertNotEqual(r.returncode, 0)
         self.assertIn("NEJ", r.stdout)

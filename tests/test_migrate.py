@@ -15,13 +15,13 @@ class MigrateTests(unittest.TestCase):
         r = run("1.1.1.1", "2.2.2.2")
         self.assertEqual(r.returncode, 0, r.stderr)
         out = r.stdout + r.stderr
-        self.assertIn("Hub-AI etc/hub.env", out)                      # kode, botter og indstillinger kopieres
-        self.assertIn("--exclude='home/ubuntu/Hub-AI/backups'", out)
+        self.assertIn("Nova-AI etc/nova-ai.env", out)                      # kode, botter og indstillinger kopieres
+        self.assertIn("--exclude='home/ubuntu/Nova-AI/backups'", out)
         for k in ("ATLASGLOBAL", "VALUTAAI", "REGNSKABAI"):
             self.assertIn(f"/^HUB_DISABLE_{k}=/d", out)                # de nye botter slås til på den store server
         self.assertIn("/^HUB_LITE=/d", out)                               # sparetilstand slås fra på den store server
-        self.assertIn("[1.1.1.1] sudo systemctl stop hub-update.timer hub", out)
-        self.assertIn("[1.1.1.1] sudo systemctl disable hub", out)    # den gamle må ikke starte igen (to papirkonti)
+        self.assertIn("[1.1.1.1] sudo systemctl stop nova-ai-update.timer nova-ai", out)
+        self.assertIn("[1.1.1.1] sudo systemctl disable nova-ai", out)    # den gamle må ikke starte igen (to papirkonti)
         self.assertIn("./deploy/install.sh", out)
 
     def test_needs_two_different_servers(self):

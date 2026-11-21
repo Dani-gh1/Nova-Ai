@@ -1,8 +1,0 @@
-[Unit]
-Description=Papirdesk Hub: hent nye versioner fra GitHub og genstart kun hvis noget er ændret
-After=network-online.target
-
-[Service]
-Type=oneshot
-EnvironmentFile=/etc/hub.env
-ExecStart=@DIR@/deploy/update.sh

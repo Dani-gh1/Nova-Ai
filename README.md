@@ -1,4 +1,4 @@
-# Papirdesk Hub
+# Nova AI
 
 Én app med 22 faner – én pr. papirhandels-bot – og underfaner under hver bot.
 Kun papirhandel med fiktive penge.
@@ -6,21 +6,21 @@ Kun papirhandel med fiktive penge.
 Al koden ligger i dette ene repo: hubben i `hub/` og alle botter i `bots/` (med hele deres tidligere historik).
 Botternes data (papirkonti, databaser) er ikke i git.
 
-| Fane | Kode |
+| Fane (marked) | Kode |
 |---|---|
-| Atlas AI (aktier) | `bots/Atlas` |
-| Meridian AI (forex) | `bots/Meridian-AI` |
-| Comet AI (nye tokens) | `bots/Comet-AI` |
-| Delphi AI (prognosemarkeder) | `bots/Delphi-AI` |
-| Quasar AI (krypto-futures) | `bots/Quasar-AI` |
-| Orion AI (krypto) | `bots/Orion-AI` |
-| Nova AI (memecoins) | `bots/Coins` |
-| Atlas Global AI (udenlandske aktier og ETF'er) | `bots/Atlas` (egen bog, `bots.json`) |
-| Orion Mid AI (mellemstore og små krypto) | `bots/Orion-AI` (egen bog) |
-| Nova Classic AI (etablerede memecoins) | `bots/Coins` (`variants/nova-classic.toml`) |
-| Bond AI, Metal AI, Energi AI, Tema AI, Small Cap AI, Udbytte AI, Dansk AI, Regnskab AI | `bots/Atlas` (hver sin bog og univers) |
-| Staking AI, DeFi AI, AI-token AI | `bots/Orion-AI` (hver sin bog og liste af mønter) |
-| Valuta AI (valutapar inkl. nye markeder) | `bots/Meridian-AI` (egen bog) |
+| Aktier USA (S&P 500) | `bots/Atlas` |
+| Forex og råvarer | `bots/Meridian-AI` |
+| Nye tokens | `bots/Comet-AI` |
+| Prognosemarkeder (Polymarket og Kalshi) | `bots/Delphi-AI` |
+| Krypto-futures | `bots/Quasar-AI` |
+| Krypto (store kryptovalutaer) | `bots/Orion-AI` |
+| Memecoins (nye Solana-memecoins) | `bots/Coins` (kører som sin egen tjeneste, `nova.service`) |
+| Globale aktier | `bots/Atlas` (egen bog, `bots.json`) |
+| Små krypto | `bots/Orion-AI` (egen bog) |
+| Ældre memecoins | `bots/Coins` (`variants/nova-classic.toml`) |
+| Obligationer, Metaller, Energi, Tema-aktier, Småaktier, Udbytteaktier, Danske aktier, Regnskabsaktier | `bots/Atlas` (hver sin bog og univers) |
+| Staking, DeFi, AI-tokens | `bots/Orion-AI` (hver sin bog og liste af mønter) |
+| Valuta (valutapar inkl. nye markeder) | `bots/Meridian-AI` (egen bog) |
 
 Hver bot har de samme fire sider, så alt ser ens ud:
 
@@ -70,9 +70,9 @@ Første fane er **Overblik** for alle botter: en tabel over, om de kører, og en
 
 ## Hjemmeside, hjemmeskærm og download
 
-* **Indgang:** `index.html`, `download/` og `assets/` i roden er en lille hjemmeside (GitHub Pages, ligesom Flower) på <https://dani-gh1.github.io/Hub-AI/>. Skriv serverens
+* **Indgang:** `index.html`, `download/` og `assets/` i roden er en lille hjemmeside (GitHub Pages, ligesom Flower) på <https://dani-gh1.github.io/Nova-AI/>. Skriv serverens
   adresse én gang, så åbner den dit dashboard med ét tryk (adressen gemmes kun i din egen browser). Et delbart link:
-  `…/Hub-AI/?server=<adresse>`. Siden `…/Hub-AI/download/` har installation, zip og trin til hjemmeskærmen.
+  `…/Nova-AI/?server=<adresse>`. Siden `…/Nova-AI/download/` har installation, zip og trin til hjemmeskærmen.
 * **Som app på telefonen:** åbn dashboardet, og vælg *Føj til hjemmeskærm* (iPhone: Del-knappen i Safari, Android: menuen ⋮).
   Dashboardet har eget ikon (`hub/static/`), manifest, plads til notch og hjemmebjælke og en menu i bunden på telefon.
 * **Logo og ikoner:** kilderne er `hub/static/*.svg`. `node tools/icons.js` og `node tools/og.js` tegner PNG-filerne igen
@@ -85,29 +85,29 @@ Hubben skal køre på en maskine, der altid er tændt, fx en Linux-server hos Or
 Log ind på serveren med SSH og installér én gang:
 
 ```bash
-git clone https://github.com/Dani-gh1/Hub-AI.git && cd Hub-AI && ./deploy/install.sh
+git clone https://github.com/Dani-gh1/Nova-AI.git && cd Nova-AI && ./deploy/install.sh
 ```
 
 Scriptet sætter alt op og skriver adressen og en adgangskode ud til sidst. På en **Mac** virker den samme kommando
 (i Terminal, uden sudo): hubben starter ved login via launchd, genstarter sig selv og holder Macen vågen, mens låget er åbent.
 Kunne autostart ikke indlæses, skriver scriptet fejlen ud, og du kan i stedet køre `./deploy/run-mac.sh` i et Terminal-vindue (lad det stå
 åbent; Macen holdes vågen, så længe låget er åbent). Nova slås fra på en Mac, så der ikke opstår en anden papirkonto; sæt `HUB_EXTERNAL_NOVA=<serverens adresse>:8787` i
-`~/Library/Application Support/Hub AI/hub.env` for at se serverens Nova. På serveren gør den selv:
+`~/Library/Application Support/Nova AI/nova-ai.env` for at se serverens Nova. På serveren gør den selv:
 
 * **Starter ved boot** og genstarter sig selv, hvis hubben går ned (systemd, `Restart=always`).
 * **Vagthund:** en bot, der går ned, startes igen efter 5 sekunder (pausen vokser, hvis den bliver ved, højst 5 min.).
   En bot, hvis dashboard ikke svarer i 5 min., selv om processen lever, bliver dræbt og startet igen.
 * **Opdaterer sig selv** hvert kvarter fra GitHub (hubben, botterne og Nova). Hver opdatering køres først gennem
-  testene; består de ikke, rulles den tilbage, og intet genstartes. Log: `sudo journalctl -u hub-update`.
+  testene; består de ikke, rulles den tilbage, og intet genstartes. Log: `sudo journalctl -u nova-ai-update`.
 * **Nova** kører allerede som egen tjeneste (`desk`). Scriptet finder den, starter ingen ekstra kopi og lader
   hubben vise den. Den får også opdateringer og genstart ved nye versioner.
-* Logs for hver bot: `logs/<bot>.log` (roteres ved 5 MB). Hubbens: `sudo journalctl -u hub -f`.
+* Logs for hver bot: `logs/<bot>.log` (roteres ved 5 MB). Hubbens: `sudo journalctl -u nova-ai -f`.
 
 **Adgangskode til dashboardet:** slå den fra eller til med `./deploy/password.sh off` (ingen adgangskode), `local` (ingen adgangskode, kun
 denne maskine), `on` (ny adgangskode) eller `show`. Scriptet genstarter hubben.
 
-Indstillinger ligger i `/etc/hub.env` (adgangskode, port, `OANDA_TOKEN` til Atlas og Meridian). Ret filen og kør
-`sudo systemctl restart hub`. Tjek status: `systemctl status hub`.
+Indstillinger ligger i `/etc/nova-ai.env` (adgangskode, port, `OANDA_TOKEN` til Atlas og Meridian). Ret filen og kør
+`sudo systemctl restart nova-ai`. Tjek status: `systemctl status nova-ai`.
 
 ## Sådan virker det
 
@@ -142,7 +142,7 @@ Kør på din Mac (den har ssh-nøglen til begge servere):
 ./deploy/migrate.sh <gammel-server> <ny-server> [ssh-nøgle]
 ```
 
-Scriptet stopper den gamle server, kopierer hubben, alle botter, deres data, `/etc/hub.env` og Nova direkte over, slår alle botter til,
+Scriptet stopper den gamle server, kopierer hubben, alle botter, deres data, `/etc/nova-ai.env` og Nova direkte over, slår alle botter til,
 installerer hubben og Tailscale på den nye og slår den gamle fra (så ingen bot får to papirkonti). Den gamle servers data bliver liggende
 som en ekstra kopi. `HUB_DRY_RUN=1` viser kun, hvad der ville ske. Alle 22 botter kræver ca. 6 GB hukommelse eller mere (fx Oracle Ampere A1).
 
@@ -178,7 +178,7 @@ Kræver Tailscale administratorrettigheder ("Access denied"), kører scriptet ko
 `sudo tailscale set --operator=$USER`.
 
 `./deploy/public.sh off` slår det hele fra, og `status` viser tilstand og adresse. Første gang skal du tillade HTTPS (og til `on`/`open` også Funnel) i
-din Tailscale-konto; scriptet siger hvordan. Brug Pages-linket `…/Hub-AI/?server=https://<adresse>` til at gemme adressen i telefonen.
+din Tailscale-konto; scriptet siger hvordan. Brug Pages-linket `…/Nova-AI/?server=https://<adresse>` til at gemme adressen i telefonen.
 
 ## Tjek og ret alt på serveren: `verify.sh`
 
@@ -216,7 +216,7 @@ Alle botter kan scanne markedet uden nøgler eller opsætning:
 * **Atlas** (amerikanske aktier og ETF'er) bruger Yahoo Finance, Nasdaq og Wikipedia uden nøgler. Den handler kun, mens NYSE er åben (15:30–22:00
   dansk tid på hverdage) og sover ellers. Det er ikke en fejl, og oversigten viser "Venter på børsen" med næste åbning.
 * **Meridian** (forex og råvarer) bruger Yahoo Finance, hvis ingen nøgle er sat. Sæt `OANDA_TOKEN` i
-  `/etc/hub.env` (Mac: `~/Library/Application Support/Hub AI/hub.env`) for rigtig bid/ask fra OANDA. Så skifter den selv.
+  `/etc/nova-ai.env` (Mac: `~/Library/Application Support/Nova AI/nova-ai.env`) for rigtig bid/ask fra OANDA. Så skifter den selv.
 * **Quasar** (krypto-futures) prøver Binance og skifter selv til Bybit, hvis Binance er spærret i dit land eller hos din
   server-udbyder.
 * Overblikket viser for hver bot, hvornår den **sidst scannede**. Står en bot stille i 20 minutter, vises "Scanner ikke",

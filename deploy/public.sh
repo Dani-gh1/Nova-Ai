@@ -8,7 +8,7 @@
 set -euo pipefail
 OS="${HUB_OS:-$(uname -s)}"
 DRY="${HUB_DRY_RUN:-0}"
-if [ "$OS" = Darwin ]; then ENV_FILE="${HUB_ENV_FILE:-$HOME/Library/Application Support/Hub AI/hub.env}"; else ENV_FILE="${HUB_ENV_FILE:-/etc/hub.env}"; fi
+if [ "$OS" = Darwin ]; then ENV_FILE="${HUB_ENV_FILE:-$HOME/Library/Application Support/Nova AI/nova-ai.env}"; else ENV_FILE="${HUB_ENV_FILE:-/etc/nova-ai.env}"; fi
 [ -f "$ENV_FILE" ] || { echo "Fandt ikke $ENV_FILE. Kør først ./deploy/install.sh"; exit 1; }
 SUDO=""; [ -w "$ENV_FILE" ] || SUDO="sudo"
 
@@ -16,17 +16,17 @@ TS="${HUB_TAILSCALE:-$(command -v tailscale || true)}"
 [ -n "$TS" ] || { [ -x /Applications/Tailscale.app/Contents/MacOS/Tailscale ] && TS=/Applications/Tailscale.app/Contents/MacOS/Tailscale; }
 [ -n "$TS" ] || { echo "Tailscale er ikke installeret her. Hent det på https://tailscale.com/download og log ind, og kør så scriptet igen."; exit 1; }
 
-READ=""; [ -r "$ENV_FILE" ] || READ="sudo"          # /etc/hub.env kan kun læses af root, hvis den er fra en ældre installation
+READ=""; [ -r "$ENV_FILE" ] || READ="sudo"          # /etc/nova-ai.env kan kun læses af root, hvis den er fra en ældre installation
 getvar() { $READ grep "^$1=" "$ENV_FILE" | head -1 | cut -d= -f2- || true; }
 setvar() { local tmp; tmp="$(mktemp)"; { $READ grep -v "^$1=" "$ENV_FILE" || true; echo "$1=$2"; } > "$tmp"; $SUDO sh -c "cat '$tmp' > '$ENV_FILE'"; rm -f "$tmp"; }
 service_loaded() {
-  if [ "$OS" = Darwin ]; then launchctl print "gui/$(id -u)/ai.hub.dashboard" >/dev/null 2>&1; else systemctl is-active --quiet hub 2>/dev/null; fi
+  if [ "$OS" = Darwin ]; then launchctl print "gui/$(id -u)/ai.hub.dashboard" >/dev/null 2>&1; else systemctl is-active --quiet nova-ai 2>/dev/null; fi
 }
 RESTARTED=0
 restart() {
   [ "$DRY" = 1 ] && return 0
   if service_loaded; then
-    if [ "$OS" = Darwin ]; then launchctl kickstart -k "gui/$(id -u)/ai.hub.dashboard" || true; else sudo systemctl restart hub || true; fi
+    if [ "$OS" = Darwin ]; then launchctl kickstart -k "gui/$(id -u)/ai.hub.dashboard" || true; else sudo systemctl restart nova-ai || true; fi
     RESTARTED=1
   else
     echo "• Hubben kører ikke som tjeneste her (autostart er ikke sat op). Indstillingen er gemt og bruges, næste gang hubben startes:"
@@ -96,7 +96,7 @@ serve_on() {
   set -e; [ $RC -eq 0 ] || { tailscale_help "$OUT"; exit 1; }
   URL="$(echo "$OUT" | url_of)"; URL="${URL:-$(serve_url)}"
 }
-phone_link() { [ -n "${URL:-}" ] && echo "  Til telefonen (gemmer adressen): https://dani-gh1.github.io/Hub-AI/?server=${URL%/}"; return 0; }
+phone_link() { [ -n "${URL:-}" ] && echo "  Til telefonen (gemmer adressen): https://dani-gh1.github.io/Nova-AI/?server=${URL%/}"; return 0; }
 
 case "${1:-status}" in
   private)

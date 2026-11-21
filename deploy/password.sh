@@ -6,7 +6,7 @@
 #   ./deploy/password.sh show    vis indstillingen
 set -euo pipefail
 OS="${HUB_OS:-$(uname -s)}"
-if [ "$OS" = Darwin ]; then ENV_FILE="${HUB_ENV_FILE:-$HOME/Library/Application Support/Hub AI/hub.env}"; else ENV_FILE="${HUB_ENV_FILE:-/etc/hub.env}"; fi
+if [ "$OS" = Darwin ]; then ENV_FILE="${HUB_ENV_FILE:-$HOME/Library/Application Support/Nova AI/nova-ai.env}"; else ENV_FILE="${HUB_ENV_FILE:-/etc/nova-ai.env}"; fi
 [ -f "$ENV_FILE" ] || { echo "Fandt ikke $ENV_FILE. Kør først ./deploy/install.sh"; exit 1; }
 SUDO=""; [ -w "$ENV_FILE" ] || SUDO="sudo"
 READ=""; [ -r "$ENV_FILE" ] || READ="sudo"
@@ -17,14 +17,14 @@ setvar() {   # setvar NAVN VÆRDI  (erstatter eller tilføjer linjen)
   $SUDO sh -c "cat '$tmp' > '$ENV_FILE'"; rm -f "$tmp"
 }
 service_loaded() {
-  if [ "$OS" = Darwin ]; then launchctl print "gui/$(id -u)/ai.hub.dashboard" >/dev/null 2>&1; else systemctl is-active --quiet hub 2>/dev/null; fi
+  if [ "$OS" = Darwin ]; then launchctl print "gui/$(id -u)/ai.hub.dashboard" >/dev/null 2>&1; else systemctl is-active --quiet nova-ai 2>/dev/null; fi
 }
 DRY="${HUB_DRY_RUN:-0}"
 RESTARTED=0
 restart() {
   [ "$DRY" = 1 ] && return 0
   if service_loaded; then
-    if [ "$OS" = Darwin ]; then launchctl kickstart -k "gui/$(id -u)/ai.hub.dashboard" || true; else sudo systemctl restart hub || true; fi
+    if [ "$OS" = Darwin ]; then launchctl kickstart -k "gui/$(id -u)/ai.hub.dashboard" || true; else sudo systemctl restart nova-ai || true; fi
     RESTARTED=1
   else
     echo "• Hubben kører ikke som tjeneste her (autostart er ikke sat op). Indstillingen er gemt og bruges, næste gang hubben startes:"

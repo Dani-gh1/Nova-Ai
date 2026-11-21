@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Hub AI – alle dine botter ét sted</title>
+<title>Nova AI – alle dine botter ét sted</title>
 <meta name="description" content="Strategier, regler, desk og handler for syv papirhandels-botter i ét dashboard. Kun papirhandel med fiktive penge.">
 <meta name="theme-color" content="#f6f7fb" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0b0e14" media="(prefers-color-scheme: dark)">
 <meta name="color-scheme" content="light dark">
-<meta property="og:title" content="Hub AI"><meta property="og:description" content="Alle dine papirhandels-botter ét sted.">
-<meta property="og:image" content="https://dani-gh1.github.io/Hub-AI/assets/og-image.png"><meta property="og:type" content="website">
-<meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Hub AI">
+<meta property="og:title" content="Nova AI"><meta property="og:description" content="Alle dine papirhandels-botter ét sted.">
+<meta property="og:image" content="https://dani-gh1.github.io/Nova-AI/assets/og-image.png"><meta property="og:type" content="website">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Nova AI">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml"><link rel="icon" href="assets/favicon-32.png" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
@@ -19,12 +19,12 @@
 <body>
 <div class="wrap">
   <nav class="top">
-    <a class="brand" href="./"><img src="assets/logo.svg" alt="">Hub AI</a>
+    <a class="brand" href="./"><img src="assets/logo.svg" alt="">Nova AI</a>
     <div class="links"><a href="./" aria-current="page">Åbn</a><a href="download/">Download</a></div>
   </nav>
 
   <header class="hero">
-    <img class="big" src="assets/logo.svg" alt="Hub AI-logo">
+    <img class="big" src="assets/logo.svg" alt="Nova AI-logo">
     <h1>Alle dine botter.<br><em>Ét dashboard.</em></h1>
     <p class="lead">Strategier, regler, desk og handler for syv papirhandels-botter samlet ét sted, og lavet til telefonen.</p>
     <span class="badge">Kun papirhandel · fiktive penge</span>
@@ -63,7 +63,7 @@
     <a class="btn ghost" href="download/#hjemmeskaerm">Se trin for trin</a>
   </section>
 
-  <footer>Hub AI · Kun papirhandel med fiktive penge · <a href="download/">Download</a> · <a href="https://github.com/Dani-gh1/Hub-AI">GitHub</a></footer>
+  <footer>Nova AI · Kun papirhandel med fiktive penge · <a href="download/">Download</a> · <a href="https://github.com/Dani-gh1/Nova-AI">GitHub</a></footer>
 </div>
 <script>
 "use strict";
@@ -106,7 +106,7 @@ $("setup").addEventListener("submit", (e) => {
 });
 $("change").addEventListener("click", () => { clearInterval(timer); set(K.addr, null); $("input").value = ""; show(); $("input").focus(); });
 $("auto").addEventListener("click", () => { set(K.auto, get(K.auto) === "off" ? "on" : "off"); clearInterval(timer); history.replaceState(null, "", "#stay"); show(); });
-// Et delbart link med adressen i: .../Hub-AI/?server=100.64.0.1:8080
+// Et delbart link med adressen i: .../Nova-AI/?server=100.64.0.1:8080
 const q = new URLSearchParams(location.search).get("server");
 if (q && clean(q)) { set(K.addr, clean(q).url); history.replaceState(null, "", location.pathname); }
 show();
