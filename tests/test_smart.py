@@ -1,84 +1,176 @@
-import os
+import json
 import tempfile
 import unittest
 from pathlib import Path
 
-from hub.server import COST_DEFAULTS, smart_candidates, smart_of, smart_start
+from hub import smart as S
+from hub.server import COST_DEFAULTS, Overview, smart_candidates
+from hub.smart import SmartBot, score
 
 H = 3600
 T0 = 1_700_000_000
 
 
-def cand(name, pts, tax=0.0, bot="b"):
-    return {"id": f"{bot}:{name}", "name": name, "bot": bot, "bot_name": bot.upper(),
-            "curve": [[T0 + h * H, v] for h, v in pts], "tax": tax, "capital": 10000.0, "currency": "kr."}
+def cand(name, pts, now_h, bot="b", trades=50, open_=0, per=0.0):
+    """Strategi med kurve [(timer, %)] op til nu (now_h timer efter T0)."""
+    cv = [[T0 + h * H, v] for h, v in pts if h <= now_h]
+    return {"id": f"{bot}:{name}", "name": name, "bot": bot, "bot_name": bot.upper(), "curve": cv, "raw_now": cv[-1][1],
+            "trades": trades, "open": open_, "per": per, "tax": 0.0, "capital": 10000.0, "currency": "kr."}
 
 
-class SmartTests(unittest.TestCase):
-    def test_follows_the_best_of_the_last_24_hours_and_switches_when_overtaken(self):
-        a = cand("A", [(0, 0), (24, 10), (48, 10), (72, 10)])      # stærk første døgn, så flad
-        b = cand("B", [(0, 0), (24, 2), (48, 12), (72, 22)])       # overhaler A's seneste 24 timer
-        sm = smart_of([a, b], window=24 * H, steps=72)
-        self.assertEqual(sm["following"], "B")
-        self.assertGreaterEqual(sm["switches"], 2)                 # start i én, skift til B
-        self.assertEqual(sm["recent"][0]["to"], "B")
-        self.assertGreater(sm["return_pct"], 10)                   # fik A's første døgn og en stor del af B's fremgang
-        self.assertLessEqual(sm["return_pct"], 22)
+class Clock:
+    def __init__(self, h):
+        self.t = T0 + h * H
 
-    def test_never_looks_ahead(self):
-        # B springer først op i sidste skridt: Smart kan ikke have været i B, før springet var sket
-        a = cand("A", [(0, 0), (10, 1), (20, 2)])
-        b = cand("B", [(0, 0), (10, 0), (19.9, 0), (20, 50)])
-        sm = smart_of([a, b], steps=20)
-        self.assertEqual(sm["following"], "B")
-        self.assertLess(sm["return_pct"], 3)
+    def __call__(self):
+        return self.t
 
-    def test_works_like_a_real_account_with_compounding_and_no_switch_fees(self):
-        a = cand("A", [(0, 0), (24, 10), (48, 10)])
-        b = cand("B", [(0, 0), (24, 2), (48, 14)])
-        sm = smart_of([a, b], steps=48)
-        self.assertNotIn("cost_pct", sm)
-        self.assertAlmostEqual(sm["value"], sm["capital"] * (1 + sm["return_pct"] / 100), places=0)
-        # +10 % og derefter +10 % af en strategi, der står i 110: kontoen vokser 10 % to gange = 21 %
-        c = cand("C", [(0, 0), (1, 10), (2, 21)])
-        self.assertAlmostEqual(smart_of([c], steps=2)["return_pct"], 21, places=1)
 
-    def test_hops_on_as_soon_as_a_strategy_starts_to_rise(self):
-        # alle starter på 0; A stiger jævnt til +10 på 2,5 t og falder så til +5; B stiger stille og roligt til +2
-        a = cand("A", [(i / 4, i) for i in range(11)] + [(3, 5)])
-        b = cand("B", [(i / 4, i * 0.2) for i in range(11)] + [(3, 2)])
-        sm = smart_of([b, a], steps=400)
-        first = sm["recent"][-2]                            # første skift efter start: til A, kort efter at A begyndte at stige
-        self.assertEqual(first["to"], "A")
-        self.assertLessEqual(first["ts"] - T0, 1800)
-        self.assertGreater(sm["return_pct"], 3.5)           # fik næsten hele stigningen med: tæt på A's +5 og klart over B's +2
-        self.assertLessEqual(sm["return_pct"], 5)
+class SmartBotTests(unittest.TestCase):
+    def setUp(self):
+        self.dir = tempfile.TemporaryDirectory()
+        self.path = Path(self.dir.name) / "smart.json"
+        self.logs = []
 
-    def test_follows_the_strategy_with_the_highest_total_return_and_switches_when_overtaken(self):
-        best = cand("Bedst", [(0, 24.7), (1, 24.7), (2, 24.7), (3, 24.0), (4, 23.0)])
-        noisy = cand("Svinger", [(0, 1.0), (1, 5.0), (2, 3.0), (3, 6.0), (4, 5.0)])      # rykker sig meget, men er langt bagud
-        sm = smart_of([noisy, best], start=T0)
-        self.assertEqual(sm["following"], "Bedst")
-        self.assertEqual(sm["switches"], 1)                 # skifter ikke til den, der bare lige har rykket sig
-        self.assertEqual(sm["recent"][0]["to"], "Bedst")
-        late = cand("Overhaler", [(0, 10.0), (1, 15.0), (2, 25.0), (3, 30.0), (4, 35.0)])
-        sm = smart_of([best, late], steps=8)
-        self.assertEqual(sm["following"], "Overhaler")      # overhaler på samlet afkast: Smart bytter
+    def tearDown(self):
+        self.dir.cleanup()
 
-    def test_never_below_minus_100(self):
-        sm = smart_of([cand("A", [(0, 0), (1, -100), (2, -150)])], steps=2)
-        self.assertEqual(sm["return_pct"], -100)
+    def bot(self, clock):
+        return SmartBot(self.path, now=clock, log=self.logs.append)
 
-    def test_tax_only_on_a_gain(self):
-        up = smart_of([cand("A", [(0, 0), (10, 10)], tax=50)])
-        down = smart_of([cand("A", [(0, 0), (10, -10)], tax=50)])
-        self.assertAlmostEqual(up["return_pct"], 5)
-        self.assertAlmostEqual(down["return_pct"], -10)
+    def run_hours(self, bot, clock, series, hours, fresh=True):
+        """Kører botten time for time; series: {bot: [cand-funktion(now_h)]}."""
+        for h in hours:
+            clock.t = T0 + h * H
+            for b, fns in series.items():
+                bot.feed(b, [f(h) for f in fns], fresh)
+            bot.step()
 
-    def test_nothing_to_follow(self):
-        self.assertIsNone(smart_of([]))
-        self.assertIsNone(smart_of([cand("A", [(0, 0)])]))
+    def test_picks_the_best_proven_strategy_and_follows_it_like_a_real_account(self):
+        clk = Clock(24)
+        sb = self.bot(clk)
+        good = lambda h: cand("God", [(i, i * 0.5) for i in range(0, 200)], h)          # +0,5 % i timen
+        weak = lambda h: cand("Svag", [(i, i * 0.1) for i in range(0, 200)], h)
+        self.run_hours(sb, clk, {"b": [good, weak]}, range(24, 30))
+        v = sb.view()
+        self.assertEqual(v["following"], "God")
+        self.assertEqual(v["switches"], 1)
+        # fulgt fra time 24 (12 %) til time 29 (14,5 %): 114,5 / 112
+        self.assertAlmostEqual(v["return_pct"], (114.5 / 112 - 1) * 100, places=2)
 
+    def test_ignores_unproven_strategies(self):
+        clk = Clock(24)
+        sb = self.bot(clk)
+        lucky = lambda h: cand("Held", [(i, i * 5) for i in range(0, 200)], h, trades=3)         # for få handler
+        young = lambda h: cand("Ny", [(i, (i - 20) * 5) for i in range(20, 200)], h)             # under 12 timers historik
+        ok = lambda h: cand("Ok", [(i, i * 0.2) for i in range(0, 200)], h)
+        self.run_hours(sb, clk, {"b": [lucky, young, ok]}, [24])
+        self.assertEqual(sb.view()["following"], "Ok")
+
+    def test_does_not_flip_flop_and_waits_the_minimum_hold(self):
+        clk = Clock(24)
+        sb = self.bot(clk)
+        a = lambda h: cand("A", [(i, i * 0.30) for i in range(0, 200)], h)
+        b = lambda h: cand("B", [(i, i * 0.31 if i < 26 else 7.8 + (i - 26) * 1.0) for i in range(0, 200)], h)
+        self.run_hours(sb, clk, {"x": [a, b]}, range(24, 24 + S.MIN_HOLD_H))
+        self.assertEqual(sb.view()["switches"], 1)             # B er bedre, men minimumstiden er ikke gået
+        self.run_hours(sb, clk, {"x": [a, b]}, range(24 + S.MIN_HOLD_H, 24 + S.MIN_HOLD_H + 2))
+        self.assertEqual(sb.view()["following"], "B")
+
+    def test_small_lead_is_not_enough_to_switch(self):
+        clk = Clock(24)
+        sb = self.bot(clk)
+        a = lambda h: cand("A", [(i, i * 0.30) for i in range(0, 200)], h)
+        b = lambda h: cand("B", [(i, i * 0.29 if i < 30 else 8.7 + (i - 30) * 0.33) for i in range(0, 200)], h)
+        self.run_hours(sb, clk, {"x": [a, b]}, range(24, 60))
+        self.assertEqual(sb.view()["following"], "A")
+        self.assertEqual(sb.view()["switches"], 1)
+
+    def test_stop_loss_leaves_at_once_and_blocks_the_strategy(self):
+        clk = Clock(24)
+        sb = self.bot(clk)
+        crash = lambda h: cand("Krak", [(i, i * 0.5 if i <= 25 else 12.5 - (i - 25) * 6) for i in range(0, 200)], h)
+        calm = lambda h: cand("Rolig", [(i, i * 0.2) for i in range(0, 200)], h)
+        self.run_hours(sb, clk, {"x": [crash, calm]}, range(24, 28))
+        v = sb.view()
+        self.assertEqual(v["following"], "Rolig")
+        self.assertIn("nødudgang", v["recent"][0]["why"])
+        self.assertGreater(v["return_pct"], -S.STOP_PCT - 6)        # stoppet kort efter faldet, ikke hele vejen ned
+
+    def test_stays_in_cash_when_nothing_earns(self):
+        clk = Clock(24)
+        sb = self.bot(clk)
+        down = lambda h: cand("Ned", [(i, -i * 0.2) for i in range(0, 200)], h)
+        self.run_hours(sb, clk, {"x": [down]}, range(24, 30))
+        v = sb.view()
+        self.assertIsNone(v["following"])
+        self.assertEqual(v["return_pct"], 0)
+
+    def test_a_bot_that_does_not_answer_keeps_its_last_data_and_history_is_never_rewritten(self):
+        clk = Clock(24)
+        sb = self.bot(clk)
+        a = lambda h: cand("A", [(i, i * 0.5) for i in range(0, 200)], h, bot="a")
+        b = lambda h: cand("B", [(i, i * 0.1) for i in range(0, 200)], h, bot="b")
+        self.run_hours(sb, clk, {"a": [a], "b": [b]}, range(24, 27))
+        before = sb.view()
+        self.run_hours(sb, clk, {"b": [b]}, range(27, 28))          # bot "a" svarer ikke
+        after = sb.view()
+        self.assertEqual(after["following"], "A")                    # holder positionen, skifter ikke
+        self.assertEqual(after["count"], 2)                          # A tæller stadig med
+        self.assertEqual(after["curve"][:len(before["curve"])], before["curve"])
+
+    def test_dead_bot_triggers_emergency_exit(self):
+        clk = Clock(24)
+        sb = self.bot(clk)
+        a = lambda h: cand("A", [(i, i * 0.5) for i in range(0, 200)], h, bot="a")
+        b = lambda h: cand("B", [(i, i * 0.2) for i in range(0, 200)], h, bot="b")
+        self.run_hours(sb, clk, {"a": [a], "b": [b]}, [24])
+        self.run_hours(sb, clk, {"b": [b]}, range(25, 25 + S.DEAD_H + 2))
+        self.assertEqual(sb.view()["following"], "B")
+
+    def test_costs_for_trades_and_switches(self):
+        clk = Clock(24)
+        sb = self.bot(clk)
+        up = lambda tr, op: (lambda h: cand("A", [(i, i * 0.05) for i in range(0, 200)], h, trades=tr, open_=op, per=0.3))
+        self.run_hours(sb, clk, {"x": [up(20, 4)]}, [24])            # går ind: åbner 4 positioner à 0,15 %
+        v0 = sb.view()["value"]
+        self.assertAlmostEqual(v0, 10000 * (1 - 0.003 / 2) ** 4, delta=0.5)
+        clk.t = T0 + 24 * H                                          # samme kurve, men 2 handler lukket og 1 ny åbnet
+        sb.feed("x", [up(22, 3)(24)])
+        sb.snap["x"]["at"] += 1
+        sb.step()
+        self.assertLess(sb.view()["value"], v0)
+        self.assertGreater(sb.view()["costs_paid"], 0)
+
+    def test_restart_continues_from_the_saved_account(self):
+        clk = Clock(24)
+        sb = self.bot(clk)
+        a = lambda h: cand("A", [(i, i * 0.5) for i in range(0, 200)], h)
+        self.run_hours(sb, clk, {"x": [a]}, range(24, 27))
+        v = sb.view()
+        again = self.bot(clk)
+        self.assertEqual(again.view()["value"], v["value"])
+        self.assertEqual(again.view()["following"], "A")
+        self.assertEqual(json.loads(self.path.read_text())["version"], S.VERSION)
+
+    def test_waits_for_all_bots_before_the_first_choice(self):
+        clk = Clock(24)
+        sb = SmartBot(self.path, now=clk, log=self.logs.append, expected=3)
+        a = lambda h: cand("A", [(i, i * 0.5) for i in range(0, 200)], h, bot="a")
+        self.run_hours(sb, clk, {"a": [a]}, [24])
+        self.assertIsNone(sb.view()["following"])
+        self.assertIn("Starter op", sb.view()["warning"])
+        clk.t += S.WARMUP_S                                           # de andre svarer aldrig: vælger alligevel efter opstarten
+        sb.step()
+        self.assertEqual(sb.view()["following"], "A")
+
+    def test_score_prefers_steady_over_wild(self):
+        steady = cand("S", [(i, i * 0.2) for i in range(0, 49)], 48)
+        wild = cand("W", [(i, (i * 0.2) + (15 if i % 2 else -15)) for i in range(0, 49)], 48)
+        self.assertGreater(score(steady, T0 + 48 * H), score(wild, T0 + 48 * H))
+
+
+class CandidateTests(unittest.TestCase):
     def test_candidates_use_net_curves_and_skip_curves_without_time(self):
         c = {**COST_DEFAULTS, "fee_pct": 0.1, "slip_pct": 0.0, "pos_pct": 10.0}
         sts = [{"key": "a", "name": "A", "trades": 10, "open": 0, "curve": [[T0, 0], [T0 + H, 5]]},
@@ -86,33 +178,24 @@ class SmartTests(unittest.TestCase):
         out = smart_candidates(sts, c, {"key": "bot", "name": "Bot"})
         self.assertEqual([x["name"] for x in out], ["A"])
         self.assertAlmostEqual(out[0]["curve"][-1][1], 5 - 10 * 0.1 * 0.2)       # 10 handler à 0,02 % af kontoen
+        self.assertEqual(out[0]["raw_now"], 5)
+        self.assertAlmostEqual(out[0]["per"], 0.02)
         off = smart_candidates(sts, {**c, "enabled": False}, {"key": "bot", "name": "Bot"})
-        self.assertEqual(off[0]["curve"][-1][1], 5)
+        self.assertEqual((off[0]["curve"][-1][1], off[0]["per"]), (5, 0.0))
 
-    def test_starts_from_its_start_time_and_uses_history_only_to_pick_the_leader(self):
-        a = cand("A", [(0, 0), (24, 2), (48, 10), (60, 13)])
-        b = cand("B", [(0, 0), (24, 2), (48, 3), (60, 4)])
-        sm = smart_of([a, b], window=24 * H, start=T0 + 48 * H)
-        self.assertEqual(sm["since"], T0 + 48 * H)
-        self.assertEqual(sm["following"], "A")              # A førte de 24 timer op til start
-        self.assertAlmostEqual(sm["return_pct"], (113 / 110 - 1) * 100, places=1)   # kun fremgangen efter start (110 → 113)
-        self.assertEqual(sm["switches"], 1)
+    def test_overview_feeds_only_bots_that_answered(self):
+        fed = []
 
-    def test_start_just_now_gives_zero(self):
-        sm = smart_of([cand("A", [(0, 0), (10, 5)])], start=T0 + 10 * H)
-        self.assertEqual(sm["return_pct"], 0)
-        self.assertEqual(sm["following"], "A")
+        class Fake:
+            def feed(self, bot, cands, fresh):
+                fed.append((bot, len(cands), fresh))
 
-    def test_start_time_is_saved_and_kept(self):
-        with tempfile.TemporaryDirectory() as d:
-            os.environ["HUB_SMART_FILE"] = str(Path(d) / "smart.json")
-            try:
-                self.assertEqual(smart_start(now=lambda: 1000.0), 1000.0)
-                self.assertEqual(smart_start(now=lambda: 5000.0), 1000.0)
-                Path(os.environ["HUB_SMART_FILE"]).write_text('{"since": 1000.0}')      # gammel beregning: start forfra
-                self.assertEqual(smart_start(now=lambda: 7000.0), 7000.0)
-            finally:
-                del os.environ["HUB_SMART_FILE"]
+        rows = [{"key": "a", "_cands": [{"tax": 0.0}], "scan_age": 10, "idle": ""}, {"key": "b"},
+                {"key": "c", "_cands": [], "scan_age": 99999, "idle": ""}]
+        ov = Overview([], build=lambda: [dict(r) for r in rows], smart=Fake())
+        ov.get()
+        self.assertEqual(fed, [("a", 1, True), ("c", 0, False)])
+        self.assertTrue(all("_cands" not in r for r in ov.rows))
 
 
 if __name__ == "__main__":

@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import base64
-import bisect
 import hmac
 import json
 import os
@@ -16,6 +15,7 @@ import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 
 from .adapters import normalize
+from .smart import SmartBot
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -221,12 +221,10 @@ def best_of(strategies: list[dict]) -> dict | None:
     return out
 
 
-SMART_WINDOW_S = None            # None: Smart strategi følger den strategi med højest samlet afkast (som "Bedste strategi"); et tal = sekunder at måle over
-SMART_MARGIN = 0.01              # skifter, når en anden er mindst så mange procentpoint foran den, den følger nu
-
-
 def smart_candidates(strategies: list[dict], c: dict, bot: dict) -> list[dict]:
-    """Strategier klar til Smart strategi: kurven efter botens egne handelsomkostninger (fordelt jævnt over tid, uden skat)."""
+    """Strategier klar til Smart-botten. `curve` er efter botens egne handelsomkostninger (fordelt jævnt over tid, uden skat)
+    og bruges til at give point; `raw_now` er strategiens rå stand lige nu, og `per` er prisen for én handel ind og ud
+    i procent af kontoen, så Smart-botten selv kan trække de handler, den faktisk følger med på."""
     on = bool(c.get("enabled"))
     per = c["pos_pct"] / 100 * 2 * (c["fee_pct"] + c["slip_pct"]) + (2 * c["fixed_fee"] / c["capital"] * 100 if c["capital"] > 0 else 0)
     out = []
@@ -236,105 +234,16 @@ def smart_candidates(strategies: list[dict], c: dict, bot: dict) -> list[dict]:
         if len(cv) < 2:
             continue
         cv.sort(key=lambda p: p[0])
+        raw_now = cv[-1][1]
         if on:
             cost = (st.get("trades") or 0) * per + (st.get("open") or 0) * per / 2
             a, z = cv[0][0], cv[-1][0]
             cv = [[t, v - cost * ((t - a) / (z - a) if z > a else 1)] for t, v in cv]
         out.append({"id": f"{bot['key']}:{st.get('key')}", "name": st.get("name") or str(st.get("key")), "bot": bot["key"],
-                    "bot_name": bot.get("name", bot["key"]), "curve": cv, "tax": c["tax_pct"] if on else 0.0,
+                    "bot_name": bot.get("name", bot["key"]), "curve": cv, "raw_now": raw_now, "trades": st.get("trades") or 0,
+                    "open": st.get("open") or 0, "per": per if on else 0.0, "tax": c["tax_pct"] if on else 0.0,
                     "capital": c["capital"], "currency": c["currency"]})
     return out
-
-
-SMART_VERSION = 4
-
-
-def smart_file() -> Path:
-    return Path(os.environ.get("HUB_SMART_FILE") or ROOT / "logs" / "smart-since.json")
-
-
-def smart_start(now=time.time) -> float:
-    """Hvornår Smart strategi startede (unix-tid). Sættes første gang og gemmes, så den fortsætter efter genstart og opdatering.
-    Slet logs/smart-since.json for at starte forfra. Skifter SMART_VERSION, startes der også forfra (fx efter en ændret beregning)."""
-    f = smart_file()
-    try:
-        d = json.loads(f.read_text(encoding="utf-8"))
-        if isinstance(d.get("since"), (int, float)) and d.get("version") == SMART_VERSION:
-            return float(d["since"])
-    except (OSError, ValueError, AttributeError):
-        pass
-    v = round(now(), 1)
-    try:
-        f.parent.mkdir(parents=True, exist_ok=True)
-        tmp = f.with_suffix(".tmp")
-        tmp.write_text(json.dumps({"since": v, "version": SMART_VERSION}), encoding="utf-8")
-        tmp.replace(f)
-    except OSError:
-        pass
-    return v
-
-
-def smart_of(cands: list[dict], window: float | None = SMART_WINDOW_S, steps: int = 1500, start: float | None = None) -> dict | None:
-    """Smart strategi: gør præcis det samme som den strategi, der har tjent mest de seneste `window` sekunder, og skifter,
-    så snart en anden overhaler den. Regnes igennem historikken skridt for skridt og bruger kun data, der fandtes på det tidspunkt.
-    Som en rigtig konto: beløbet vokser og falder med den fulgte strategis afkast (renters rente), og afkastet er
-    forskellen mellem det, der blev lagt ind, og det, der står på kontoen nu. Skat tages til sidst af en gevinst."""
-    series = [(c, [p[0] for p in c["curve"]], [p[1] for p in c["curve"]]) for c in cands if len(c.get("curve") or []) >= 2]
-    if not series:
-        return None
-    t0, t1 = min(s[1][0] for s in series), max(s[1][-1] for s in series)
-    if start is not None:                 # starter fra `start`: historikken før bruges kun til at se, hvem der førte lige før start
-        t0, t1 = start, max(t1, start)
-    elif t1 <= t0:
-        return None
-    step = max(60.0, (t1 - t0) / steps)
-    grid = [t0 + i * step for i in range(int((t1 - t0) // step) + 1)]
-    if grid[-1] < t1:
-        grid.append(t1)
-
-    def at(k, t):
-        _c, xs, ys = series[k]
-        i = bisect.bisect_right(xs, t) - 1
-        return ys[i] if i >= 0 else None
-
-    held, acct, prev, curve, switches, scores = None, 1.0, None, [], [], {}     # acct: kontoens værdi i forhold til det indlagte
-    for t in grid:
-        if held is not None:
-            a, b = at(held, prev), at(held, t)
-            acct = acct * (100 + b) / (100 + a) if 100 + a > 0 else 0.0
-            acct = max(0.0, acct)
-        scores = {}
-        for k, (_c, _xs, ys) in enumerate(series):
-            v = at(k, t)
-            if v is not None:
-                if window is None:                  # samlet afkast siden strategiens start (kurven er allerede afkast i procent)
-                    scores[k] = v
-                else:
-                    base = at(k, t - window)
-                    scores[k] = v - (ys[0] if base is None else base)
-        if scores:
-            top = max(scores.values())
-            lead = held if held in scores and scores[held] >= top - SMART_MARGIN else max(scores, key=scores.get)
-            if lead != held:
-                switches.append({"ts": round(t), "from": series[held][0]["name"] if held is not None else None,
-                                 "from_bot": series[held][0]["bot_name"] if held is not None else None,
-                                 "to": series[lead][0]["name"], "to_bot": series[lead][0]["bot_name"]})
-                held = lead
-        curve.append([round(t), (acct - 1) * 100])
-        prev = t
-    tax = max(s[0]["tax"] for s in series)
-    keep = lambda v: v * (1 - tax / 100) if v > 0 else v
-    if len(curve) > 200:
-        k = len(curve) / 200
-        curve = [curve[int(i * k)] for i in range(200)] + [curve[-1]]
-    cur = series[held][0] if held is not None else None
-    caps = [(s[0].get("capital"), s[0].get("currency")) for s in series if s[0].get("capital")]
-    capital, currency = max(set(caps), key=caps.count) if caps else (COST_DEFAULTS["capital"], COST_DEFAULTS["currency"])
-    ret = keep((acct - 1) * 100)
-    return {"return_pct": round(ret, 2), "capital": capital, "currency": currency, "value": round(capital * (1 + ret / 100), 2), "following": cur and cur["name"], "following_bot": cur and cur["bot_name"],
-            "following_key": cur and cur["bot"], "lead": round(scores.get(held, 0.0), 2) if held is not None else None,
-            "count": len(series), "bots": len({s[0]["bot"] for s in series}), "switches": len(switches), "recent": switches[-6:][::-1], "since": round(t0),
-            "curve": [[t, round(keep(v), 3)] for t, v in curve]}
 
 
 BOTS_DIR = Path(os.environ.get("HUB_BOTS_DIR", ROOT / "bots"))
@@ -390,11 +299,12 @@ def bot_overview(bot: dict) -> dict:
         out["configured"], out["up"] = False, False
         out["note"], out["note_short"] = "Ikke hentet til denne maskine. Kør: python3 -m hub fetch", "Ikke hentet her"
     if out["up"]:
+        data: dict = {}      # ellers crasher `data.get` nedenfor, hvis bot_data fejler, og hele overblikket (og Smart strategi) går i stå
         try:
             data = bot_data(bot)
             c = get_costs(bot["key"], bot.get("costs"))
             out["best"] = best_of(net_strategies(data["strategies"], c))
-            out["_cands"] = smart_candidates(data["strategies"], c, bot)      # bruges kun til den ene, fælles Smart strategi
+            out["_cands"] = smart_candidates(data["strategies"], c, bot)      # bruges kun af Smart-botten
             out["trades"] = {"open": sum(x.get("open") or 0 for x in data["strategies"]),
                              "closed": sum(x.get("trades") or 0 for x in data["strategies"])}
             out["scan_age"] = max(0.0, time.time() - data["scan"]) if data.get("scan") else None
@@ -415,11 +325,12 @@ class Overview:
     gammelt, hentes et nyt i baggrunden. Så venter ingen på den langsomste bot, selv på en lille server med mange botter."""
     FRESH = 15.0
 
-    def __init__(self, bots: list[dict], build=None, now=time.time):
+    def __init__(self, bots: list[dict], build=None, now=time.time, smart: SmartBot | None = None):
         self.bots, self.now = bots, now
         self.build = build or (lambda: self._build())
         self.rows: list | None = None
-        self.smart: dict | None = None         # Smart strategi på tværs af alle botter
+        self.smart_bot = smart                 # Smart-botten: følger den bedste strategi på tværs af alle botter
+        self.tax = 0.0
         self.at = 0.0
         self.lock = threading.Lock()
         self.busy = False
@@ -431,13 +342,19 @@ class Overview:
     def _refresh(self) -> None:
         try:
             rows = self.build()
-            cands = [c for r in rows if isinstance(r, dict) for c in r.pop("_cands", None) or []]
-            try:
-                smart = smart_of(cands, start=smart_start())
-            except (ValueError, TypeError, KeyError):
-                smart = None
+            taxes = []
+            for r in rows:
+                if not isinstance(r, dict) or "_cands" not in r:
+                    continue                   # botten svarede ikke: Smart-botten beholder dens seneste svar
+                cands = r.pop("_cands") or []
+                taxes += [c["tax"] for c in cands]
+                if self.smart_bot is not None:
+                    fresh = bool(r.get("idle")) or (r.get("scan_age") is not None and r["scan_age"] <= STALE_AFTER_S)
+                    self.smart_bot.feed(r["key"], cands, fresh)
             with self.lock:
-                self.rows, self.smart, self.at = rows, smart, self.now()
+                self.rows, self.at = rows, self.now()
+                if taxes:
+                    self.tax = max(taxes)
         finally:
             self.busy = False
 
@@ -457,6 +374,18 @@ class Overview:
         if start:
             threading.Thread(target=self._refresh, daemon=True).start()
         return rows
+
+    def fresh(self) -> None:
+        """Henter et nyt overblik med det samme, hvis det seneste er for gammelt (bruges af Smart-botten hvert minut)."""
+        with self.lock:
+            start = self.now() - self.at >= self.FRESH and not self.busy
+            if start:
+                self.busy = True
+        if start:
+            self._refresh()
+
+    def smart(self) -> dict | None:
+        return self.smart_bot.view(self.tax) if self.smart_bot is not None else None
 
 
 class Throttle:
@@ -647,7 +576,7 @@ def make_handler(bots: list[dict], throttle: Throttle | None = None, ratelimit: 
                     return self._send(200, "application/json", json.dumps(overview.get()).encode())
                 if path == "/api/smart":
                     overview.get()
-                    return self._send(200, "application/json", json.dumps(overview.smart).encode())
+                    return self._send(200, "application/json", json.dumps(overview.smart()).encode())
                 m = re.match(r"^/api/costs/([a-z0-9_-]+)$", path)
                 if m and m.group(1) in by_key:
                     return self._send(200, "application/json", json.dumps(get_costs(m.group(1), by_key[m.group(1)].get("costs"))).encode())
@@ -697,7 +626,11 @@ def serve(host: str, port: int, bots: list[dict] | None = None) -> None:
     if host not in ("127.0.0.1", "localhost") and not os.environ.get("HUB_PASSWORD"):
         print("ADVARSEL: hubben er åben på netværket uden HUB_PASSWORD.")
     handler = make_handler(bots)
-    threading.Thread(target=handler.overview.get, daemon=True).start()     # gør overblikket klar, før den første besøgende kommer
+    ov = handler.overview
+    expected = sum(1 for b in bots if not b.get('disabled') and not not_installed(b) and (b.get('repo') or b.get('external')))
+    ov.smart_bot = SmartBot(log=lambda m: print(m, flush=True), expected=expected)
+    # Smart-botten kører hele tiden, også når ingen kigger: henter friske tal fra botterne og tager et skridt hvert minut
+    threading.Thread(target=ov.smart_bot.run, args=(ov.fresh,), daemon=True, name="smart-bot").start()
     httpd = ThreadingHTTPServer((host, port), handler)
     httpd.daemon_threads = True
     print(f"Hub: http://{host}:{port}", flush=True)

@@ -79,6 +79,17 @@ class HubTests(unittest.TestCase):
         self.assertIn("hub fetch", missing["note"])
         self.assertFalse(srv.not_installed({**base, "repo": "x/y", "external": True}))     # en ekstern bot behøver ikke være hentet
 
+    def test_a_bot_that_times_out_does_not_break_the_overview(self):
+        from unittest import mock
+        bot = {"key": "z", "name": "Z", "port": 1, "adapter": "nova", "short": "", "invests": ""}
+        with mock.patch.object(srv, "port_open", return_value=True), \
+                mock.patch.object(srv, "bot_data", side_effect=TimeoutError("timed out")), \
+                mock.patch.object(srv, "collecting_since", return_value=None):
+            out = srv.bot_overview(bot)
+        self.assertTrue(out["up"])
+        self.assertIsNone(out["best"])
+        self.assertNotIn("_cands", out)
+
     def test_delphi_problems_are_read_from_its_data_and_its_motor_log(self):
         import tempfile
         with tempfile.TemporaryDirectory() as d:
