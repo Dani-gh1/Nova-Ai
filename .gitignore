@@ -1,5 +1,17 @@
-bots/
 __pycache__/
 *.pyc
 logs/
 backups/
+# Botternes data (papirkonti, databaser, kørsler) hører aldrig hjemme i git
+bots/*/data/
+bots/*/data-*/
+bots/*/var/
+bots/*/runs/*.db
+bots/*/runs/*.db-*
+bots/*/runs/*.bak
+bots/*/runs/run-*/
+bots/*/runs-*/
+*.sqlite*
+*.db
+*.db-*
+*.tmp
