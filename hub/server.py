@@ -16,7 +16,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from .adapters import normalize
 from .live import VENUES, Kasse, live_bots, positions_for, venue_of
-from .portfolio import SmartPortfolio
+from .leader import SmartLeader
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -204,14 +204,8 @@ def best_of(strategies: list[dict]) -> dict | None:
     return out
 
 
-POSITION_PCT = 10.0              # en strategis position er typisk så stor en del af kontoen (bruges til prisen for et skift)
-
-
 def smart_candidates(strategies: list[dict], bot: dict) -> list[dict]:
-    """Strategier klar til Smart-botten. Botternes egne tal har allerede deres gebyrer og slip med, så kurven bruges, som den er.
-    `entry_cost` er prisen i procent af kontoen for at gå ind i (eller ud af) strategiens åbne positioner ved et skift:
-    den investerede andel (højst hele kontoen) gange botens realistiske pris pr. side (`fees.side_pct` i bots.json)."""
-    side = float((bot.get("fees") or {}).get("side_pct", 0.2))
+    """Strategier klar til Smart. Botternes egne tal har allerede deres gebyrer og slip med, så kurven bruges, som den er."""
     out = []
     for st in strategies:
         cv = [p for p in st.get("curve") or [] if isinstance(p, (list, tuple)) and len(p) >= 2 and isinstance(p[0], (int, float))
@@ -220,11 +214,9 @@ def smart_candidates(strategies: list[dict], bot: dict) -> list[dict]:
             continue
         cv = sorted([list(p[:2]) for p in cv], key=lambda p: p[0])
         now_v = cv[-1][1]
-        moved_at = next((cv[i + 1][0] for i in range(len(cv) - 2, -1, -1) if cv[i][1] != now_v), cv[0][0])    # sidst den rørte sig
-        invested = min(1.0, (st.get("open") or 0) * POSITION_PCT / 100)
         out.append({"id": f"{bot['key']}:{st.get('key')}", "name": st.get("name") or str(st.get("key")), "bot": bot["key"],
-                    "bot_name": bot.get("name", bot["key"]), "curve": cv, "raw_now": now_v, "moved_at": moved_at,
-                    "trades": st.get("trades") or 0, "open": st.get("open") or 0, "entry_cost": invested * side})
+                    "bot_name": bot.get("name", bot["key"]), "curve": cv, "raw_now": now_v,
+                    "trades": st.get("trades") or 0, "open": st.get("open") or 0})
     return out
 
 
@@ -306,12 +298,12 @@ class Overview:
     gammelt, hentes et nyt i baggrunden. Så venter ingen på den langsomste bot, selv på en lille server med mange botter."""
     FRESH = 15.0
 
-    def __init__(self, bots: list[dict], build=None, now=time.time, smart: SmartPortfolio | None = None):
+    def __init__(self, bots: list[dict], build=None, now=time.time, smart: SmartLeader | None = None):
         self.bots, self.now = bots, now
         self.build = build or (lambda: self._build())
         self.rows: list | None = None
-        self.portfolio = smart                 # Smart strategi: porteføljen med op til 5 strategier på én gang
-        self.live_smart: SmartPortfolio | None = None  # Live-porteføljen: samme regler, men kun strategier, der kan handles for rigtigt
+        self.smart = smart                     # Smart strategi: følger altid den strategi, der er steget mest
+        self.live_smart: SmartLeader | None = None     # Smart for rigtige penge: samme regel, kun strategier, der kan handles for rigtigt
         self.live: Kasse | None = None             # Kassen: rigtige penge fordelt på markederne
         self.at = 0.0
         self.lock = threading.Lock()
@@ -329,7 +321,7 @@ class Overview:
                     continue                   # botten svarede ikke: Smart-botten beholder dens seneste svar
                 cands = r.pop("_cands") or []
                 fresh = not r.get("idle") and r.get("scan_age") is not None and r["scan_age"] <= STALE_AFTER_S   # lukket marked kan ikke vælges
-                for sb in (self.portfolio, self.live_smart):
+                for sb in (self.smart, self.live_smart):
                     if sb is not None:
                         sb.feed(r["key"], cands, fresh)
             with self.lock:
@@ -521,9 +513,9 @@ def make_handler(bots: list[dict], throttle: Throttle | None = None, ratelimit: 
                     return self._send(200, "application/json", json.dumps(out).encode())
                 if path == "/api/overview":
                     return self._send(200, "application/json", json.dumps(overview.get()).encode())
-                if path == "/api/portfolio":
+                if path == "/api/smart":
                     overview.get()
-                    out = overview.portfolio.view() if overview.portfolio is not None else None
+                    out = overview.smart.view() if overview.smart is not None else None
                     return self._send(200, "application/json", json.dumps(out).encode())
                 if path == "/api/live":
                     ov = overview
@@ -564,7 +556,7 @@ def make_handler(bots: list[dict], throttle: Throttle | None = None, ratelimit: 
 
 
 def live_plan(weights, bots_by_key: dict, total_usd: float, data_of=None) -> tuple[dict, list[str]]:
-    """Live-porteføljens pladser -> {marked: {symbol: (long/short, USD, gearing)}}. Hver plads deles ligeligt på strategiens positioner."""
+    """Smarts strategi(er) -> {marked: {symbol: (long/short, USD, gearing)}}. Hver plads deles ligeligt på strategiens positioner."""
     data_of = data_of or (lambda b: bot_data(b))
     plan: dict[str, dict] = {}
     names = []
@@ -583,13 +575,13 @@ def live_plan(weights, bots_by_key: dict, total_usd: float, data_of=None) -> tup
 
 
 def start_live(ov: "Overview", bots: list[dict]) -> None:
-    """Rigtige penge, hvis HUB_LIVE er sat: live-porteføljen vælger strategierne, Kassen fordeler pengene til markederne."""
+    """Rigtige penge, hvis HUB_LIVE er sat: Smart strategi vælger strategien, Kassen fordeler pengene til markederne."""
     if os.environ.get("HUB_LIVE", "").strip() in ("", "0", "off"):
         return
     say = lambda m: print(m, flush=True)
     allow = live_bots(bots)
     by_key = {b["key"]: b for b in bots}
-    ov.live_smart = SmartPortfolio(Path(os.environ.get("HUB_LIVE_SMART_FILE") or ROOT / "logs" / "portfolio-live.json"), log=say,
+    ov.live_smart = SmartLeader(Path(os.environ.get("HUB_LIVE_SMART_FILE") or ROOT / "logs" / "smart-live.json"), log=say,
                                    expected=len(allow), allow=allow)
     ov.live = Kasse(log=say)
     say(f"Kassen: {('SIMULERING' if ov.live.mode == 'dry' else 'RIGTIGE PENGE')} på {', '.join(v.meta['name'] for v in ov.live.venues.values())}; "
@@ -621,10 +613,10 @@ def serve(host: str, port: int, bots: list[dict] | None = None) -> None:
     handler = make_handler(bots)
     ov = handler.overview
     expected = sum(1 for b in bots if not b.get('disabled') and not not_installed(b) and (b.get('repo') or b.get('external')))
-    ov.portfolio = SmartPortfolio(Path(os.environ.get("HUB_PORTFOLIO_FILE") or ROOT / "logs" / "smart-portfolio.json"),
+    ov.smart = SmartLeader(Path(os.environ.get("HUB_SMART_FILE") or ROOT / "logs" / "smart-leader.json"),
                                   log=lambda m: print(m, flush=True), expected=expected)
     # Smart strategi kører hele tiden, også når ingen kigger: henter friske tal fra botterne og tager et skridt hvert minut
-    threading.Thread(target=ov.portfolio.run, args=(ov.fresh,), daemon=True, name="smart-portfolio").start()
+    threading.Thread(target=ov.smart.run, args=(ov.fresh,), daemon=True, name="smart").start()
     start_live(ov, bots)
     httpd = ThreadingHTTPServer((host, port), handler)
     httpd.daemon_threads = True

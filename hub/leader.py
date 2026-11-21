@@ -1,0 +1,120 @@
+"""Smart strategi: følger altid den strategi, der er steget mest, siden Smart startede, og skifter i samme øjeblik,
+en anden overhaler den.
+
+Eksempel med to strategier, der begge starter på 0 %:
+  * Strategi 1 stiger til +2 %  -> Smart følger den og står på +2 %.
+  * Strategi 2 stiger til +1,5 % -> ingen betydning; strategi 1 fører stadig. Smart står på +2 %.
+  * Strategi 1 falder mod +1 %  -> Smart falder med, og i det øjeblik strategi 1 kommer under strategi 2 (ved +1,5 %),
+    skifter Smart til strategi 2. Smart står derfor på +1,5 % og følger nu strategi 2.
+
+Som en rigtig konto: Smart vokser og falder med den strategi, den følger (renters rente), og skifter koster intet på papir.
+Hver strategis stigning måles fra den stand, den havde, første gang Smart så den (for de fleste: da Smart startede).
+Kører hele tiden i hubben og gemmer sin konto i logs/smart-leader.json; historikken regnes aldrig om.
+"""
+from __future__ import annotations
+
+import json
+
+from .smart import MAX_POINTS, WARMUP_S, SmartBot
+
+VERSION = 1
+EPS = 1e-9
+
+
+class SmartLeader(SmartBot):
+    def _new(self) -> dict:
+        t = round(self.now(), 1)
+        return {"version": VERSION, "kind": "leader", "since": t, "capital": 10000.0, "currency": "kr.", "acct": 1.0,
+                "held": None, "bases": {}, "switches": [], "curve": [[round(t), 0.0]], "updated": t}
+
+    def _load(self) -> dict:
+        try:
+            d = json.loads(self.path.read_text(encoding="utf-8"))
+            if isinstance(d, dict) and d.get("kind") == "leader" and d.get("version") == VERSION:
+                return d
+        except (OSError, ValueError):
+            pass
+        return self._new()
+
+    def _gains(self, allc: dict) -> dict[str, float]:
+        """Hver strategis stigning i procent, siden Smart første gang så den."""
+        bases, out = self.state["bases"], {}
+        for cid, (c, _s) in allc.items():
+            v, tr = c["raw_now"], c.get("trades") or 0
+            b = bases.get(cid)
+            if b is None or tr < b["trades"]:                  # ny strategi, eller den er startet forfra: mål fra nu
+                b = bases[cid] = {"v": v, "trades": tr}
+            b["trades"] = max(b["trades"], tr)
+            if 100 + b["v"] > 0:
+                out[cid] = ((100 + v) / (100 + b["v"]) - 1) * 100
+        return out
+
+    def step(self) -> None:
+        with self.lock:
+            now, st, allc = self.now(), self.state, self._all()
+            if not allc:
+                return
+            h = st["held"]
+            if h and h["id"] in allc:                                       # følg strategiens bevægelse siden sidst
+                c, s = allc[h["id"]]
+                if s["at"] > h.get("seen", 0):
+                    v = c["raw_now"]
+                    if (c.get("trades") or 0) >= h["trades"] and 100 + h["v"] > 0:
+                        st["acct"] = max(0.0, st["acct"] * (100 + v) / (100 + h["v"]))
+                    h.update(v=v, trades=c.get("trades") or 0, seen=s["at"])
+            gains = self._gains(allc)
+            if gains and (len(self.snap) >= self.expected or now - self.started >= WARMUP_S):
+                lead = max(gains, key=gains.get)
+                held_gain = gains.get(h["id"]) if h else None
+                if gains[lead] > EPS and (h is None or (lead != h["id"] and (held_gain is None or gains[lead] > held_gain + EPS))):
+                    self._switch(now, lead, allc, gains)
+            st["gains"] = {k: round(v, 4) for k, v in gains.items()}
+            st["count"], st["bots"] = len(allc), len({c["bot"] for c, _ in allc.values()})
+            pct = round((st["acct"] - 1) * 100, 4)
+            if not st["curve"] or st["curve"][-1][1] != pct or now - st["curve"][-1][0] >= 600:
+                st["curve"].append([round(now), pct])
+                if len(st["curve"]) > MAX_POINTS:
+                    st["curve"] = st["curve"][:1] + st["curve"][1:-1:2] + st["curve"][-1:]
+            st["updated"] = round(now, 1)
+            self._save()
+
+    def _switch(self, now: float, to: str, allc: dict, gains: dict) -> None:
+        st, h = self.state, self.state["held"]
+        c, s = allc[to]
+        if h is None:                      # første valg: alle stod lige fra start, så Smart har været med i den førende hele vejen
+            st["acct"] *= 1 + gains[to] / 100
+        st["held"] = {"id": to, "name": c["name"], "bot": c["bot"], "bot_name": c["bot_name"], "v": c["raw_now"],
+                      "trades": c.get("trades") or 0, "seen": s["at"], "entered": round(now)}
+        why = f"overhalede {h['name']} ({gains[to]:+.2f} % mod {gains.get(h['id'], 0.0):+.2f} %)" if h else f"steg først ({gains[to]:+.2f} %)"
+        st["switches"] = (st["switches"] + [{"ts": round(now), "from": h and h["name"], "from_bot": h and h["bot_name"], "to": c["name"],
+                                             "to_bot": c["bot_name"], "why": why, "smart_pct": round((st["acct"] - 1) * 100, 4)}])[-500:]
+        self.log(f"Smart: {(h and h['name']) or 'start'} → {c['name']} ({c['bot_name']}): {why}")
+
+    def weights(self) -> list[tuple[dict, float]]:
+        """(strategi, andel af kontoen) – bruges af Kassen: hele kontoen følger den ene strategi."""
+        with self.lock:
+            h = self.state["held"]
+            return [(dict(h), 1.0)] if h else []
+
+    def view(self) -> dict:
+        with self.lock:
+            st, now, h = self.state, self.now(), self.state["held"]
+            names = {cid: (c["name"], c["bot_name"]) for cid, (c, _s) in self._all().items()}
+            gains = st.get("gains", {})
+            top = sorted(gains, key=gains.get, reverse=True)[:5]
+            curve = st["curve"]
+            if len(curve) > 200:
+                k = len(curve) / 200
+                curve = [curve[int(i * k)] for i in range(200)] + [curve[-1]]
+            warm = len(self.snap) < self.expected and now - self.started < WARMUP_S
+            ret = (st["acct"] - 1) * 100
+            return {"return_pct": round(ret, 2), "capital": st["capital"], "currency": st["currency"],
+                    "value": round(st["capital"] * st["acct"], 2), "since": round(st["since"]), "updated": st.get("updated"),
+                    "following": h and h["name"], "following_bot": h and h["bot_name"], "held_since": h and h["entered"],
+                    "following_gain": round(gains[h["id"]], 2) if h and h["id"] in gains else None,
+                    "leaders": [{"name": names.get(k, (k, ""))[0], "bot_name": names.get(k, ("", ""))[1], "gain": round(gains[k], 2),
+                                 "held": bool(h and k == h["id"])} for k in top],
+                    "count": st.get("count", 0), "bots": st.get("bots", 0), "switches": len(st["switches"]),
+                    "recent": st["switches"][-8:][::-1],
+                    "warning": f"Starter op: {len(self.snap)} af {self.expected} botter har svaret – vælger, når alle er med" if warm else None,
+                    "curve": [[t, round(v, 3)] for t, v in curve]}

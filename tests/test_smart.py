@@ -7,16 +7,14 @@ T0 = 1_700_000_000
 
 
 class CandidateTests(unittest.TestCase):
-    def test_candidates_use_the_bots_own_numbers_and_a_realistic_switch_price(self):
-        bot = {"key": "bot", "name": "Bot", "fees": {"text": "0,10 % pr. side", "side_pct": 0.15}}
+    def test_candidates_use_the_bots_own_numbers(self):
+        bot = {"key": "bot", "name": "Bot", "fees": {"text": "0,10 % pr. side"}}
         sts = [{"key": "a", "name": "A", "trades": 10, "open": 3, "curve": [[T0, 0], [T0 + H, 5]]},
                {"key": "m", "name": "Mange", "trades": 10, "open": 25, "curve": [[T0, 0], [T0 + H, 5]]},
                {"key": "x", "name": "X", "trades": 0, "open": 0, "curve": [[0, 0], [1, 5]]}]
         out = smart_candidates(sts, bot)
         self.assertEqual([x["name"] for x in out], ["A", "Mange"])
         self.assertEqual(out[0]["curve"][-1][1], 5)                              # botten har selv trukket gebyrerne
-        self.assertAlmostEqual(out[0]["entry_cost"], 0.3 * 0.15)                  # 3 positioner à 10 % af kontoen
-        self.assertAlmostEqual(out[1]["entry_cost"], 1.0 * 0.15)                  # højst hele kontoen
         self.assertEqual(fee_rule(bot), ["Gebyrer (indregnet)", "0,10 % pr. side"])
 
     def test_overview_feeds_only_bots_that_answered(self):

@@ -40,17 +40,16 @@ og hubben. `python3 -m hub status` viser hvad der kører. Kun Python 3.11+ stand
 
 ## Smart strategi (den primære)
 
-Forsidens **Smart strategi** er en portefølje, der kører hele tiden i hubben og gemmer sin konto i `logs/smart-portfolio.json`:
+Forsidens **Smart strategi** følger altid den strategi, der er steget mest, siden Smart startede, og skifter i samme
+øjeblik, en anden overhaler den. Den kører hele tiden i hubben og gemmer sin konto i `logs/smart-leader.json`.
 
-* Holder op til **5 strategier på én gang** på tværs af alle markeder (højst 2 fra samme bot), hver for 1/5 af kontoen.
-* Køber kun strategier, der **vokser stabilt**: i plus efter gebyrer over 6 timer, 24 timer og 3 dage, mindst 20 handler,
-  12 timers historik, højst 10 % fald og et åbent marked, der bevæger sig. Resten står kontant.
-* Sælger en plads, når strategien ikke er i plus over 24 timer, står stille i 3 timer, falder 5 % fra toppen, eller er ude af top 8,
-  og en bedre venter (tidligst 4 timer efter køb). Kun den ene plads skiftes.
-* Sammenlignes på forsiden med gennemsnittet af alle strategier i samme periode.
+Eksempel: strategi 1 stiger til +2 %, så står Smart på +2 %. Strategi 2 stiger til +1,5 %: ingen betydning. Falder strategi 1
+derefter, falder Smart med, og i det øjeblik strategi 1 kommer under strategi 2 (ved +1,5 %), skifter Smart til strategi 2 og
+står på +1,5 %. Springer en strategi forbi en anden i ét hug (fx når en stor handel lukker), følger Smart springet, som en
+rigtig konto ville, og skifter lige bagefter.
 
-**Kassen** er stedet, de rigtige penge lægges ind. Live-porteføljen (samme regler, men kun strategier, der kan handles for
-rigtigt) bestemmer fordelingen, og Kassen flytter pengene til markederne og ejer de samme positioner som strategierne.
+**Kassen** er stedet, de rigtige penge lægges ind. Smart strategi (samme regel, men kun strategier, der kan handles for
+rigtigt) bestemmer, hvilken strategi pengene følger, og Kassen flytter pengene til det marked og ejer de samme positioner.
 
 | Marked | Botter | Status |
 |---|---|---|
@@ -79,8 +78,7 @@ Alle botter regner selv realistiske gebyrer og slip ind i deres papirhandel, så
 | Nova og Nova Classic | Jupiter-pris med puljegebyr og prisvirkning + $0,05 pr. swap |
 | Delphi | Kalshis/Polymarkets egne gebyrer + køb til udbud og salg til bud |
 
-Teksten står under hver strategis regler (`fees.text` i `bots.json`). `fees.side_pct` er den realistiske pris pr. side,
-som Smart strategi betaler, når den skifter strategi og skal lukke og åbne positioner.
+Teksten står under hver strategis regler (`fees.text` i `bots.json`).
 
 ## Alle botter
 

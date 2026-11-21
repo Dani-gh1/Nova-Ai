@@ -1,6 +1,6 @@
-"""Rigtige penge: Kassen og markederne (børserne), styret af live-porteføljen.
+"""Rigtige penge: Kassen og markederne (børserne), styret af Smart strategi.
 
-Kassen er stedet, pengene lægges ind. Live-porteføljen (Smart strategis regler, men kun strategier, der kan handles
+Kassen er stedet, pengene lægges ind. Smart strategi (samme regel, men kun strategier, der kan handles
 for rigtigt) bestemmer, hvor stor en andel hver strategi skal have. Kassen fordeler pengene til de markeder, hvor
 strategierne handles, flytter penge automatisk mellem kryptokontiene, og hvert marked ejer de samme positioner som
 strategierne (lige store beløb pr. position).
@@ -352,7 +352,7 @@ class VenueAccount:
 # ------------------------------------------------------------------ Kassen
 
 class Kasse:
-    """Stedet, pengene lægges ind. Fordeler dem til markederne efter live-porteføljen og flytter dem automatisk
+    """Stedet, pengene lægges ind. Fordeler dem til markederne efter Smart strategi og flytter dem automatisk
     mellem markeder i samme gruppe (Binance spot ↔ futures)."""
 
     def __init__(self, venues: list[str] | None = None, mode: str | None = None, budget: float | None = None,

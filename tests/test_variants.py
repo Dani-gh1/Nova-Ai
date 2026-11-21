@@ -15,7 +15,7 @@ class VariantTests(unittest.TestCase):
         self.assertEqual(by["nova"]["repo"], by["novaclassic"]["repo"])
         self.assertNotEqual(by["orion"]["port"], by["orionmid"]["port"])
         self.assertEqual(by["orionmid"]["launch"]["overrides"]["config"]["STATE_FILE"], "state-mid.json")
-        self.assertTrue(all(b["fees"]["text"] and b["fees"]["side_pct"] > 0 for b in by.values()))
+        self.assertTrue(all(b["fees"]["text"] for b in by.values()))
 
     def test_nova_classic_uses_its_own_config_file(self):
         cmd, _ = commands({b["key"]: b for b in load_bots()}["novaclassic"])[0]

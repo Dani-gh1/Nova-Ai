@@ -26,8 +26,7 @@
     "en.wikipedia.org"
    ],
    "fees": {
-    "text": "Kurtage som hos Interactive Brokers: $0,005 pr. aktie (min. $1, maks. 1 %) + 0,05 % slip + halv spread pr. side",
-    "side_pct": 0.12
+    "text": "Kurtage som hos Interactive Brokers: $0,005 pr. aktie (min. $1, maks. 1 %) + 0,05 % slip + halv spread pr. side"
    }
   },
   {
@@ -51,8 +50,7 @@
     "query1.finance.yahoo.com"
    ],
    "fees": {
-    "text": "Spread som hos en forex-broker uden kurtage (typisk spread pr. par) + swap/rente for positioner over natten",
-    "side_pct": 0.02
+    "text": "Spread som hos en forex-broker uden kurtage (typisk spread pr. par) + swap/rente for positioner over natten"
    }
   },
   {
@@ -78,8 +76,7 @@
     "api.gopluslabs.io"
    ],
    "fees": {
-    "text": "DEX-gebyr 0,25–0,3 % pr. swap + gas + prisvirkning beregnet ud fra puljens størrelse",
-    "side_pct": 2.0
+    "text": "DEX-gebyr 0,25–0,3 % pr. swap + gas + prisvirkning beregnet ud fra puljens størrelse"
    }
   },
   {
@@ -110,8 +107,7 @@
     "api.elections.kalshi.com"
    ],
    "fees": {
-    "text": "Markedets eget gebyr (Kalshi: 0,07 × P × (1−P) pr. kontrakt, Polymarket: oplyst gebyr) + køb til udbudspris og salg til bud",
-    "side_pct": 2.0
+    "text": "Markedets eget gebyr (Kalshi: 0,07 × P × (1−P) pr. kontrakt, Polymarket: oplyst gebyr) + køb til udbudspris og salg til bud"
    }
   },
   {
@@ -136,8 +132,7 @@
     "api.bybit.com"
    ],
    "fees": {
-    "text": "0,05 % taker / 0,02 % maker pr. side af den gearede størrelse (Binance futures) + funding hver 8. time",
-    "side_pct": 0.15
+    "text": "0,05 % taker / 0,02 % maker pr. side af den gearede størrelse (Binance futures) + funding hver 8. time"
    }
   },
   {
@@ -162,8 +157,7 @@
     "api.binance.com"
    ],
    "fees": {
-    "text": "0,10 % gebyr pr. side (Binance spot, taker) + slip fra den rigtige ordrebog",
-    "side_pct": 0.15
+    "text": "0,10 % gebyr pr. side (Binance spot, taker) + slip fra den rigtige ordrebog"
    }
   },
   {
@@ -192,8 +186,7 @@
     "api.mainnet-beta.solana.com"
    ],
    "fees": {
-    "text": "Jupiter-pris med puljegebyr, prisvirkning og slip + $0,05 netværksgebyr pr. swap (Solana)",
-    "side_pct": 2.0
+    "text": "Jupiter-pris med puljegebyr, prisvirkning og slip + $0,05 netværksgebyr pr. swap (Solana)"
    }
   },
   {
@@ -281,8 +274,7 @@
     }
    },
    "fees": {
-    "text": "Kurtage som hos Interactive Brokers: $0,005 pr. aktie (min. $1, maks. 1 %) + 0,05 % slip + halv spread pr. side",
-    "side_pct": 0.2
+    "text": "Kurtage som hos Interactive Brokers: $0,005 pr. aktie (min. $1, maks. 1 %) + 0,05 % slip + halv spread pr. side"
    }
   },
   {
@@ -359,8 +351,7 @@
     }
    },
    "fees": {
-    "text": "0,10 % gebyr pr. side (Binance spot, taker) + slip fra den rigtige ordrebog",
-    "side_pct": 0.35
+    "text": "0,10 % gebyr pr. side (Binance spot, taker) + slip fra den rigtige ordrebog"
    }
   },
   {
@@ -392,8 +383,7 @@
    ],
    "nice": 10,
    "fees": {
-    "text": "Jupiter-pris med puljegebyr, prisvirkning og slip + $0,05 netværksgebyr pr. swap (Solana)",
-    "side_pct": 0.8
+    "text": "Jupiter-pris med puljegebyr, prisvirkning og slip + $0,05 netværksgebyr pr. swap (Solana)"
    }
   },
   {
@@ -467,8 +457,7 @@
     }
    },
    "fees": {
-    "text": "Kurtage som hos Interactive Brokers: $0,005 pr. aktie (min. $1, maks. 1 %) + 0,05 % slip + halv spread pr. side",
-    "side_pct": 0.12
+    "text": "Kurtage som hos Interactive Brokers: $0,005 pr. aktie (min. $1, maks. 1 %) + 0,05 % slip + halv spread pr. side"
    }
   },
   {
@@ -532,8 +521,7 @@
     }
    },
    "fees": {
-    "text": "Kurtage som hos Interactive Brokers: $0,005 pr. aktie (min. $1, maks. 1 %) + 0,05 % slip + halv spread pr. side",
-    "side_pct": 0.15
+    "text": "Kurtage som hos Interactive Brokers: $0,005 pr. aktie (min. $1, maks. 1 %) + 0,05 % slip + halv spread pr. side"
    }
   },
   {
@@ -595,8 +583,7 @@
     }
    },
    "fees": {
-    "text": "Kurtage som hos Interactive Brokers: $0,005 pr. aktie (min. $1, maks. 1 %) + 0,05 % slip + halv spread pr. side",
-    "side_pct": 0.15
+    "text": "Kurtage som hos Interactive Brokers: $0,005 pr. aktie (min. $1, maks. 1 %) + 0,05 % slip + halv spread pr. side"
    }
   },
   {
@@ -669,8 +656,7 @@
     }
    },
    "fees": {
-    "text": "Kurtage som hos Interactive Brokers: $0,005 pr. aktie (min. $1, maks. 1 %) + 0,05 % slip + halv spread pr. side",
-    "side_pct": 0.15
+    "text": "Kurtage som hos Interactive Brokers: $0,005 pr. aktie (min. $1, maks. 1 %) + 0,05 % slip + halv spread pr. side"
    }
   },
   {
@@ -735,8 +721,7 @@
     }
    },
    "fees": {
-    "text": "Kurtage som hos Interactive Brokers: $0,005 pr. aktie (min. $1, maks. 1 %) + 0,05 % slip + halv spread pr. side",
-    "side_pct": 0.3
+    "text": "Kurtage som hos Interactive Brokers: $0,005 pr. aktie (min. $1, maks. 1 %) + 0,05 % slip + halv spread pr. side"
    }
   },
   {
@@ -803,8 +788,7 @@
     }
    },
    "fees": {
-    "text": "Kurtage som hos Interactive Brokers: $0,005 pr. aktie (min. $1, maks. 1 %) + 0,05 % slip + halv spread pr. side",
-    "side_pct": 0.12
+    "text": "Kurtage som hos Interactive Brokers: $0,005 pr. aktie (min. $1, maks. 1 %) + 0,05 % slip + halv spread pr. side"
    }
   },
   {
@@ -860,8 +844,7 @@
     }
    },
    "fees": {
-    "text": "Kurtage som hos Interactive Brokers: $0,005 pr. aktie (min. $1, maks. 1 %) + 0,05 % slip + halv spread pr. side",
-    "side_pct": 0.5
+    "text": "Kurtage som hos Interactive Brokers: $0,005 pr. aktie (min. $1, maks. 1 %) + 0,05 % slip + halv spread pr. side"
    }
   },
   {
@@ -919,8 +902,7 @@
     }
    },
    "fees": {
-    "text": "Kurtage som hos Interactive Brokers: $0,005 pr. aktie (min. $1, maks. 1 %) + 0,05 % slip + halv spread pr. side",
-    "side_pct": 0.15
+    "text": "Kurtage som hos Interactive Brokers: $0,005 pr. aktie (min. $1, maks. 1 %) + 0,05 % slip + halv spread pr. side"
    }
   },
   {
@@ -986,8 +968,7 @@
     }
    },
    "fees": {
-    "text": "0,10 % gebyr pr. side (Binance spot, taker) + slip fra den rigtige ordrebog",
-    "side_pct": 0.2
+    "text": "0,10 % gebyr pr. side (Binance spot, taker) + slip fra den rigtige ordrebog"
    }
   },
   {
@@ -1053,8 +1034,7 @@
     }
    },
    "fees": {
-    "text": "0,10 % gebyr pr. side (Binance spot, taker) + slip fra den rigtige ordrebog",
-    "side_pct": 0.25
+    "text": "0,10 % gebyr pr. side (Binance spot, taker) + slip fra den rigtige ordrebog"
    }
   },
   {
@@ -1114,8 +1094,7 @@
     }
    },
    "fees": {
-    "text": "0,10 % gebyr pr. side (Binance spot, taker) + slip fra den rigtige ordrebog",
-    "side_pct": 0.3
+    "text": "0,10 % gebyr pr. side (Binance spot, taker) + slip fra den rigtige ordrebog"
    }
   },
   {
@@ -1336,8 +1315,7 @@
     }
    },
    "fees": {
-    "text": "Spread som hos en forex-broker uden kurtage (typisk spread pr. par) + swap/rente for positioner over natten",
-    "side_pct": 0.05
+    "text": "Spread som hos en forex-broker uden kurtage (typisk spread pr. par) + swap/rente for positioner over natten"
    }
   }
  ]
