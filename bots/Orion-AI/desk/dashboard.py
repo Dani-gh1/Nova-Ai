@@ -45,7 +45,7 @@ class DashboardAPI:
     def _state(self) -> dict:
         return read_state(self.cfg.STATE_FILE) or {}
 
-    EQUITY_TTL = 60.0        # hele equity-tabellen læses højst én gang i minuttet (den vokser kun ved hver scanning)
+    EQUITY_TTL = 300.0       # hele equity-tabellen læses højst hvert 5. minut (tung på en lille server; grafer må være 5 min gamle)
 
     def _equity(self, strategy: str | None = None) -> dict:
         cached = getattr(self, "_eq_cache", None)
