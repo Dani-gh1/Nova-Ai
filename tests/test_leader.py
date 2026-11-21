@@ -68,6 +68,27 @@ class LeaderTests(unittest.TestCase):
         self.assertAlmostEqual(v["return_pct"], 1, places=1)       # Smart sad i strategi 1 under springet
         self.assertEqual(v["following"], "Strategi 2")             # og skifter med det samme bagefter
 
+    def test_starts_over_every_day_at_midnight_and_keeps_each_days_result(self):
+        self.tick(0, 0)
+        self.tick(2, 0)                                            # 23:15 dansk tid: Smart +2 % i dag
+        day1 = self.sm.view()["days"]
+        self.assertEqual(list(day1.values()), [2.0])
+        self.clk.t += 3600                                         # efter midnat
+        v = self.tick(2, 0)                                        # ingen er steget i den nye dag endnu
+        self.assertIsNone(v["following"])
+        self.assertEqual(v["today_pct"], 0)
+        self.assertAlmostEqual(v["return_pct"], 2, places=1)       # kontoen fortsætter
+        v = self.tick(2, 1)                                        # opskrift 2 stiger først i den nye dag
+        self.assertEqual(v["following"], "Strategi 2")
+        self.assertEqual(len(v["days"]), 2)
+
+    def test_a_switch_records_the_result_of_the_sold_strategy(self):
+        self.tick(0, 0)
+        self.tick(2, 0)
+        self.tick(2, 1.5)
+        v = self.tick(1.49, 1.5)
+        self.assertAlmostEqual(v["recent"][0]["result_pct"], 1.49, places=1)   # Strategi 1 tjente +1,49 % for Smart
+
     def test_measures_from_when_smart_first_saw_the_strategy(self):
         self.clk.t += 60
         self.sm.feed("b", [cand("Gammel vinder", 40.0), cand("Ny", 0.0)])   # +40 % fra før Smart startede tæller ikke

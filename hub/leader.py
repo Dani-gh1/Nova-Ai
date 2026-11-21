@@ -14,18 +14,22 @@ Kører hele tiden i hubben og gemmer sin konto i logs/smart-leader.json; histori
 from __future__ import annotations
 
 import json
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from .smart import MAX_POINTS, WARMUP_S, SmartBot
 
 VERSION = 1
 EPS = 1e-9
+TZ = ZoneInfo("Europe/Copenhagen")       # en ny dag starter ved midnat dansk tid
 
 
 class SmartLeader(SmartBot):
     def _new(self) -> dict:
         t = round(self.now(), 1)
         return {"version": VERSION, "kind": "leader", "since": t, "capital": 10000.0, "currency": "kr.", "acct": 1.0,
-                "held": None, "bases": {}, "switches": [], "curve": [[round(t), 0.0]], "updated": t}
+                "held": None, "bases": {}, "switches": [], "curve": [[round(t), 0.0]], "updated": t,
+                "day": self._day(t), "day_acct": 1.0, "days": {}}
 
     def _load(self) -> dict:
         try:
@@ -35,6 +39,20 @@ class SmartLeader(SmartBot):
         except (OSError, ValueError):
             pass
         return self._new()
+
+    @staticmethod
+    def _day(t: float) -> str:
+        return datetime.fromtimestamp(t, TZ).strftime("%Y-%m-%d")
+
+    def _new_day(self, now: float) -> None:
+        """Ved midnat: gem dagens resultat, og lad alle strategier starte fra 0 igen (Smart vælger forfra)."""
+        st, day = self.state, self._day(now)
+        if st.get("day") == day:
+            return
+        if st.get("day"):
+            st.setdefault("days", {})[st["day"]] = round((st["acct"] / st.get("day_acct", 1.0) - 1) * 100, 4)
+            self.log(f"Smart: {st['day']} sluttede på {st['days'][st['day']]:+.2f} %")
+        st["day"], st["day_acct"], st["bases"], st["held"] = day, st["acct"], {}, None
 
     def _gains(self, allc: dict) -> dict[str, float]:
         """Hver strategis stigning i procent, siden Smart første gang så den."""
@@ -62,6 +80,8 @@ class SmartLeader(SmartBot):
                     if (c.get("trades") or 0) >= h["trades"] and 100 + h["v"] > 0:
                         st["acct"] = max(0.0, st["acct"] * (100 + v) / (100 + h["v"]))
                     h.update(v=v, trades=c.get("trades") or 0, seen=s["at"])
+            self._new_day(now)
+            h = st["held"]
             gains = self._gains(allc)
             if gains and (len(self.snap) >= self.expected or now - self.started >= WARMUP_S):
                 lead = max(gains, key=gains.get)
@@ -81,13 +101,15 @@ class SmartLeader(SmartBot):
     def _switch(self, now: float, to: str, allc: dict, gains: dict) -> None:
         st, h = self.state, self.state["held"]
         c, s = allc[to]
+        entry = st["acct"]
         if h is None:                      # første valg: alle stod lige fra start, så Smart har været med i den førende hele vejen
             st["acct"] *= 1 + gains[to] / 100
+        result = (st["acct"] / h["entry_acct"] - 1) * 100 if h and h.get("entry_acct") else None
         st["held"] = {"id": to, "name": c["name"], "bot": c["bot"], "bot_name": c["bot_name"], "v": c["raw_now"],
-                      "trades": c.get("trades") or 0, "seen": s["at"], "entered": round(now)}
+                      "trades": c.get("trades") or 0, "seen": s["at"], "entered": round(now), "entry_acct": entry}
         why = f"overhalede {h['name']} ({gains[to]:+.2f} % mod {gains.get(h['id'], 0.0):+.2f} %)" if h else f"steg først ({gains[to]:+.2f} %)"
         st["switches"] = (st["switches"] + [{"ts": round(now), "from": h and h["name"], "from_bot": h and h["bot_name"], "to": c["name"],
-                                             "to_bot": c["bot_name"], "why": why, "smart_pct": round((st["acct"] - 1) * 100, 4)}])[-500:]
+                                             "to_bot": c["bot_name"], "why": why, "result_pct": None if result is None else round(result, 2), "smart_pct": round((st["acct"] - 1) * 100, 4)}])[-500:]
         self.log(f"Smart: {(h and h['name']) or 'start'} → {c['name']} ({c['bot_name']}): {why}")
 
     def view(self) -> dict:
@@ -102,7 +124,10 @@ class SmartLeader(SmartBot):
                 curve = [curve[int(i * k)] for i in range(200)] + [curve[-1]]
             warm = len(self.snap) < self.expected and now - self.started < WARMUP_S
             ret = (st["acct"] - 1) * 100
-            return {"return_pct": round(ret, 2), "capital": st["capital"], "currency": st["currency"],
+            days = dict(st.get("days", {}))
+            today = (st["acct"] / st.get("day_acct", 1.0) - 1) * 100
+            days[st.get("day") or self._day(now)] = round(today, 4)
+            return {"return_pct": round(ret, 2), "today_pct": round(today, 2), "days": days, "capital": st["capital"], "currency": st["currency"],
                     "value": round(st["capital"] * st["acct"], 2), "since": round(st["since"]), "updated": st.get("updated"),
                     "following": h and h["name"], "following_bot": h and h["bot_name"], "held_since": h and h["entered"],
                     "following_gain": round(gains[h["id"]], 2) if h and h["id"] in gains else None,
