@@ -6,13 +6,11 @@ fetch  tjekker, at alle botter er der (de ligger i Hub-AI-repoet under bots/)
 status viser hvad der er installeret og kører
 report  samler alt til fejlfinding i én udskrift (versioner, datakilder, status, logs)
 doctor tester botternes datakilder og forklarer, hvis noget er spærret eller overvåget på dit netværk
-kasse  viser Kassen (rigtige penge); "kasse indskud <kr>" registrerer penge, du har sat ind hos børsen
 """
 from __future__ import annotations
 
 import argparse
 import copy
-import json
 import os
 import shutil
 import signal
@@ -187,41 +185,9 @@ def cmd_run(bots, host: str, port: int) -> None:
         sup.shutdown()
 
 
-def cmd_kasse(args: list[str]) -> None:
-    """kasse                 vis Kassen (rigtige penge): indskud, markeder og positioner
-    kasse indskud <kr> [note]  registrér penge, du har sat ind hos børsen (hubben fordeler dem inden for et minut)"""
-    from . import live
-    if args[:1] == ["indskud"]:
-        try:
-            kr = float(args[1].replace(",", "."))
-        except (IndexError, ValueError):
-            raise SystemExit("Brug: python3 -m hub kasse indskud <kr> [note]")
-        if not 0 < kr <= 1_000_000:
-            raise SystemExit("Beløbet skal være mellem 0 og 1.000.000 kr.")
-        live.register_deposit(kr, " ".join(args[2:]))
-        print(f"✓ Indskud på {kr:,.0f} kr. registreret. Hubben lægger det i Kassen inden for et minut.".replace(",", "."))
-        return
-    try:
-        k = json.loads((live.logs_dir() / "kasse.json").read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        raise SystemExit("Kassen er ikke startet. Sæt HUB_LIVE=dry (simulering) eller HUB_LIVE=1 i /etc/hub.env og genstart hubben.")
-    dep = sum(d["usd"] for d in k["deposits"])
-    print(f"Kassen ({'SIMULERING' if k['mode'] == 'dry' else 'RIGTIGE PENGE'}) · lagt ind: {dep:.2f} USD ≈ {dep * live.USD_DKK:,.0f} kr.".replace(",", "."))
-    print(f"Følger: {k.get('following') or 'ingen (kontant)'}")
-    for v in live.VENUES:
-        try:
-            st = json.loads((live.logs_dir() / f"live-{v}.json").read_text(encoding="utf-8"))
-        except (OSError, ValueError):
-            continue
-        print(f"  {live.VENUES[v]['name']}: kontant {st['cash']:.2f} USD, {len(st['holdings'])} positioner, gebyrer {st['fees']:.2f} USD")
-        for sym, p in sorted(st["holdings"].items()):
-            print(f"    {p['side']:5} {sym:14} {p.get('last_value', 0):8.2f} USD")
-
-
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(prog="hub", description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
-    ap.add_argument("cmd", choices=["serve", "run", "fetch", "backup", "status", "doctor", "report", "kasse"])
-    ap.add_argument("args", nargs="*", help="kasse: indskud <kr> [note]")
+    ap.add_argument("cmd", choices=["serve", "run", "fetch", "backup", "status", "doctor", "report"])
     ap.add_argument("--host", default=os.environ.get("HUB_HOST", "127.0.0.1"))
     ap.add_argument("--port", type=int, default=int(os.environ.get("HUB_PORT", "8080")))
     a = ap.parse_args(argv)
@@ -233,7 +199,7 @@ def main(argv=None) -> int:
         certs.setup()                      # Mac: brug Macens rod-certifikater, hvis Python mangler sine (børn arver indstillingen)
     {"fetch": lambda: cmd_fetch(bots), "backup": lambda: cmd_backup(bots), "status": lambda: cmd_status(bots), "report": lambda: __import__("hub.report", fromlist=["run"]).run(bots, ROOT, bot_dir, a.port),
      "doctor": lambda: sys.exit(1 if __import__("hub.doctor", fromlist=["run"]).run(bots) else 0),
-     "run": lambda: cmd_run(bots, a.host, a.port), "serve": lambda: serve(a.host, a.port, bots), "kasse": lambda: cmd_kasse(a.args)}[a.cmd]()
+     "run": lambda: cmd_run(bots, a.host, a.port), "serve": lambda: serve(a.host, a.port, bots)}[a.cmd]()
     return 0
 
 

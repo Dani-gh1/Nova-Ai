@@ -48,22 +48,6 @@ derefter, falder Smart med, og i det øjeblik strategi 1 kommer under strategi 2
 står på +1,5 %. Springer en strategi forbi en anden i ét hug (fx når en stor handel lukker), følger Smart springet, som en
 rigtig konto ville, og skifter lige bagefter.
 
-**Kassen** er stedet, de rigtige penge lægges ind. Smart strategi (samme regel, men kun strategier, der kan handles for
-rigtigt) bestemmer, hvilken strategi pengene følger, og Kassen flytter pengene til det marked og ejer de samme positioner.
-
-| Marked | Botter | Status |
-|---|---|---|
-| Binance spot | Orion, Orion Mid, Staking, DeFi, AI-token | klar |
-| Binance futures | Quasar (gearing højst 2x) | klar; penge flyttes automatisk mellem spot og futures |
-| Saxo Bank | Atlas-botterne, Meridian, Valuta | på vej (kræver en Saxo-udviklerkonto) |
-| Polymarket / Kalshi | Delphi | på vej (kræver en wallet med USDC på Polygon) |
-| Solana / Base | Nova, Nova Classic, Comet | på vej (kræver egne wallets) |
-
-Slå til i `/etc/hub.env`: `HUB_LIVE=dry` (simulering med rigtige kurser) eller `HUB_LIVE=1` (rigtige ordrer) plus
-`BINANCE_API_KEY` og `BINANCE_API_SECRET` (kun *Spot & Margin trading*, *Futures* og *Universal Transfer*; aldrig *Withdrawals*).
-Penge, du sætter ind hos Binance, registreres med `python3 -m hub kasse indskud <kr>`; `python3 -m hub kasse` viser status.
-Stop med det samme: opret `logs/live-stop`.
-
 ## Gebyrer
 
 Alle botter regner selv realistiske gebyrer og slip ind i deres papirhandel, så alle tal i hubben er efter gebyrer:

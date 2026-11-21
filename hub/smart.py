@@ -19,9 +19,8 @@ WARMUP_S = 15 * 60          # efter start: vælg først, når alle botter har sv
 class SmartBot:
     """Grundklassen: underklassen laver _new, step og view."""
 
-    def __init__(self, path: Path, now=time.time, log=print, expected: int = 0, allow: set | None = None):
+    def __init__(self, path: Path, now=time.time, log=print, expected: int = 0):
         self.path, self.now, self.log = path, now, log
-        self.allow = allow                                   # kun disse botter (live: dem, der kan handles for rigtigt)
         self.expected, self.started = expected, now()      # så mange botter venter den på efter start
         self.lock = threading.Lock()
         self.snap: dict[str, dict] = {}        # bot -> {"at": tid, "fresh": scanner, "cands": [...]} (seneste svar)
@@ -44,8 +43,6 @@ class SmartBot:
 
     def feed(self, bot: str, cands: list[dict], fresh: bool = True) -> None:
         """Seneste svar fra én bot."""
-        if self.allow is not None and bot not in self.allow:
-            return
         with self.lock:
             self.snap[bot] = {"at": self.now(), "fresh": fresh, "cands": cands}
 

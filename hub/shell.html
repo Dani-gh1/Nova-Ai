@@ -276,8 +276,8 @@ async function load(force) {
   const my = ++seq;
   if (curKey === OV) {
     try {
-      const [rows, live, sm] = await Promise.all([api("/api/overview"), api("/api/live").catch(() => null), api("/api/smart").catch(() => null)]);
-      if (my === seq && curKey === OV) renderHub(rows, live, sm);
+      const [rows, sm] = await Promise.all([api("/api/overview"), api("/api/smart").catch(() => null)]);
+      if (my === seq && curKey === OV) renderHub(rows, sm);
     } catch (e) {}
     return;
   }
@@ -513,37 +513,6 @@ function vHandler() {
 }
 
 /* ---------- HUB-OVERBLIK (alle botter) ---------- */
-/* Kassen: rigtige penge (eller simulering), fordelt på markederne efter Smart strategi */
-function liveCard(lv) {
-  if (!lv) return null;
-  const sim = lv.mode === "dry", usd = (v) => `${nf(v, 2)} USD`, pf = lv.smart;
-  const head = h("div", { class: "head" }, h("h2", {}, sim ? "Kassen (simulering)" : "Kassen · rigtige penge"),
-    h("p", {}, "Her lægges pengene ind. Smart strategi (samme regel, men kun strategier, der kan handles for rigtigt) bestemmer, hvilken strategi pengene følger, og Kassen flytter pengene til det marked, den handles på."));
-  const rows = lv.venues.flatMap((v) => v.holdings.map((x) => ({ ...x, venue: v.name })));
-  return h("div", { class: "card" }, head,
-    lv.problem ? h("p", { class: "note", style: "color:var(--warn)" }, lv.problem) : null,
-    h("div", { class: "grid kpis", style: "margin-bottom:14px" },
-      kpi("I Kassen", `${nf(lv.value_dkk, 0)} kr.`, `${usd(lv.value_usd)} · lagt ind ${nf(lv.deposited_dkk, 0)} kr.`, tone(lv.return_pct)),
-      kpi("Afkast", pct(lv.return_pct), ["kørt i ", tick(lv.since)], tone(lv.return_pct), `gebyrer betalt: ${usd(lv.fees_usd)}`),
-      kpi("Følger", lv.following || "Kontant", pf && pf.following_gain != null ? `${pct(pf.following_gain)} siden start · Smart for rigtige penge: ${pct(pf.return_pct)}` : "venter på, at en strategi stiger"),
-      kpi("Markeder", String(lv.venues.length), lv.venues.map((v) => `${v.name}: ${usd(v.value_usd)}`).join(" · "))),
-    h("div", { class: "tw" }, h("table", {},
-      h("thead", {}, h("tr", {}, h("th", {}, "Marked"), h("th", { class: "n" }, "Værdi"), h("th", { class: "n" }, "Kontant"), h("th", { class: "n" }, "Positioner"))),
-      h("tbody", {}, lv.venues.map((v) => h("tr", {}, h("td", { class: "name" }, v.name + (v.problem ? " ⚠" : "")), h("td", { class: "n" }, usd(v.value_usd)),
-        h("td", { class: "n" }, usd(v.cash_usd)), h("td", { class: "n" }, String(v.holdings.length))))))),
-    rows.length ? h("div", { class: "tw" }, h("table", {},
-      h("thead", {}, h("tr", {}, h("th", {}, "Position"), h("th", { class: "hide-m" }, "Marked"), h("th", { class: "n" }, "Værdi"))),
-      h("tbody", {}, rows.map((x) => h("tr", {}, h("td", { class: "name" }, `${x.symbol} · ${x.side}${x.lev > 1 ? " " + x.lev + "x" : ""}`),
-        h("td", { class: "mute hide-m" }, x.venue), h("td", { class: "n" }, usd(x.usd))))))) : null,
-    lv.orders.length || lv.transfers.length ? h("div", { class: "tw" }, h("table", {},
-      h("thead", {}, h("tr", {}, h("th", {}, "Seneste"), h("th", {}, "Hvad"), h("th", { class: "n" }, "Beløb"))),
-      h("tbody", {}, [...lv.orders.map((o) => ({ ts: o.ts, what: `${o.side} ${o.dir} ${o.symbol} (${o.venue})`, usd: o.usd })),
-        ...lv.transfers.map((t) => ({ ts: t.ts, what: `Flyttet fra ${t.from} til ${t.to}`, usd: t.usd }))]
-        .sort((a, b) => b.ts - a.ts).slice(0, 12)
-        .map((x) => h("tr", {}, h("td", { class: "mute" }, when(x.ts)), h("td", { class: "name" }, x.what), h("td", { class: "n" }, usd(x.usd))))))) : null,
-    h("p", { class: "note" }, sim ? "Simulering: rigtige kurser og børsernes gebyrer, men ingen ordrer sendes. Se README for, hvordan rigtige penge slås til."
-      : "Rigtige ordrer. Indskud registreres på serveren med  python3 -m hub kasse indskud <kr>. Stop med det samme: opret filen logs/live-stop."));
-}
 /* Smart strategi: følger altid den strategi, der er steget mest siden start, og skifter i samme øjeblik, en anden overhaler */
 function smartCard(sm) {
   const head = h("div", { class: "head" }, h("h2", {}, "Smart strategi"),
@@ -571,7 +540,7 @@ function smartCard(sm) {
   requestAnimationFrame(() => { if (wrap.isConnected) drawChart(wrap, [{ key: "smart", name: "Smart strategi", curve: sm.curve }], { smart: "var(--acc)" }); });
   return box;
 }
-function renderHub(rows, live, sm) {
+function renderHub(rows, sm) {
   const link = (b) => h("a", { href: "#" + b.key }, b.name);
   const ranked = rows.filter((b) => b.best && b.best.name).sort((x, y) => y.best.return_pct - x.best.return_pct), none = rows.filter((b) => !(b.best && b.best.name));
   const running = rows.filter((b) => b.up).length;
@@ -583,7 +552,6 @@ function renderHub(rows, live, sm) {
       kpi("Bedste strategi", ranked[0] ? pct(ranked[0].best.return_pct) : "–", ranked[0] && `${ranked[0].name} · ${ranked[0].best.name}`, ranked[0] && tone(ranked[0].best.return_pct)),
       kpi("Smart strategi", sm ? pct(sm.return_pct) : "–", sm ? (sm.following ? `følger ${sm.following} (${sm.following_bot})` : "venter på, at en strategi stiger") : "starter", sm && tone(sm.return_pct), sm && ["⏱ ", tick(sm.since)])),
     smartCard(sm),
-    liveCard(live),
     h("div", { class: "card" }, h("div", { class: "head" }, h("h2", {}, "Kører de?"), h("p", {}, "Status for alle botter lige nu")),
       h("div", { class: "tw" }, h("table", {}, h("thead", {}, h("tr", {}, h("th", {}, "Bot"), h("th", { class: "hide-m" }, "Investerer i"), h("th", {}, "Status"),
         h("th", { class: "hide-m" }, "Seneste scanning"), h("th", { class: "hide-m" }, "Samler data"), h("th", { class: "hide-m" }, "Handler"),

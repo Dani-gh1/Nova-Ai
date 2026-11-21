@@ -90,12 +90,6 @@ class SmartLeader(SmartBot):
                                              "to_bot": c["bot_name"], "why": why, "smart_pct": round((st["acct"] - 1) * 100, 4)}])[-500:]
         self.log(f"Smart: {(h and h['name']) or 'start'} → {c['name']} ({c['bot_name']}): {why}")
 
-    def weights(self) -> list[tuple[dict, float]]:
-        """(strategi, andel af kontoen) – bruges af Kassen: hele kontoen følger den ene strategi."""
-        with self.lock:
-            h = self.state["held"]
-            return [(dict(h), 1.0)] if h else []
-
     def view(self) -> dict:
         with self.lock:
             st, now, h = self.state, self.now(), self.state["held"]
