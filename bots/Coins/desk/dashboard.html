@@ -1,0 +1,1190 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f9f9f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0d0d0d" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Nova AI">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="icon" type="image/svg+xml" href="/icon.svg">
+<link rel="manifest" href="/manifest.webmanifest">
+<title>Nova AI · Memecoin-desk</title>
+<style>
+:root {
+  color-scheme: light;
+  --page: #f9f9f7; --surface: #fcfcfb; --raised: #f3f3ef; --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
+  --grid: #e1e0d9; --axis: #c3c2b7; --border: rgba(11,11,11,0.09); --wash: rgba(11,11,11,0.045);
+  --accent: #2a78d6; --accent-track: #cde2fb; --good: #0ca30c; --critical: #d03b3b;
+  --shadow: 0 1px 2px rgba(11,11,11,0.04), 0 12px 32px rgba(11,11,11,0.05);
+  --bar-bg: rgba(249,249,247,0.82);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface: #1a1a19; --raised: #232322; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.09); --wash: rgba(255,255,255,0.06);
+    --accent: #3987e5; --accent-track: #0d366b; --shadow: none; --bar-bg: rgba(13,13,13,0.8);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0d0d0d; --surface: #1a1a19; --raised: #232322; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
+  --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.09); --wash: rgba(255,255,255,0.06);
+  --accent: #3987e5; --accent-track: #0d366b; --shadow: none; --bar-bg: rgba(13,13,13,0.8);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--page); color: var(--ink);
+  font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+  -webkit-text-size-adjust: 100%; -webkit-font-smoothing: antialiased;
+}
+button { font: inherit; color: inherit; }
+a { color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+[hidden] { display: none !important; }
+
+/* ---- top bar and tabs ---- */
+.bar { position: sticky; top: 0; z-index: 5; background: var(--bar-bg); backdrop-filter: saturate(160%) blur(14px); -webkit-backdrop-filter: saturate(160%) blur(14px); border-bottom: 1px solid var(--border); }
+.bar-in { max-width: 1200px; margin: 0 auto; padding: 10px 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
+.brand { display: flex; align-items: center; gap: 10px; margin-right: auto; }
+.logo { width: 32px; height: 32px; border-radius: 9px; display: block; box-shadow: 0 1px 3px rgba(0,0,0,0.25); }
+h1 .sub { font-weight: 450; color: var(--muted); }
+h1 { font-size: 16px; margin: 0; font-weight: 650; letter-spacing: -0.01em; }
+.tag { font-size: 11.5px; color: var(--ink-2); background: var(--wash); border-radius: 999px; padding: 2px 9px; white-space: nowrap; }
+.live { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-2); background: var(--wash); border-radius: 999px; padding: 5px 12px 5px 10px; white-space: nowrap; }
+.live strong { color: var(--ink); font-weight: 600; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex: none; }
+.dot.on { background: var(--good); box-shadow: 0 0 0 0 color-mix(in srgb, var(--good) 60%, transparent); animation: pulse 2s infinite; }
+@keyframes pulse { 70% { box-shadow: 0 0 0 7px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
+.icon-btn { width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--border); background: transparent; cursor: pointer; display: grid; place-items: center; }
+.icon-btn:hover { background: var(--wash); }
+.tabs { display: flex; gap: 2px; background: var(--wash); border-radius: 12px; padding: 3px; }
+.tabs button { border: 0; background: transparent; border-radius: 9px; padding: 6px 14px; font-size: 13.5px; font-weight: 500; color: var(--ink-2); cursor: pointer; white-space: nowrap; }
+.tabs button:hover { color: var(--ink); }
+.tabs button[aria-selected="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,0.12); }
+.tag .short { display: none; }
+@media (max-width: 1100px) { .tag .long { display: none; } .tag .short { display: inline; } }
+@media (max-width: 720px) { .tabs { order: 5; width: 100%; } .tabs button { flex: 1; padding: 7px 6px; } h1 .sub { display: none; } }
+/* ---- phone app (home screen): notch-safe top bar, tabs as a bottom bar ---- */
+.bar-in { padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right)); }
+.bar { padding-top: env(safe-area-inset-top); }
+@media (max-width: 720px) {
+  .bar { backdrop-filter: none; -webkit-backdrop-filter: none; background: var(--page); }
+  .tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; border-radius: 0; gap: 0;
+    padding: 6px max(8px, env(safe-area-inset-left)) calc(6px + env(safe-area-inset-bottom));
+    background: var(--bar-bg); backdrop-filter: saturate(160%) blur(14px); -webkit-backdrop-filter: saturate(160%) blur(14px);
+    border-top: 1px solid var(--border); }
+  .tabs button { padding: 10px 4px; font-size: 13px; border-radius: 10px; }
+  .tabs button[aria-selected="true"] { background: var(--wash); box-shadow: none; color: var(--accent); font-weight: 600; }
+  body { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
+  html, body { overscroll-behavior-y: none; }
+  button, .tabs button { -webkit-tap-highlight-color: transparent; }
+}
+
+.wrap { max-width: 1200px; margin: 0 auto; padding: 20px 16px 56px; }
+.panel { display: grid; gap: 16px; }
+.grid2 { display: grid; gap: 16px; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+.kpis { display: grid; gap: 16px; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 900px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 760px) { .grid2 { grid-template-columns: minmax(0, 1fr); } }
+
+/* ---- cards ---- */
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 20px; min-width: 0; box-shadow: var(--shadow); container-type: inline-size; }
+@media (max-width: 560px) { .card { padding: 16px; border-radius: 14px; } }
+.card h2 { font-size: 15px; font-weight: 650; margin: 0; letter-spacing: -0.01em; }
+.card .sub { color: var(--ink-2); font-size: 12.5px; margin: 3px 0 0; max-width: 70ch; }
+.card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.eyebrow { color: var(--ink-2); font-size: 11.5px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+.note { color: var(--ink-2); font-size: 12.5px; }
+.empty { color: var(--ink-2); padding: 8px 0 2px; font-size: 13px; }
+.ghost { font-size: 12.5px; color: var(--ink-2); background: transparent; border: 1px solid var(--border); border-radius: 9px; padding: 5px 11px; cursor: pointer; white-space: nowrap; }
+.ghost:hover, .ghost[aria-pressed="true"] { background: var(--wash); color: var(--ink); }
+
+.hero { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 20px 32px; align-items: end;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 13%, var(--surface)), var(--surface) 62%); }
+@media (max-width: 760px) { .hero { grid-template-columns: minmax(0, 1fr); } }
+.hero .value { font-size: 60px; line-height: 1.02; font-weight: 700; letter-spacing: -0.035em; margin: 8px 0 12px; }
+@media (max-width: 420px) { .hero .value { font-size: 46px; } }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { background: var(--wash); border-radius: 10px; padding: 6px 11px; font-size: 12.5px; color: var(--ink-2); display: inline-flex; gap: 8px; align-items: baseline; white-space: nowrap; }
+.chip b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+.facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.fact { border-left: 2px solid var(--border); padding-left: 12px; min-width: 0; }
+.fact .v { font-size: 18px; font-weight: 650; margin-top: 2px; white-space: nowrap; }
+.tile .value { font-size: 28px; line-height: 1.2; font-weight: 680; letter-spacing: -0.02em; margin: 6px 0 6px; white-space: nowrap; }
+
+.delta { display: inline-flex; align-items: baseline; gap: 0.28em; white-space: nowrap; }
+.delta .glyph { font-size: 0.66em; color: var(--muted); }
+.delta.up .glyph { color: var(--good); }
+.delta.down .glyph { color: var(--critical); }
+.hero .value .glyph { font-size: 0.42em; position: relative; top: -0.22em; }
+.pill { display: inline-flex; align-items: baseline; gap: 5px; border-radius: 999px; padding: 2px 10px; font-size: 12.5px; font-weight: 600; background: var(--wash); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.pill.up { background: color-mix(in srgb, var(--good) 14%, transparent); }
+.pill.down { background: color-mix(in srgb, var(--critical) 14%, transparent); }
+.pill .glyph { font-size: 0.72em; }
+.pill.up .glyph { color: var(--good); }
+.pill.down .glyph { color: var(--critical); }
+.badge { display: inline-block; border-radius: 999px; padding: 1px 9px; font-size: 11.5px; font-weight: 500; color: var(--ink-2); background: var(--wash); white-space: nowrap; }
+.badge.accent { color: var(--ink); background: color-mix(in srgb, var(--accent) 18%, transparent); }
+
+/* ---- chart ---- */
+.chart { position: relative; }
+.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.chart text { font: 11.5px system-ui, -apple-system, "Segoe UI", sans-serif; fill: var(--muted); font-variant-numeric: tabular-nums; }
+.chart text.end { fill: var(--ink); font-size: 12.5px; font-weight: 650; }
+
+/* ---- rows: lists that read as tables on wide screens and as cards on narrow ones ---- */
+.rows { display: grid; }
+.rhead, .row > summary, .row.flat { display: grid; gap: 12px; align-items: center; }
+.rhead { color: var(--ink-2); font-size: 11.5px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; padding: 0 10px 8px; }
+.row { border-top: 1px solid var(--grid); }
+.row > summary, .row.flat { padding: 11px 10px; border-radius: 10px; }
+.row > summary { cursor: pointer; list-style: none; }
+.row > summary::-webkit-details-marker { display: none; }
+.row > summary:hover, .row.flat:hover { background: var(--wash); }
+.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.coin { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.avatar { width: 30px; height: 30px; border-radius: 50%; background: var(--wash); color: var(--ink-2); display: grid; place-items: center; font-size: 12.5px; font-weight: 650; flex: none; text-transform: uppercase; }
+.coin .nm { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.coin .mint { color: var(--muted); font-size: 11.5px; }
+.coin .two { min-width: 0; display: grid; }
+.chev { width: 16px; height: 16px; color: var(--muted); transition: transform 0.15s; justify-self: end; }
+details[open] > summary .chev { transform: rotate(180deg); }
+.cols-trades { grid-template-columns: minmax(150px, 1.5fr) 104px 100px 76px minmax(128px, 1fr) 84px 118px 16px; }
+.cols-open { grid-template-columns: minmax(150px, 1.5fr) 104px 100px 76px minmax(128px, 1fr) 150px 118px 16px; }
+.cols-window { grid-template-columns: minmax(150px, 1.3fr) 70px 92px 86px 86px 100px minmax(170px, 1.5fr); }
+.cols-days { grid-template-columns: minmax(96px, 1.1fr) 62px 62px minmax(130px, 2fr) 76px; }
+.cols-kills { grid-template-columns: 112px minmax(120px, 1fr) minmax(170px, 1.9fr); }
+.only-narrow { display: none; }
+.detail { padding: 6px 10px 18px 50px; display: grid; gap: 16px; }
+.kv { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px 20px; }
+.kv .v { font-weight: 600; margin-top: 1px; font-variant-numeric: tabular-nums; }
+.link { color: var(--ink-2); font-size: 12.5px; text-underline-offset: 3px; }
+.link:hover { color: var(--ink); }
+.status-text { color: var(--ink-2); font-size: 12.5px; min-width: 0; }
+.status-text small { color: var(--muted); display: block; font-size: 11.5px; }
+/* Below the width its columns need, a list turns into stacked cards. The width is the card's
+   (a container query), so a half-width card adapts even on a wide screen. */
+@container (max-width: 880px) {
+  .rows.wide > .rhead { display: none; }
+  .rows.wide > .rhead + .row { border-top: 0; }
+  .rows.wide > .row > summary, .rows.wide > .row.flat { grid-template-columns: minmax(0, 1fr) auto !important; padding: 11px 4px; gap: 4px 12px; }
+  .rows.wide .hide-narrow { display: none !important; }
+  .rows.wide .only-narrow { display: block; grid-column: 1 / -1; color: var(--ink-2); font-size: 12.5px; }
+  .rows.wide > .row > summary .chev { display: none; }
+  .rows.wide .detail { padding-left: 4px; }
+}
+@container (max-width: 470px) {
+  .rows:not(.wide) > .rhead { display: none; }
+  .rows:not(.wide) > .rhead + .row { border-top: 0; }
+  .rows:not(.wide) > .row > summary, .rows:not(.wide) > .row.flat { grid-template-columns: minmax(0, 1fr) auto !important; padding: 11px 4px; gap: 4px 12px; }
+  .rows:not(.wide) .hide-narrow { display: none !important; }
+  .rows:not(.wide) .only-narrow { display: block; grid-column: 1 / -1; color: var(--ink-2); font-size: 12.5px; }
+  .rows:not(.wide) > .row > summary .chev { display: none; }
+  .rows:not(.wide) .detail { padding-left: 4px; }
+}
+
+/* ---- bars and meters ---- */
+.bars { display: grid; gap: 2px; }
+.bar-row { display: grid; grid-template-columns: minmax(96px, 46%) minmax(0, 1fr); gap: 12px; align-items: center; padding: 6px 8px; margin: 0 -8px; border-radius: 8px; }
+.bar-row:hover, .bar-row:focus-visible { background: var(--wash); }
+.bar-row .name { font-size: 13px; overflow-wrap: anywhere; }
+.bar-line { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.bar-mark { height: 12px; min-width: 2px; background: var(--accent); border-radius: 0 4px 4px 0; flex: none; }
+.bar-val { font-size: 12.5px; font-variant-numeric: tabular-nums; min-width: 28px; }
+.meters { display: grid; gap: 14px; }
+.meter-row { display: grid; grid-template-columns: minmax(84px, 30%) minmax(0, 1fr) 44px; gap: 4px 12px; align-items: center; }
+.meter-row .parts { grid-column: 1 / -1; color: var(--ink-2); font-size: 12px; }
+.track { position: relative; height: 8px; border-radius: 999px; background: var(--accent-track); }
+.track .fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 999px; background: var(--accent); }
+.track .limit { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; background: var(--ink-2); }
+.key { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-2); font-size: 12px; white-space: nowrap; }
+.key i { width: 2px; height: 12px; background: var(--ink-2); display: inline-block; }
+.minis { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px 20px; }
+.mini .track { height: 6px; margin-top: 5px; }
+.mini .lbl { display: flex; justify-content: space-between; font-size: 12px; color: var(--ink-2); }
+.mini .lbl b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+@media (max-width: 560px) {
+  .meter-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .meter-row .track { grid-column: 1 / -1; grid-row: 2; }
+  .coin .mint { display: none; }
+}
+/* daily return: a bar growing left (loss) or right (gain) from a centre line */
+.daybar { display: grid; grid-template-columns: minmax(0, 1fr) 1px minmax(0, 1fr) 64px; align-items: center; gap: 0; }
+.daybar .mid { background: var(--axis); height: 18px; }
+.daybar .neg { display: flex; justify-content: flex-end; }
+.daybar .neg i, .daybar .pos i { display: block; height: 12px; min-width: 0; }
+.daybar .neg i { background: var(--critical); border-radius: 4px 0 0 4px; }
+.daybar .pos i { background: var(--good); border-radius: 0 4px 4px 0; }
+.daybar .lab { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
+
+.stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+.stat { background: var(--raised); border-radius: 12px; padding: 12px 14px; min-width: 0; }
+.stat .v { font-size: 20px; font-weight: 680; letter-spacing: -0.01em; margin-top: 4px; white-space: nowrap; }
+.stat .n { color: var(--ink-2); font-size: 12px; margin-top: 2px; }
+.progress-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 8px; flex-wrap: wrap; }
+.progress-head .big { font-size: 22px; font-weight: 680; font-variant-numeric: tabular-nums; }
+.checks { list-style: none; margin: 18px 0 0; padding: 0; display: grid; gap: 10px; }
+.check { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 4px 10px; align-items: start; background: var(--raised); border-radius: 12px; padding: 12px 14px; }
+.check .mark { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 700; color: #fff; background: var(--muted); }
+.check.ok .mark { background: var(--good); }
+.check.bad .mark { background: var(--critical); }
+.check .t { font-weight: 600; }
+.check .v { font-weight: 680; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.check .why { grid-column: 2 / -1; color: var(--ink-2); font-size: 12.5px; }
+.speed-grid { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 0; font-variant-numeric: tabular-nums; }
+.speed-grid > div { padding: 9px 0; border-bottom: 1px solid var(--grid); }
+.speed-grid .h { color: var(--muted); font-size: 12px; padding-top: 0; }
+.speed-grid .r { text-align: right; font-weight: 600; padding-left: 18px; }
+.hourbars { display: grid; grid-template-columns: repeat(24, minmax(0, 1fr)); gap: 3px; align-items: end; height: 90px; margin-top: 18px; }
+.hourbars .b { background: var(--accent); border-radius: 3px 3px 0 0; min-height: 2px; outline: none; }
+.hourbars .b.none { background: var(--grid); }
+.hourbars .b:hover, .hourbars .b:focus-visible { background: var(--ink-2); }
+.tgrid { display: grid; gap: 0; font-variant-numeric: tabular-nums; }
+.tgrid > div { padding: 9px 0; border-bottom: 1px solid var(--grid); min-width: 0; }
+.tgrid .h { color: var(--muted); font-size: 12px; padding-top: 0; }
+.tgrid .r { text-align: right; padding-left: 14px; white-space: nowrap; }
+.tgrid .cur { font-weight: 700; }
+.tgrid4 { grid-template-columns: minmax(0, 1fr) auto auto auto; }
+.tgrid3 { grid-template-columns: minmax(0, 1fr) auto auto; }
+.hourlabels { display: grid; grid-template-columns: repeat(24, minmax(0, 1fr)); gap: 3px; margin-top: 4px; color: var(--muted); font-size: 10.5px; text-align: center; }
+
+.feed { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.feed li { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 12px; font-size: 13px; align-items: baseline; }
+.feed time { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 12px; white-space: nowrap; }
+.strong { font-weight: 600; }
+
+.rules { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 12px; }
+.rule { background: var(--raised); border-radius: 12px; padding: 14px 16px; }
+.rule h3 { margin: 0 0 8px; font-size: 13px; font-weight: 650; }
+.rule ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; font-size: 13px; color: var(--ink-2); }
+.rule li b { color: var(--ink); font-weight: 600; }
+
+.tip { position: fixed; z-index: 10; pointer-events: none; background: var(--surface); color: var(--ink); border: 1px solid var(--border); border-radius: 10px; padding: 8px 11px; font-size: 12.5px; box-shadow: 0 8px 24px rgba(0,0,0,0.16); max-width: 260px; }
+.tip b { display: block; font-size: 14px; font-weight: 650; }
+.tip span { color: var(--ink-2); display: block; }
+.stale main { opacity: 0.55; }
+footer { color: var(--muted); font-size: 12px; margin-top: 22px; }
+@media (prefers-reduced-motion: reduce) { .dot.on { animation: none; } .chev { transition: none; } }
+</style>
+</head>
+<body>
+<header class="bar">
+  <div class="bar-in">
+    <div class="brand">
+      <img class="logo" src="/icon.svg" alt="" width="32" height="32">
+      <h1>Nova AI <span class="sub">· Memecoin-desk</span></h1>
+      <span class="tag"><span class="long">Papirhandel · ingen rigtige penge</span><span class="short">Papirhandel</span></span>
+    </div>
+    <div class="tabs" role="tablist" aria-label="Sektioner" id="tabs"></div>
+    <div class="live" id="status" role="status">Henter …</div>
+    <button class="icon-btn" id="theme" type="button" aria-label="Skift mellem lyst og mørkt udseende"></button>
+  </div>
+</header>
+<div class="wrap">
+  <main id="main"></main>
+  <footer id="foot"></footer>
+</div>
+<div class="tip" id="tip" hidden></div>
+
+<script>
+"use strict";
+const SVG = "http://www.w3.org/2000/svg";
+const $ = (id) => document.getElementById(id);
+
+// Everything that comes from the desk (coin names, reasons, addresses) is untrusted. It only
+// reaches the DOM through textContent / createTextNode in h(), and addresses are checked
+// against the base58 alphabet before they are put in a link.
+function h(tag, props, ...kids) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(props || {})) {
+    if (v == null || v === false) continue;
+    if (k === "class") e.className = v;
+    else if (k === "text") e.textContent = v;
+    else if (k.startsWith("on")) e.addEventListener(k.slice(2), v);
+    else e.setAttribute(k, v === true ? "" : v);
+  }
+  for (const kid of kids.flat(3)) {
+    if (kid == null || kid === false) continue;
+    e.append(kid.nodeType ? kid : document.createTextNode(String(kid)));
+  }
+  return e;
+}
+function s(tag, attrs, text) {
+  const e = document.createElementNS(SVG, tag);
+  for (const [k, v] of Object.entries(attrs || {})) e.setAttribute(k, v);
+  if (text != null) e.textContent = text;
+  return e;
+}
+function icon(d, size = 16) {
+  const e = s("svg", { viewBox: "0 0 24 24", width: size, height: size, fill: "none", stroke: "currentColor",
+    "stroke-width": 2, "stroke-linecap": "round", "stroke-linejoin": "round", "aria-hidden": "true" });
+  e.append(s("path", { d }));
+  return e;
+}
+const ICONS = {
+  chev: "M6 9l6 6 6-6",
+  moon: "M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z",
+  sun: "M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0z",
+  out: "M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5",
+};
+
+// ---- formatting (Danish) ------------------------------------------------------
+const nf = (d) => new Intl.NumberFormat("da-DK", { minimumFractionDigits: d, maximumFractionDigits: d });
+const sign = (x) => (x > 0 ? "+" : x < 0 ? "−" : "");
+const pct = (x, d = 1) => sign(x) + nf(d).format(Math.abs(x)) + " %";
+const share = (x, d = 1) => nf(d).format(x) + " %";
+const num = (x, d = 0) => nf(d).format(x);
+const pad = (n) => String(n).padStart(2, "0");
+const MONTHS = ["jan.", "feb.", "mar.", "apr.", "maj", "jun.", "jul.", "aug.", "sep.", "okt.", "nov.", "dec."];
+const DAYS = ["søn.", "man.", "tir.", "ons.", "tor.", "fre.", "lør."];
+function clock(ts) { const d = new Date(ts * 1000); return pad(d.getHours()) + ":" + pad(d.getMinutes()); }
+function day(ts) { const d = new Date(ts * 1000); return d.getDate() + ". " + MONTHS[d.getMonth()]; }
+function when(ts) { return day(ts) + " kl. " + clock(ts); }
+function duration(sec) {
+  if (sec < 90) return Math.round(sec) + " sek.";
+  if (sec < 5400) return Math.round(sec / 60) + " min.";
+  if (sec < 172800) return num(sec / 3600, 1) + " t.";
+  return num(sec / 86400, 1) + " d.";
+}
+// Market figures are real dollars (not paper money), so these keep the $.
+function money(x) {
+  if (x == null) return "–";
+  if (x >= 1e6) return "$" + num(x / 1e6, x >= 1e7 ? 0 : 1) + " mio.";
+  if (x >= 1e3) return "$" + num(x / 1e3) + "k";
+  return "$" + num(x);
+}
+function price(x) { return x ? "$" + new Intl.NumberFormat("da-DK", { maximumSignificantDigits: 4 }).format(x) : "–"; }
+const isAddress = (a) => typeof a === "string" && /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(a);
+function shortMint(m) { return m ? m.slice(0, 4) + "…" + m.slice(-4) : ""; }
+
+function dirOf(v) { return v > 0.0005 ? "up" : v < -0.0005 ? "down" : "flat"; }
+function glyph(dir) {
+  return dir !== "flat" && h("span", { class: "glyph", role: "img", "aria-label": dir === "up" ? "gevinst" : "tab", text: dir === "up" ? "▲" : "▼" });
+}
+function delta(value, text) { const d = dirOf(value); return h("span", { class: "delta " + d }, glyph(d), h("span", { text })); }
+function pill(value, text) { const d = dirOf(value); return h("span", { class: "pill " + d }, glyph(d), h("span", { text })); }
+
+const RULES = {
+  low_volume_1h: "For lav 1-times volumen", low_liquidity: "For lav likviditet",
+  already_pumped: "Allerede steget for meget på 1 time", mint_authority: "Mint-rettighed ikke tilbagekaldt",
+  freeze_authority: "Freeze-rettighed ikke tilbagekaldt", lp_unlocked: "LP ikke brændt eller låst",
+  top10_concentration: "Top 10 ejer for meget", dev_holding: "Udvikleren ejer for meget",
+  dev_rugs: "Udvikleren har tidligere rugs", bundled: "Bundtet lancering", token_extension: "Farlig token-funktion",
+  data_unavailable: "Data kunne ikke bekræftes", score_below_min: "Score under grænsen",
+  price_impact: "Ordren ville flytte prisen for meget", reentry_cooldown: "Karantæne efter salg",
+  max_positions: "Maks. antal positioner nået", already_holding: "Ejes allerede",
+  no_route: "Ingen handelsrute", no_cash: "Ikke nok kontanter", executor_other: "Afvist af Executor",
+};
+const STAGES = { filter: "Filter", analyst: "Analyst", executor: "Executor", risk: "Risk" };
+const PARTS = [["momentum", "Momentum"], ["unique_buyers", "Købere"], ["buy_sell", "Køb/salg"],
+               ["holder_growth", "Holdere"], ["liq_mcap", "Likviditet"], ["smart_wallets", "Smart wallets"]];
+const EXITS = { stop_loss: "Stop loss", trailing_stop: "Trailing stop", stale_price: "Ingen kurs" };
+const ruleName = (code) => RULES[code] || code;
+
+function reasonText(stage, r) {
+  const name = ruleName(r.code);
+  if (stage === "analyst") {
+    const m = /score ([\d.]+) < ([\d.]+)/.exec(r.detail || "");
+    return m ? "Score " + num(+m[1], 1) + " (kræver " + num(+m[2]) + ")" : name;
+  }
+  // Purely numeric details ("$34,245 < $50,000", "+136.0% in 1h > +80%") are shown, with Danish separators.
+  if (stage === "filter" && /^[-+$\d.,% <>]+( in 1h)?[-+$\d.,% <>]*$/.test(r.detail || "")) {
+    const dk = r.detail.replace(/[.,]/g, (c) => (c === "." ? "," : "."));
+    return name + " (" + dk.replace(" in 1h", " på 1 t.") + ")";
+  }
+  return name;
+}
+const reasonsText = (stage, list) => list.map((r) => reasonText(stage, r)).join(" · ");
+
+// ---- shared tooltip -----------------------------------------------------------
+const tip = $("tip");
+function showTip(x, y, strong, lines) {
+  tip.replaceChildren(h("b", { text: strong }), ...lines.map((t) => h("span", { text: t })));
+  tip.hidden = false;
+  const r = tip.getBoundingClientRect();
+  let left = x + 14, top = y - r.height - 12;
+  if (left + r.width > innerWidth - 8) left = x - r.width - 14;
+  if (left < 8) left = 8;
+  if (top < 8) top = y + 16;
+  tip.style.left = left + "px"; tip.style.top = top + "px";
+}
+function hideTip() { tip.hidden = true; }
+function tipTarget(el, strong, lines) {
+  el.addEventListener("pointermove", (e) => showTip(e.clientX, e.clientY, strong, lines));
+  el.addEventListener("pointerleave", hideTip);
+  el.addEventListener("focus", () => { const r = el.getBoundingClientRect(); showTip(r.left + r.width / 2, r.top, strong, lines); });
+  el.addEventListener("blur", hideTip);
+}
+
+// ---- numbers derived from the equity curve --------------------------------------
+function equityAt(curve, t) {           // the account value at time t (the last point at or before it)
+  let v = curve[0][1];
+  for (const p of curve) { if (p[0] <= t) v = p[1]; else break; }
+  return v;
+}
+function maxDrawdown(curve) {
+  let peak = -Infinity, worst = 0;
+  for (const [, v] of curve) { peak = Math.max(peak, v); worst = Math.min(worst, (v / peak - 1) * 100); }
+  return worst;
+}
+function trailing(state, seconds) {      // return over the last `seconds`, or null if the account is younger
+  const c = state.equity_curve, now = state.generated_ts;
+  if (!c.length || c[0][0] > now - seconds) return null;
+  return (state.account.equity / equityAt(c, now - seconds) - 1) * 100;
+}
+function dailyRows(state) {
+  const c = state.equity_curve;
+  if (!c.length) return [];
+  const startOf = (ts) => { const d = new Date(ts * 1000); d.setHours(0, 0, 0, 0); return d.getTime() / 1000; };
+  const base = state.account.starting_equity || 1, last = c[c.length - 1][0], out = [];
+  for (let d0 = startOf(c[0][0]); d0 <= last; ) {
+    const next = startOf(d0 + 36 * 3600);            // local midnight of the following day (DST-safe)
+    const open = d0 <= c[0][0] ? c[0][1] : equityAt(c, d0), close = equityAt(c, Math.min(next - 1, last));
+    const trades = state.closed_trades.filter((t) => t.closed_ts >= d0 && t.closed_ts < next);
+    out.push({ ts: d0, ret: (close / open - 1) * 100, cum: (close / base - 1) * 100,
+               trades: trades.length, wins: trades.filter((t) => t.pnl_usd > 0).length });
+    d0 = next;
+  }
+  return out.reverse();
+}
+function tradeStats(state) {
+  const t = state.closed_trades;
+  if (!t.length) return null;
+  const wins = t.filter((x) => x.pnl_usd > 0), losses = t.filter((x) => x.pnl_usd <= 0);
+  const avg = (a, f) => (a.length ? a.reduce((sum, x) => sum + f(x), 0) / a.length : null);
+  const gain = wins.reduce((sum, x) => sum + x.pnl_usd, 0), loss = -losses.reduce((sum, x) => sum + x.pnl_usd, 0);
+  const costs = t.filter((x) => x.buy_impact_pct != null && x.sell_impact_pct != null);
+  const days = Math.max(1 / 24, (state.generated_ts - state.status.first_event_ts) / 86400);
+  return {
+    avgAll: avg(t, (x) => x.pnl_pct), avgWin: avg(wins, (x) => x.pnl_pct), avgLoss: avg(losses, (x) => x.pnl_pct),
+    best: t.reduce((a, b) => (b.pnl_pct > a.pnl_pct ? b : a)), worst: t.reduce((a, b) => (b.pnl_pct < a.pnl_pct ? b : a)),
+    profitFactor: loss > 0 ? gain / loss : null, avgHold: avg(t, (x) => x.duration_s), perDay: t.length / days,
+    avgCost: avg(costs, (x) => x.buy_impact_pct + x.sell_impact_pct), avgStake: avg(t, (x) => x.stake_pct),
+  };
+}
+
+// ---- pieces -------------------------------------------------------------------
+function card(title, sub, body, action, cls) {
+  return h("section", { class: "card" + (cls ? " " + cls : "") },
+    h("div", { class: "card-head" },
+      h("div", null, h("h2", { text: title }), sub && h("p", { class: "sub", text: sub })), action),
+    body);
+}
+function coin(t) {
+  const sym = t.symbol || "?";
+  return h("div", { class: "coin" },
+    h("div", { class: "avatar", "aria-hidden": "true", text: sym.replace(/[^\p{L}\p{N}]/gu, "").slice(0, 2) || "?" }),
+    h("div", { class: "two" }, h("span", { class: "nm", text: sym }), h("span", { class: "mint", text: shortMint(t.mint) })));
+}
+function dexLink(t) {
+  const addr = isAddress(t.pair_address) ? t.pair_address : isAddress(t.mint) ? t.mint : null;
+  return addr && h("a", { class: "link", href: "https://dexscreener.com/solana/" + addr, target: "_blank", rel: "noopener noreferrer" },
+    "Se mønten på DexScreener ", icon(ICONS.out, 13));
+}
+function kv(pairs) {
+  return h("div", { class: "kv" }, pairs.filter(Boolean).map(([k, v]) =>
+    h("div", null, h("div", { class: "note", text: k }), h("div", { class: "v" }, v))));
+}
+function componentMeters(components) {
+  if (!components) return null;
+  return h("div", null,
+    h("div", { class: "note", style: "margin-bottom:8px", text: "Scoren ved købet, delt på de seks faktorer (0–100)" }),
+    h("div", { class: "minis" }, PARTS.map(([k, name]) => {
+      const v = components[k];
+      return h("div", { class: "mini" },
+        h("div", { class: "lbl" }, h("span", { text: name }), h("b", { text: v == null ? "ikke med" : num(v) })),
+        h("div", { class: "track", role: "img", "aria-label": name + (v == null ? ": ikke med i scoren" : ": " + num(v) + " af 100") },
+          v != null && h("div", { class: "fill", style: "width:" + Math.max(0, Math.min(100, v)) + "%" })));
+    })));
+}
+
+// ---- overview -----------------------------------------------------------------
+function heroCard(state) {
+  const a = state.account;
+  const today = (() => { const d = new Date(state.generated_ts * 1000); d.setHours(0, 0, 0, 0); return state.generated_ts - d.getTime() / 1000; })();
+  const spans = [["I dag", trailing(state, today)], ["24 timer", trailing(state, 86400)],
+                 ["7 dage", trailing(state, 7 * 86400)], ["30 dage", trailing(state, 30 * 86400)]]
+    .filter(([, v]) => v != null);
+  const fact = (label, value) => h("div", { class: "fact" }, h("div", { class: "note", text: label }), h("div", { class: "v" }, value));
+  return h("section", { class: "card hero" },
+    h("div", null,
+      h("div", { class: "eyebrow", text: "Afkast siden start" }),
+      h("div", { class: "value" }, delta(a.return_pct, pct(a.return_pct, 2))),
+      h("div", { class: "chips" }, spans.map(([label, v]) => h("span", { class: "chip" }, label, h("b", { text: pct(v, 2) }))))),
+    h("div", { class: "facts" },
+      fact("Realiseret", delta(a.realized_pct, pct(a.realized_pct, 2))),
+      fact("Urealiseret", delta(a.unrealized_pct, pct(a.unrealized_pct, 2))),
+      fact("I positioner", share(a.invested_pct))));
+}
+
+function kpis(state) {
+  const a = state.account, st = tradeStats(state), dd = state.equity_curve.length ? maxDrawdown(state.equity_curve) : 0;
+  const tile = (label, value, note) => h("div", { class: "card tile" },
+    h("div", { class: "eyebrow", text: label }), h("div", { class: "value" }, value), h("div", { class: "note" }, note));
+  const rate = a.win_rate == null ? null : a.win_rate;
+  return h("div", { class: "kpis" },
+    tile("Lukkede handler", num(a.closed_trades), a.closed_trades ? a.wins + " vundet · " + a.losses + " tabt" : "ingen endnu"),
+    tile("Andel vundne", rate == null ? "–" : share(rate, 0),
+      rate == null ? "ingen handler endnu" : h("div", { class: "track", role: "img", "aria-label": share(rate, 0) + " af handlerne gav gevinst" },
+        h("div", { class: "fill", style: "width:" + rate + "%" }))),
+    tile("Gennemsnit pr. handel", st ? delta(st.avgAll, pct(st.avgAll)) : "–",
+      st ? "af indsatsen · vundne " + (st.avgWin == null ? "–" : pct(st.avgWin)) + " · tabte " + (st.avgLoss == null ? "–" : pct(st.avgLoss)) : "af indsatsen"),
+    tile("Største fald fra top", pct(dd, 2), "målt på kontoens værdi siden start"));
+}
+
+function niceTicks(lo, hi, n) {
+  const raw = (hi - lo || 1) / n, mag = Math.pow(10, Math.floor(Math.log10(raw))), norm = raw / mag;
+  const step = (norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 5 ? 5 : 10) * mag;
+  const a = Math.floor(lo / step + 1e-9) * step, b = Math.ceil(hi / step - 1e-9) * step, out = [];
+  for (let v = a; v <= b + step * 1e-6; v += step) out.push(+v.toFixed(8));
+  return { ticks: out, step };
+}
+const TIME_STEPS = [300, 600, 900, 1800, 3600, 7200, 10800, 21600, 43200, 86400, 172800, 604800];
+function timeTicks(t0, t1, target) {
+  const step = TIME_STEPS.find((st) => (t1 - t0) / st <= target) || TIME_STEPS[TIME_STEPS.length - 1];
+  const off = new Date(t0 * 1000).getTimezoneOffset() * 60, out = [];
+  for (let t = Math.ceil((t0 - off) / step) * step + off; t <= t1; t += step) out.push(t);
+  return { ticks: out, step };
+}
+function pctTick(v, step) { return pct(v, step >= 1 ? 0 : step >= 0.1 ? 1 : 2); }
+
+// Smooth line through the points: monotone cubic (Fritsch-Carlson), so the curve never
+// overshoots above a peak or below a dip that the data does not contain.
+function smoothPath(pts) {
+  const f = (v) => v.toFixed(1);
+  const p = pts.filter((q, i) => i === 0 || q[0] > pts[i - 1][0]);       // x must increase
+  const n = p.length;
+  if (n === 0) return "";
+  if (n < 3) return "M" + p.map((q) => f(q[0]) + "," + f(q[1])).join("L");
+  const dx = [], sl = [];
+  for (let i = 0; i < n - 1; i++) { dx.push(p[i + 1][0] - p[i][0]); sl.push((p[i + 1][1] - p[i][1]) / dx[i]); }
+  const m = [sl[0]];
+  for (let i = 1; i < n - 1; i++) m.push(sl[i - 1] * sl[i] <= 0 ? 0 : (sl[i - 1] + sl[i]) / 2);
+  m.push(sl[n - 2]);
+  for (let i = 0; i < n - 1; i++) {
+    if (sl[i] === 0) { m[i] = 0; m[i + 1] = 0; continue; }
+    const a = m[i] / sl[i], b = m[i + 1] / sl[i], r = a * a + b * b;
+    if (r > 9) { const t = 3 / Math.sqrt(r); m[i] = t * a * sl[i]; m[i + 1] = t * b * sl[i]; }
+  }
+  let d = "M" + f(p[0][0]) + "," + f(p[0][1]);
+  for (let i = 0; i < n - 1; i++) {
+    const h3 = dx[i] / 3;
+    d += "C" + f(p[i][0] + h3) + "," + f(p[i][1] + m[i] * h3) + " " + f(p[i + 1][0] - h3) + "," + f(p[i + 1][1] - m[i + 1] * h3) + " " + f(p[i + 1][0]) + "," + f(p[i + 1][1]);
+  }
+  return d;
+}
+
+let chartIndex = null;                       // survives re-renders so a keyboard user keeps their place
+// pts: [timestamp, return since start in %]
+function returnChart(box, pts) {
+  box.replaceChildren();
+  const W = Math.max(280, box.clientWidth), H = 280, m = { t: 22, r: 78, b: 30, l: 58 };
+  const svg = s("svg", { viewBox: "0 0 " + W + " " + H, tabindex: "0", role: "img" });
+  let lo = Math.min(0, ...pts.map((p) => p[1])), hi = Math.max(0, ...pts.map((p) => p[1]));
+  if (hi - lo < 0.2) { lo -= 0.1; hi += 0.1; }
+  const yt = niceTicks(lo, hi, 4);
+  lo = yt.ticks[0]; hi = yt.ticks[yt.ticks.length - 1];
+  const t0 = pts[0][0], t1 = Math.max(pts[pts.length - 1][0], t0 + 60);
+  const x = (t) => m.l + (t - t0) / (t1 - t0) * (W - m.l - m.r);
+  const y = (v) => m.t + (hi - v) / (hi - lo) * (H - m.t - m.b);
+
+  const defs = s("defs"), grad = s("linearGradient", { id: "wash", x1: 0, x2: 0, y1: 0, y2: 1 });
+  grad.append(s("stop", { offset: "0", "stop-color": "var(--accent)", "stop-opacity": 0.2 }),
+              s("stop", { offset: "1", "stop-color": "var(--accent)", "stop-opacity": 0.02 }));
+  defs.append(grad); svg.append(defs);
+  for (const v of yt.ticks) {
+    svg.append(s("line", { x1: m.l, x2: W - m.r, y1: y(v), y2: y(v), stroke: "var(--grid)", "stroke-width": 1 }));
+    svg.append(s("text", { x: m.l - 8, y: y(v) + 4, "text-anchor": "end" }, pctTick(v, yt.step)));
+  }
+  const xt = timeTicks(t0, t1, W < 520 ? 3 : 6);
+  for (const t of xt.ticks) svg.append(s("text", { x: x(t), y: H - 9, "text-anchor": "middle" }, xt.step >= 86400 ? day(t) : clock(t)));
+  svg.append(s("line", { x1: m.l, x2: W - m.r, y1: y(0), y2: y(0), stroke: "var(--axis)", "stroke-width": 1 }));   // 0 % = the start
+  const line = smoothPath(pts.map((p) => [x(p[0]), y(p[1])]));
+  svg.append(s("path", { d: line + "L" + x(pts[pts.length - 1][0]).toFixed(1) + " " + y(0).toFixed(1) + "L" + x(t0).toFixed(1) + " " + y(0).toFixed(1) + "Z", fill: "url(#wash)" }));
+  svg.append(s("path", { d: line, fill: "none", stroke: "var(--accent)", "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }));
+  const end = pts[pts.length - 1];
+  svg.append(s("circle", { cx: x(end[0]), cy: y(end[1]), r: 5, fill: "var(--accent)", stroke: "var(--surface)", "stroke-width": 2 }));
+  svg.append(s("text", { class: "end", x: x(end[0]) + 10, y: y(end[1]) + 4 }, pct(end[1], 2)));
+
+  const hair = s("line", { y1: m.t, y2: H - m.b, stroke: "var(--axis)", "stroke-width": 1, visibility: "hidden" });
+  const focus = s("circle", { r: 5, fill: "var(--accent)", stroke: "var(--surface)", "stroke-width": 2, visibility: "hidden" });
+  svg.append(hair, focus);
+  function show(i) {
+    chartIndex = i;
+    const p = pts[i], r = svg.getBoundingClientRect(), k = r.width / W;
+    hair.setAttribute("x1", x(p[0])); hair.setAttribute("x2", x(p[0])); hair.setAttribute("visibility", "visible");
+    focus.setAttribute("cx", x(p[0])); focus.setAttribute("cy", y(p[1])); focus.setAttribute("visibility", "visible");
+    showTip(r.left + x(p[0]) * k, r.top + y(p[1]) * k, pct(p[1], 2), [when(p[0]), "afkast siden start"]);
+  }
+  function hide() { hair.setAttribute("visibility", "hidden"); focus.setAttribute("visibility", "hidden"); hideTip(); }
+  svg.addEventListener("pointermove", (e) => {
+    const r = svg.getBoundingClientRect(), t = t0 + ((e.clientX - r.left) / r.width * W - m.l) / (W - m.l - m.r) * (t1 - t0);
+    let best = 0;
+    for (let i = 1; i < pts.length; i++) if (Math.abs(pts[i][0] - t) < Math.abs(pts[best][0] - t)) best = i;
+    show(best);
+  });
+  svg.addEventListener("pointerleave", hide);
+  svg.addEventListener("focus", () => show(Math.min(chartIndex ?? pts.length - 1, pts.length - 1)));
+  svg.addEventListener("blur", hide);
+  svg.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") return hide();
+    const stepBy = e.key === "ArrowLeft" ? -1 : e.key === "ArrowRight" ? 1 : 0;
+    if (!stepBy) return;
+    e.preventDefault();
+    show(Math.max(0, Math.min(pts.length - 1, (chartIndex ?? pts.length - 1) + stepBy)));
+  });
+  svg.setAttribute("aria-label", "Afkast siden start fra " + when(t0) + " til " + when(end[0]) + ": nu " +
+    pct(end[1], 2) + ". Brug piletasterne for at læse punkterne.");
+  box.append(svg);
+}
+
+let showChartTable = false;
+function chartCard(state) {
+  const base = state.account.starting_equity || 1;
+  const pts = state.equity_curve.map(([t, eq]) => [t, (eq / base - 1) * 100]);
+  const box = h("div", { class: "chart" });
+  const changes = pts.filter((p, i) => i === 0 || i === pts.length - 1 || p[1] !== pts[i - 1][1]).reverse();
+  const table = h("div", { class: "rows", hidden: !showChartTable, style: "margin-top:12px" },
+    h("div", { class: "rhead", style: "grid-template-columns:1fr 140px" }, h("div", { text: "Tidspunkt" }), h("div", { class: "num", text: "Afkast siden start" })),
+    changes.slice(0, 200).map((p) => h("div", { class: "row flat", style: "grid-template-columns:1fr 140px" },
+      h("div", { text: when(p[0]) }), h("div", { class: "num", text: pct(p[1], 2) }))));
+  const btn = h("button", { class: "ghost", type: "button", "aria-pressed": String(showChartTable), text: "Vis som tabel",
+    onclick: () => { showChartTable = !showChartTable; btn.setAttribute("aria-pressed", String(showChartTable)); table.hidden = !showChartTable; } });
+  const sec = card("Afkast over tid", "Ændring i kontoens værdi siden start, i procent. Den grå linje er 0 %.", h("div", null, box, table), btn);
+  sec.dataset.chart = "1";
+  sec._draw = () => pts.length > 1 && box.clientWidth > 0 && returnChart(box, pts);
+  return sec;
+}
+
+function daysCard(state) {
+  const rows = dailyRows(state).slice(0, 31);
+  if (!rows.length) return null;
+  const max = Math.max(0.01, ...rows.map((r) => Math.abs(r.ret)));
+  const bar = (r) => h("div", { class: "daybar", role: "img", "aria-label": "Dagens afkast " + pct(r.ret, 2) },
+    h("div", { class: "neg" }, r.ret < 0 && h("i", { style: "width:" + (Math.abs(r.ret) / max * 100).toFixed(1) + "%" })),
+    h("div", { class: "mid" }),
+    h("div", { class: "pos" }, r.ret > 0 && h("i", { style: "width:" + (r.ret / max * 100).toFixed(1) + "%" })),
+    h("div", { class: "lab", text: pct(r.ret, 2) }));
+  return card("Dag for dag", "Afkast pr. døgn og samlet siden start. Tab vokser mod venstre, gevinst mod højre.",
+    h("div", { class: "rows" },
+      h("div", { class: "rhead cols-days" }, h("div", { text: "Dag" }), h("div", { class: "num", text: "Handler" }),
+        h("div", { class: "num", text: "Vundne" }), h("div", { text: "Dagens afkast" }), h("div", { class: "num", text: "Samlet" })),
+      rows.map((r) => h("div", { class: "row flat cols-days" },
+        h("div", { class: "strong", text: DAYS[new Date(r.ts * 1000).getDay()] + " " + day(r.ts) }),
+        h("div", { class: "num hide-narrow", text: num(r.trades) }),
+        h("div", { class: "num hide-narrow", text: r.trades ? num(r.wins) : "–" }),
+        h("div", { class: "hide-narrow" }, bar(r)),
+        h("div", { class: "num", text: pct(r.cum, 2) }),
+        h("div", { class: "only-narrow" }, bar(r)),
+        h("div", { class: "only-narrow", text: r.trades ? r.trades + (r.trades === 1 ? " handel" : " handler") + " · " + r.wins + " vundet" : "ingen handler" })))));
+}
+
+const openDetails = new Set();               // which trade rows are expanded, kept across refreshes
+function tradeRow(t, cols, cells, narrow, detail) {
+  const chev = icon(ICONS.chev);
+  chev.classList.add("chev");
+  const el = h("details", { class: "row", open: openDetails.has(t.id) },
+    h("summary", { class: cols }, coin(t), cells, h("div", { class: "only-narrow" }, narrow), chev),
+    h("div", { class: "detail" }, detail));
+  el.addEventListener("toggle", () => (el.open ? openDetails.add(t.id) : openDetails.delete(t.id)));
+  return el;
+}
+const impact = (v) => (v == null ? "–" : share(v, 2));
+
+function openCard(state) {
+  const rows = state.open_positions;
+  if (!rows.length) return card("Åbne positioner", null, h("div", { class: "empty", text: "Ingen åbne positioner lige nu." }));
+  const every = state.rules ? num(state.rules.risk.poll_seconds) + ". sekund" : "få sekunder";
+  return card("Åbne positioner", "Kurs og stop opdateres hvert " + every + ", mens desken kører. Tryk på en række for detaljer.",
+    h("div", { class: "rows wide" },
+      h("div", { class: "rhead cols-open" }, h("div", { text: "Mønt" }), h("div", { class: "num", text: "Lige nu" }),
+        h("div", { class: "num", text: "Bidrag" }), h("div", { class: "num", text: "Indsats" }), h("div", { text: "Købt" }),
+        h("div", { class: "num", text: "Afstand til stop" }), h("div", { text: "Trailing stop" }), h("div")),
+      rows.map((p) => tradeRow(p, "cols-open", [
+        h("div", { class: "num" }, pill(p.unrealized_pct, pct(p.unrealized_pct))),
+        h("div", { class: "num hide-narrow", text: pct(p.account_pct, 2) }),
+        h("div", { class: "num hide-narrow", text: share(p.stake_pct) }),
+        h("div", { class: "hide-narrow", text: when(p.opened_ts) }),
+        h("div", { class: "num hide-narrow", text: pct(p.stop_distance_pct) }),
+        h("div", { class: "hide-narrow" }, h("span", { class: "badge" + (p.trail_active ? " accent" : ""), text: p.trail_active ? "Aktiv" : "Ikke aktiveret" })),
+      ], "Stop " + pct(p.stop_distance_pct) + " fra kursen nu · " + (p.trail_active ? "trailing stop aktiv" : "trailing stop ikke aktiveret"),
+      [kv([["Købt", when(p.opened_ts)], ["Indsats", share(p.stake_pct) + " af kontoen"], ["Bidrag til kontoen", pct(p.account_pct, 2)],
+           ["Købskurs", price(p.entry_price)], ["Kurs nu", price(p.last_price)], ["Højeste kurs", price(p.high_price)],
+           ["Stop-kurs", price(p.stop_price)], ["Stop i forhold til købet", pct(p.stop_pct)],
+           ["Prisvirkning ved køb", impact(p.buy_impact_pct)], ["Score ved køb", num(p.score, 1)]]),
+       componentMeters(p.components), dexLink(p)]))));
+}
+
+function closedCard(state, limit) {
+  const all = state.closed_trades, rows = all.slice(0, limit);
+  if (!all.length) return card("Lukkede handler", null, h("div", { class: "empty", text: "Ingen handler endnu. Desken køber først, når en mønt består alle filtre og scorer over grænsen." }));
+  return card("Lukkede handler", "Nyeste først. Resultat er handlens gevinst eller tab i procent af indsatsen, efter prisvirkning og gebyrer. Tryk på en række for detaljer." +
+      (all.length > rows.length ? " Viser de seneste " + rows.length + " af " + all.length + "." : ""),
+    h("div", { class: "rows wide" },
+      h("div", { class: "rhead cols-trades" }, h("div", { text: "Mønt" }), h("div", { class: "num", text: "Resultat" }),
+        h("div", { class: "num", text: "Bidrag" }), h("div", { class: "num", text: "Indsats" }), h("div", { text: "Købt" }),
+        h("div", { text: "Varighed" }), h("div", { text: "Solgt via" }), h("div")),
+      rows.map((t) => tradeRow(t, "cols-trades", [
+        h("div", { class: "num" }, pill(t.pnl_pct, pct(t.pnl_pct))),
+        h("div", { class: "num hide-narrow", text: pct(t.account_pct, 2) }),
+        h("div", { class: "num hide-narrow", text: share(t.stake_pct) }),
+        h("div", { class: "hide-narrow", text: when(t.opened_ts) }),
+        h("div", { class: "hide-narrow", text: duration(t.duration_s) }),
+        h("div", { class: "hide-narrow" }, h("span", { class: "badge", text: EXITS[t.exit_reason] || t.exit_reason || "–" })),
+      ], when(t.opened_ts) + " · " + duration(t.duration_s) + " · " + (EXITS[t.exit_reason] || "solgt").toLowerCase(),
+      [kv([["Købt", when(t.opened_ts)], ["Solgt", when(t.closed_ts)], ["Varighed", duration(t.duration_s)],
+           ["Indsats", share(t.stake_pct) + " af kontoen"], ["Bidrag til kontoen", pct(t.account_pct, 2)],
+           ["Købskurs", price(t.entry_price)], ["Salgskurs", price(t.exit_price)], ["Top undervejs", pct(t.max_gain_pct)],
+           ["Prisvirkning ved køb", impact(t.buy_impact_pct)], ["Prisvirkning ved salg", impact(t.sell_impact_pct)],
+           ["Solgt via", EXITS[t.exit_reason] || t.exit_reason || "–"], ["Score ved køb", num(t.score, 1)]]),
+       componentMeters(t.components), dexLink(t)]))));
+}
+
+// ---- the test period: is the strategy good enough to consider real money? ----------
+const TEST_MIN = 30, TEST_GOAL = 50, MAX_DD_OK = -5;
+function testCard(state) {
+  // Only trades made under the current rules count (config: rules_since).
+  const sinceIso = state.rules && state.rules.rules_since, since = sinceIso ? Date.parse(sinceIso) / 1000 : 0;
+  const t = state.closed_trades.filter((x) => x.opened_ts >= since), n = t.length;
+  const older = state.closed_trades.length - n;
+  const sub = { ...state, closed_trades: t, status: { ...state.status, first_event_ts: Math.max(since, state.status.first_event_ts || 0) } };
+  const st = tradeStats(sub);
+  const wins = t.filter((x) => x.pnl_usd > 0).length;
+  const openNew = state.open_positions.filter((x) => x.opened_ts >= since);
+  const a = { wins, return_pct: t.reduce((s, x) => s + x.account_pct, 0) + openNew.reduce((s, x) => s + x.account_pct, 0) };
+  const curve = state.equity_curve.filter((p) => p[0] >= since);
+  const dd = curve.length ? maxDrawdown(curve) : 0;
+  const stopAt = state.rules ? -state.rules.risk.stop_loss_pct : -6;
+  const stops = t.filter((x) => x.exit_reason === "stop_loss");
+  const stopAvg = stops.length ? stops.reduce((sum, x) => sum + x.pnl_pct, 0) / stops.length : null;
+  const enough = n >= TEST_MIN;
+  const left = Math.max(0, TEST_GOAL - n);
+  const eta = st && st.perDay > 0 && left ? Math.ceil(left / st.perDay) : null;
+
+  // "Forventet pr. handel": what one trade gives on average = hit rate × avg win + loss rate × avg loss.
+  const p = n ? a.wins / n : 0;
+  const ev = st ? p * (st.avgWin || 0) + (1 - p) * (st.avgLoss || 0) : null;
+  const evWhy = st
+    ? "Du vinder " + share(p * 100, 0) + " af gangene med " + (st.avgWin == null ? "–" : pct(st.avgWin)) + " i snit og taber "
+      + share((1 - p) * 100, 0) + " af gangene med " + (st.avgLoss == null ? "–" : pct(st.avgLoss)) + " i snit. "
+      + "Lagt sammen giver én handel " + pct(ev) + " af indsatsen i gennemsnit. Plus betyder, at strategien tjener over tid – også selvom den taber tit."
+    : "Hvad én handel giver i gennemsnit, når både vundne og tabte er regnet med.";
+
+  const state3 = (good, needsData) => (needsData && !enough ? "wait" : good ? "ok" : "bad");
+  const checks = [
+    { s: enough ? "ok" : "wait", t: "Nok handler", v: num(n) + " af " + TEST_MIN,
+      why: enough ? "Nu er der nok data til, at tallene betyder noget." : "Under " + TEST_MIN + " handler kan held og uheld vende alt. Tallene nedenfor er foreløbige." },
+    { s: ev == null ? "wait" : state3(ev > 0, true), t: "Forventet pr. handel", v: ev == null ? "–" : pct(ev), why: evWhy },
+    { s: state3(a.return_pct > 0, true), t: "Kontoen i plus", v: pct(a.return_pct, 2), why: "Afkastet fra handlerne i testperioden, inkl. åbne positioner, i procent af startkontoen." },
+    { s: state3(dd > MAX_DD_OK, true), t: "Største fald fra top", v: pct(dd, 2),
+      why: "Hvor meget kontoen højst er faldet fra sit højeste punkt i testperioden. Med 1 % indsats pr. handel bør det holde sig over " + pct(MAX_DD_OK, 0) + "." },
+    { s: stopAvg == null ? "wait" : state3(stopAvg > stopAt - 2, true), t: "Salg ved stop", v: stopAvg == null ? "–" : pct(stopAvg),
+      why: "Stoppet står på " + pct(stopAt, 0) + ", men kursen kan nå at falde mere, før der sælges. "
+        + (stops.length ? "Gennemsnit af " + stops.length + " stop-salg. Mere end 2 point under stoppet er et faresignal for rigtig handel." : "Ingen stop-salg endnu.") },
+  ];
+  const mark = { ok: "✓", bad: "!", wait: "…" };
+  const subline = "Mål: " + TEST_MIN + "–" + TEST_GOAL + " lukkede handler, før der tages stilling til rigtige penge."
+    + (since ? " Tæller handler fra " + when(since) + ", hvor de nuværende regler trådte i kraft" + (older ? " (" + older + " ældre handler er ikke med)." : ".") : "");
+  return card("Testperioden", subline,
+    h("div", null,
+      h("div", { class: "progress-head" },
+        h("span", { class: "big", text: num(n) + " / " + TEST_GOAL + " handler" }),
+        h("span", { class: "note", text: !left ? "Målet er nået" : eta ? "ca. " + num(eta) + " dage til " + TEST_GOAL + " med det nuværende tempo" : "" })),
+      h("div", { class: "track", role: "img", "aria-label": num(n) + " af " + TEST_GOAL + " handler" },
+        h("div", { class: "fill", style: "width:" + Math.min(100, (n / TEST_GOAL) * 100) + "%" }),
+        h("div", { class: "limit", style: "left:" + (TEST_MIN / TEST_GOAL) * 100 + "%" })),
+      h("div", { class: "key", style: "margin-top:8px" }, h("i"), "minimum " + TEST_MIN),
+      h("ul", { class: "checks" }, checks.map((c) =>
+        h("li", { class: "check " + c.s },
+          h("span", { class: "mark", "aria-hidden": "true", text: mark[c.s] }),
+          h("span", { class: "t", text: c.t }), h("span", { class: "v", text: c.v }),
+          h("span", { class: "why", text: c.why }))))));
+}
+
+function shadowCard(state) {
+  const sh = state.shadow;
+  if (!sh) return null;
+  if (!sh.first_ts) return card("Skyggehandel", "Desken lader som om, den køber hver coin, der får en score – også under tærsklen – og følger den med de rigtige regler. Ingen penge flyttes.",
+    h("div", { class: "empty", text: "Ingen skyggehandler endnu. De første kommer, når desken scorer en coin." }));
+  const f = (v, d = 0) => (v == null ? "–" : num(v, d));
+  const res = (v) => (v == null ? "–" : pct(v));
+  const head = (...xs) => xs.map((x, i) => h("div", { class: "h" + (i ? " r" : ""), text: x }));
+  const rowOf = (label, st, cur) => [
+    h("div", { class: cur ? "cur" : "", text: label }),
+    h("div", { class: "r" + (cur ? " cur" : ""), text: f(st.n) }),
+    h("div", { class: "r" + (cur ? " cur" : ""), text: st.win_rate == null ? "–" : share(st.win_rate, 0) }),
+    h("div", { class: "r" + (cur ? " cur" : "") }, st.avg_pct == null ? "–" : delta(st.avg_pct, pct(st.avg_pct)))];
+  const table = h("div", { class: "tgrid tgrid4" },
+    head("Tærskel", "Handler", "Vundne", "Gns."),
+    sh.thresholds.flatMap((t) => rowOf((t.min === 0 ? "Alle scorede" : "Score ≥ " + num(t.min)) + (t.current ? " (nu)" : ""), t, t.current)),
+    sh.pumped ? rowOf("Afvist: pumpet", sh.pumped, false) : []);
+  const WIDE = { young: "Yngre end 30 min", low_mcap: "Mcap $100k–300k", old: "Ældre end 72 t" };
+  const minScore = state.min_score;
+  const wide = (sh.wide || []).length ? h("div", null,
+    h("div", { class: "note", style: "margin:22px 0 8px", text: "Bredt vindue: coins uden for det rigtige vindue ($100k–$20M, 10 min–7 dage), som kun skyggehandles." }),
+    h("div", { class: "tgrid tgrid4" },
+      head("Del af vinduet", "Handler", "Vundne", "Gns."),
+      sh.wide.flatMap((w) => [...rowOf(WIDE[w.segment] + ", alle", w.all, false),
+                              ...rowOf(WIDE[w.segment] + ", score ≥ " + num(minScore), w.at_min, true)]))) : null;
+  const recent = h("div", { class: "tgrid tgrid3", style: "margin-top:22px" },
+    head("Seneste skyggehandler", "Score", "Resultat"),
+    sh.recent.flatMap((r) => [
+      h("div", null, h("span", { class: "strong", text: r.symbol || "?" }), h("span", { class: "note", text: "  " + when(r.opened_ts) })),
+      h("div", { class: "r", text: r.kind === "pumped" ? "pumpet" : (r.kind.startsWith("wide_") ? "bredt " : "") + f(r.score) }),
+      h("div", { class: "r" }, r.status === "open"
+        ? h("span", { class: "note", text: "åben " + (r.open_pct == null ? "" : pct(r.open_pct)) })
+        : delta(r.pnl_pct, pct(r.pnl_pct) + (r.exit_reason === "stale_price" ? " (ingen kurs)" : "")))]));
+  return card("Skyggehandel",
+    "Desken lader som om, den køber hver coin, der får en score – også under tærsklen – og følger den med de rigtige regler (stop, trailing, karantæne). "
+      + "Ingen penge flyttes, og papirkontoen påvirkes ikke. Procent er af indsatsen. Salget er et estimat. Siden " + when(sh.first_ts)
+      + " · " + num(sh.closed) + " lukkede · " + num(sh.open) + " åbne.",
+    h("div", null, table, wide,
+      h("div", { class: "note", style: "margin-top:10px", text: "Brug tabellen til at sammenligne tærskler med hinanden, når der er mindst 20–30 handler i en række. Færre end det er mest tilfældighed." }),
+      recent));
+}
+
+function statsCard(state) {
+  const st = tradeStats(state);
+  if (!st) return null;
+  const stat = (label, value, note) => h("div", { class: "stat" }, h("div", { class: "note", text: label }), h("div", { class: "v" }, value), note && h("div", { class: "n", text: note }));
+  return card("Nøgletal for handlerne", "Regnet på alle lukkede handler. Procenter er af indsatsen, medmindre andet står.",
+    h("div", { class: "stats" },
+      stat("Bedste handel", delta(st.best.pnl_pct, pct(st.best.pnl_pct)), st.best.symbol),
+      stat("Værste handel", delta(st.worst.pnl_pct, pct(st.worst.pnl_pct)), st.worst.symbol),
+      stat("Gns. vunden handel", st.avgWin == null ? "–" : pct(st.avgWin)),
+      stat("Gns. tabt handel", st.avgLoss == null ? "–" : pct(st.avgLoss), st.avgLoss == null ? "ingen tabte endnu" : null),
+      stat("Gevinst i forhold til tab", st.profitFactor == null ? "–" : num(st.profitFactor, 2), st.profitFactor == null ? "kræver mindst ét tab" : "over 1 betyder samlet plus"),
+      stat("Gns. varighed", duration(st.avgHold)),
+      stat("Handler pr. døgn", num(st.perDay, 1), "siden første scanning"),
+      stat("Gns. indsats", share(st.avgStake), "af kontoen ved købet"),
+      stat("Gns. prisvirkning", st.avgCost == null ? "–" : share(st.avgCost, 2), "køb og salg lagt sammen")));
+}
+
+function barList(rows) {
+  const max = Math.max(1, ...rows.map((r) => r.value));
+  return h("div", { class: "bars" }, rows.map((r) => {
+    const row = h("div", { class: "bar-row", tabindex: "0", "aria-label": r.label + ": " + r.value + " " + r.unit },
+      h("div", { class: "name", text: r.label }),
+      h("div", { class: "bar-line" },
+        h("div", { class: "bar-mark", style: "width:calc((100% - 44px) * " + (r.value / max).toFixed(4) + ")" }),
+        h("div", { class: "bar-val", text: num(r.value) })));
+    tipTarget(row, num(r.value) + " " + r.unit, r.tip);
+    return row;
+  }));
+}
+
+// ---- market -------------------------------------------------------------------
+function windowStatus(c, now) {
+  const stt = c.status;
+  if (stt.kind === "held") return h("span", { class: "badge accent", text: "Åben position" });
+  if (stt.kind === "new") return h("span", { class: "badge", text: "Vurderes" });
+  const again = stt.recheck_at && stt.recheck_at > now ? "tjekkes igen " + (stt.recheck_at - now < 79200 ? "kl. " + clock(stt.recheck_at) : day(stt.recheck_at)) : null;
+  return h("div", { class: "status-text" }, reasonsText(stt.stage, stt.reasons), again && h("small", { text: again }));
+}
+function windowCard(state) {
+  const rows = state.window;
+  const sub = state.window_ts ? "Mønter, der var gamle nok og inden for markedsværdi-grænserne ved scanningen kl. " + clock(state.window_ts) +
+    ". Markedstal er rigtige dollars." : null;
+  if (!rows.length) return card("Mønter i vinduet lige nu", sub, h("div", { class: "empty", text: state.window_ts ? "Ingen mønter i vinduet ved seneste scanning." : "Vises efter deskens næste scanning." }));
+  return card("Mønter i vinduet lige nu", sub,
+    h("div", { class: "rows wide" },
+      h("div", { class: "rhead cols-window" }, h("div", { text: "Mønt" }), h("div", { class: "num", text: "Alder" }),
+        h("div", { class: "num", text: "Markedsværdi" }), h("div", { class: "num", text: "Likviditet" }),
+        h("div", { class: "num", text: "Volumen 1 t." }), h("div", { class: "num", text: "Kurs 1 t." }), h("div", { text: "Deskens seneste afgørelse" })),
+      rows.map((c) => h("div", { class: "row flat cols-window" },
+        coin(c),
+        h("div", { class: "num hide-narrow", text: duration(c.age_h * 3600) }),
+        h("div", { class: "num hide-narrow", text: money(c.mcap) }),
+        h("div", { class: "num hide-narrow", text: money(c.liq) }),
+        h("div", { class: "num hide-narrow", text: money(c.vol_h1) }),
+        h("div", { class: "num" }, pill(c.pc_h1, pct(c.pc_h1))),
+        h("div", { class: "hide-narrow" }, windowStatus(c, state.generated_ts)),
+        h("div", { class: "only-narrow", text: duration(c.age_h * 3600) + " gammel · værdi " + money(c.mcap) + " · likviditet " + money(c.liq) + " · volumen " + money(c.vol_h1) }),
+        h("div", { class: "only-narrow" }, windowStatus(c, state.generated_ts))))));
+}
+
+function funnelCard(state) {
+  const f = state.funnel, total = Math.max(1, f.in_window);
+  const part = (n) => num(n / total * 100) + " % af mønterne i vinduet";
+  const rows = [
+    { label: "Fundet i vinduet", value: f.in_window, tip: ["gamle nok og inden for markedsværdi-grænserne"] },
+    { label: "Bestod filteret", value: f.passed_filter, tip: [part(f.passed_filter)] },
+    { label: "Scorede " + num(state.min_score) + " eller mere", value: f.scored_pass, tip: [part(f.scored_pass)] },
+    { label: "Købt", value: f.bought, tip: [part(f.bought)] },
+  ].map((r) => ({ ...r, unit: r.value === 1 ? "mønt" : "mønter" }));
+  return card("Fra fund til handel", "Antal forskellige mønter på hvert trin, siden start", barList(rows));
+}
+function killsCard(state) {
+  if (!state.kills.length) return card("Hvorfor mønter blev sorteret fra", null, h("div", { class: "empty", text: "Ingen afvisninger endnu." }));
+  const rows = state.kills.map((k) => ({ label: ruleName(k.rule), value: k.coins, unit: k.coins === 1 ? "mønt" : "mønter",
+    tip: [STAGES[k.stage] + " · ramt " + num(k.hits) + (k.hits === 1 ? " gang" : " gange")] }));
+  return card("Hvorfor mønter blev sorteret fra",
+    "Antal mønter pr. regel. En mønt kan falde på flere regler. " + num(state.kill_decisions) + " afvisninger i alt.", barList(rows));
+}
+function scoresCard(state) {
+  if (!state.top_scores.length) return card("Tættest på en handel", null, h("div", { class: "empty", text: "Ingen mønter har bestået filteret endnu." }));
+  const lim = state.min_score;
+  return card("Tættest på en handel", "Bedste score pr. mønt (0–100) og de seks delscorer bag den",
+    h("div", { class: "meters" }, state.top_scores.map((t) => h("div", { class: "meter-row" },
+      h("div", null, h("span", { class: "strong", text: t.symbol }), t.traded && h("span", { class: "badge accent", style: "margin-left:6px", text: "Handlet" })),
+      h("div", { class: "track", role: "img", "aria-label": "Score " + num(t.score, 1) + " af 100, grænse " + num(lim) },
+        h("div", { class: "fill", style: "width:" + Math.max(0, Math.min(100, t.score)) + "%" }),
+        h("div", { class: "limit", style: "left:" + lim + "%" })),
+      h("div", { class: "num strong", text: num(t.score, 1) }),
+      h("div", { class: "parts", text: PARTS.map(([k, name]) => name + " " + (t.components[k] == null ? "–" : num(t.components[k]))).join(" · ") })))),
+    h("span", { class: "key" }, h("i"), "Grænse for køb: " + num(lim)));
+}
+function recentKillsCard(state) {
+  if (!state.recent_kills.length) return null;
+  return card("Seneste afvisninger", "De nyeste beslutninger om at springe en mønt over",
+    h("div", { class: "rows" },
+      h("div", { class: "rhead cols-kills" }, h("div", { text: "Tid" }), h("div", { text: "Mønt" }), h("div", { text: "Trin og årsag" })),
+      state.recent_kills.map((k) => h("div", { class: "row flat cols-kills" },
+        h("div", { class: "note hide-narrow", text: when(k.ts) }),
+        coin(k),
+        h("div", { class: "status-text hide-narrow" }, h("span", { class: "badge", style: "margin-right:6px", text: STAGES[k.stage] || k.stage }), reasonsText(k.stage, k.reasons)),
+        h("div", { class: "note only-narrow", style: "grid-column:2;grid-row:1", text: clock(k.ts) }),
+        h("div", { class: "only-narrow", text: (STAGES[k.stage] || k.stage) + ": " + reasonsText(k.stage, k.reasons) })))));
+}
+
+// ---- desk ---------------------------------------------------------------------
+function activityText(a) {
+  const sym = a.symbol || "";
+  switch (a.kind) {
+    case "fill_buy": return ["Købte ", h("span", { class: "strong", text: sym }),
+      (a.stake_pct != null ? " med " + share(a.stake_pct) + " af kontoen" : "") + (a.score ? " (score " + num(a.score, 1) + ")" : "")];
+    case "fill_sell": return ["Solgte ", h("span", { class: "strong", text: sym }), " via " + (EXITS[a.reason] || "salg").toLowerCase() + ": ",
+      delta(a.pnl_pct, pct(a.pnl_pct) + " (" + pct(a.account_pct, 2) + " på kontoen)")];
+    case "exit_signal": return [(EXITS[a.reason] || "Stop") + " ramt på ", h("span", { class: "strong", text: sym })];
+    case "trail_armed": return ["Trailing stop aktiveret på ", h("span", { class: "strong", text: sym })];
+    case "start": return ["Desken startede" + (a.return_pct != null ? " (afkast " + pct(a.return_pct, 2) + ")" : "")];
+    case "stop": return ["Desken stoppede" + (a.return_pct != null ? " (afkast " + pct(a.return_pct, 2) + ")" : "")];
+    case "smart_wallets_learned": return ["Smart wallet-listen voksede til " + num(a.book_size || 0)];
+    case "error": return ["Fejl: " + (a.error || "ukendt")];
+    default: return [a.kind];
+  }
+}
+function activityCard(state, limit) {
+  if (!state.activity.length) return card("Seneste hændelser", null, h("div", { class: "empty", text: "Intet at vise endnu." }));
+  return card("Seneste hændelser", "Køb, salg, stop og start/stop af desken",
+    h("ul", { class: "feed" }, state.activity.slice(0, limit).map((a) =>
+      h("li", null, h("time", { text: when(a.ts) }), h("div", null, activityText(a))))));
+}
+
+function rulesCard(state) {
+  const r = state.rules;
+  if (!r) return null;
+  const li = (...kids) => h("li", null, kids), b = (t) => h("b", { text: t });
+  const group = (title, items) => h("div", { class: "rule" }, h("h3", { text: title }), h("ul", null, items));
+  const sc = r.scout, f = r.filter, an = r.analyst, ex = r.executor, rk = r.risk, book = state.account.smart_wallets;
+  return card("Reglerne desken følger", "Hentet direkte fra deskens indstillinger, så det er de regler, der gælder lige nu",
+    h("div", { class: "rules" },
+      group("Scout – finder mønter", [
+        li("Alder ", b(num(sc.min_pair_age_minutes) + " min.–" + num(sc.max_pair_age_hours) + " t.")),
+        li("Markedsværdi ", b(money(sc.min_mcap_usd) + "–" + money(sc.max_mcap_usd))),
+        li("Scanner hvert ", b(num(r.scan_interval_seconds) + ". sekund"))]),
+      group("Filter – sorterer fra", [
+        li("Likviditet mindst ", b(money(f.min_liquidity_usd))),
+        li("Volumen på 1 time mindst ", b(money(f.min_volume_1h_usd))),
+        li("Ikke steget over ", b("+" + num(f.max_price_change_1h_pct) + " %"), " på 1 time"),
+        li("Mint- og freeze-rettighed ", b("tilbagekaldt")),
+        li("LP mindst ", b(num(f.min_lp_locked_pct) + " %"), " brændt eller låst"),
+        li("Top 10 ejer højst ", b(num(f.max_top10_pct) + " %"), ", udvikleren højst ", b(num(f.max_dev_pct) + " %")),
+        li("Bundtede wallets ejer højst ", b(num(f.max_bundle_pct) + " %"))]),
+      group("Analyst – giver score", [
+        li("Køber kun ved score ", b(num(an.min_score) + " eller mere")),
+        li("Vægte: ", PARTS.map(([k, name]) => name.toLowerCase() + " " + num((an.weights[k] || 0) * 100) + " %").join(", ")),
+        li("Køb under ", b("$" + num(an.dust_usd)), " tæller ikke som købere"),
+        li("Smart wallets tæller med fra ", b(num(an.min_smart_wallet_book) + " wallets"), " (har " + num(book) + ")")]),
+      group("Executor – handler", [
+        li("Indsats ", b(num(ex.max_position_pct) + " %"), " af kontoen pr. handel"),
+        li("Grænse for prisvirkning: ", b(ex.max_price_impact_pct > 0 ? num(ex.max_price_impact_pct, 1) + " %" : "ingen")),
+        ex.max_open_positions > 0 ? li("Højst ", b(num(ex.max_open_positions)), " åbne positioner")
+          : li("Åbne positioner: ", b("ingen grænse"), " (kun kontanterne sætter loft)"),
+        li("Karantæne efter salg: ", b(ex.reentry_cooldown_minutes > 0 ? duration(ex.reentry_cooldown_minutes * 60) : "ingen"))]),
+      group("Risk – beskytter", [
+        li("Stop ", b("−" + num(rk.stop_loss_pct) + " %"), " fra købskursen, sat ved købet"),
+        li("Trailing stop aktiveres ved ", b("+" + num(rk.trail_trigger_pct) + " %")),
+        li("og følger ", b(num(rk.trail_distance_pct) + " %"), " under toppen"),
+        li("Tjekker kursen hvert ", b(num(rk.poll_seconds) + ". sekund"))])));
+}
+
+function speedCard(state) {
+  const sp = state.speed;
+  if (!sp) return null;
+  const H = sp.hour, D = sp.day;
+  const f = (v, d = 0) => (v == null ? "–" : num(v, d));
+  const rows = [
+    ["Scanningsrunder", f(H.rounds), f(D.rounds)],
+    ["Gns. tid pr. runde", H.avg_round_s == null ? "–" : f(H.avg_round_s) + " sek.", D.avg_round_s == null ? "–" : f(D.avg_round_s) + " sek."],
+    ["Coins tjekket (alle runder lagt sammen)", f(H.coin_checks), f(D.coin_checks)],
+    ["Gns. coins i vinduet pr. runde", f(H.avg_in_window, 1), f(D.avg_in_window, 1)],
+    ["Forskellige coins sendt til Filter", f(H.evaluated), f(D.evaluated)],
+    ["… kom gennem Filter", f(H.passed_filter), f(D.passed_filter)],
+    ["… fik en score", f(H.scored), f(D.scored)],
+    ["… blev købt", f(H.bought), f(D.bought)],
+  ];
+  const max = Math.max(1, ...sp.hours.map((x) => x.avg_in_window || 0));
+  const bars = h("div", { class: "hourbars" }, sp.hours.map((x) => {
+    const v = x.avg_in_window, hr = new Date(x.ts * 1000).getHours();
+    const b = h("div", { class: "b" + (v ? "" : " none"), tabindex: "0", style: "height:" + (v ? Math.max(3, v / max * 100) : 2) + "%",
+      "aria-label": "Kl. " + pad(hr) + ": " + (v == null ? "ingen scanning" : num(v, 1) + " coins i vinduet i gennemsnit") });
+    tipTarget(b, "Kl. " + pad(hr) + "–" + pad((hr + 1) % 24),
+      v == null ? ["Ingen scanning"] : [num(v, 1) + " coins i vinduet i gns.", num(x.evaluated) + " sendt til Filter", num(x.rounds) + " runder"]);
+    return b;
+  }));
+  const labels = h("div", { class: "hourlabels" }, sp.hours.map((x, i) => {
+    const hr = new Date(x.ts * 1000).getHours();
+    return h("span", { text: i % 3 === 0 ? pad(hr) : "" });
+  }));
+  return card("Hastighed", "Hvor meget desken når. Coins tjekket tæller hver coin én gang pr. runde.",
+    h("div", null,
+      h("div", { class: "speed-grid" },
+        h("div", { class: "h", text: "" }), h("div", { class: "h r", text: "Seneste time" }), h("div", { class: "h r", text: "Seneste døgn" }),
+        rows.flatMap(([k, a, b]) => [h("div", { text: k }), h("div", { class: "r", text: a }), h("div", { class: "r", text: b })])),
+      h("div", { class: "note", style: "margin-top:18px", text: "Coins i vinduet time for time, seneste døgn (din tid)" }),
+      bars, labels));
+}
+
+function healthCard(state) {
+  const st = state.status, hl = state.health || {}, a = state.account, r = state.rules;
+  const need = r ? r.analyst.min_smart_wallet_book : null;
+  return card("Deskens tilstand", null, kv([
+    ["Status", st.running ? "Kører" : "Stoppet"],
+    st.running && hl.last_start_ts ? ["Kørt uden stop i", duration(state.generated_ts - hl.last_start_ts)] : ["Sidst aktiv", when(st.last_event_ts)],
+    ["Første scanning", when(st.first_event_ts)],
+    ["Scanninger i alt", num(st.cycles)],
+    st.last_scan && ["Seneste scanning", num(st.last_scan.mints_seen) + " mønter set · " + num(st.last_scan.in_window) + " i vinduet"],
+    hl.last_cycle_seconds != null && ["Varighed af en scanning", num(hl.last_cycle_seconds) + " sek."],
+    ["Mønter vurderet seneste døgn", num(hl.candidates_24h || 0)],
+    ["Fejl seneste døgn", num(hl.errors_24h || 0)],
+    ["Smart wallets fundet", num(a.smart_wallets) + (need ? " af " + num(need) + " nødvendige" : "")],
+    ["Datakilder", "DexScreener, RugCheck, Jupiter, GeckoTerminal, Solana"],
+  ]));
+}
+
+function runsCard(state) {
+  const rn = state.runs || { sessions: [] };
+  const cols = "grid-template-columns: minmax(120px,1.2fr) minmax(120px,1.2fr) 90px minmax(110px,1fr) minmax(110px,1fr)";
+  const rows = rn.sessions.map((x, i) => {
+    const next = rn.sessions[i - 1];                  // the run that followed this one
+    const gap = next && x.end ? next.start - x.end : null;
+    const label = x.state === "kører" ? "Kører nu" : x.state === "afbrudt" ? "Afbrudt uden stop" : "Stoppet";
+    return h("div", { class: "row flat", style: cols },
+      h("div", { text: when(x.start) }),
+      h("div", { text: x.end ? when(x.end) : "–" }),
+      h("div", { class: "num", text: duration((x.end || state.generated_ts) - x.start) }),
+      h("div", { text: label }),
+      h("div", { text: gap != null && gap > 120 ? "Hul på " + duration(gap) : "" }));
+  });
+  const up = rn.uptime_24h_pct;
+  return card("Kørselshistorik", "Hver gang desken er startet, hvornår den sluttede, og hvor længe den stod stille imellem." +
+      (up != null ? " Oppetid seneste døgn: " + num(up, 0) + " %." : ""),
+    rows.length ? h("div", { class: "rows" },
+      h("div", { class: "rhead", style: cols }, ...["Startet", "Sluttet", "Varighed", "Status", "Hul før næste"].map((t) => h("div", { text: t }))),
+      rows) : h("div", { class: "empty", text: "Ingen kørsler registreret endnu." }));
+}
+
+// ---- tabs, theme and the render loop --------------------------------------------
+const TABS = [["overblik", "Overblik"], ["handler", "Handler"], ["marked", "Marked"], ["desk", "Desk"]];
+let activeTab = TABS.some(([id]) => "#" + id === location.hash) ? location.hash.slice(1) : "overblik";
+function drawCharts() { document.querySelectorAll("[data-chart]").forEach((el) => el._draw && el._draw()); }
+function selectTab(id, focus) {
+  activeTab = id;
+  history.replaceState(null, "", "#" + id);
+  for (const b of $("tabs").children) {
+    const on = b.dataset.tab === id;
+    b.setAttribute("aria-selected", String(on)); b.tabIndex = on ? 0 : -1;
+    if (on && focus) b.focus();
+  }
+  document.querySelectorAll(".panel").forEach((p) => (p.hidden = p.dataset.tab !== id));
+  hideTip(); drawCharts();
+}
+$("tabs").append(...TABS.map(([id, label]) => h("button", { type: "button", role: "tab", id: "tab-" + id, "data-tab": id,
+  "aria-controls": "panel-" + id, text: label, onclick: () => selectTab(id) })));
+$("tabs").addEventListener("keydown", (e) => {
+  const step = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
+  if (!step) return;
+  e.preventDefault();
+  const i = TABS.findIndex(([id]) => id === activeTab);
+  selectTab(TABS[(i + step + TABS.length) % TABS.length][0], true);
+});
+
+function storedTheme() { try { return localStorage.getItem("desk-theme"); } catch (e) { return null; } }
+function isDark() {
+  const t = document.documentElement.dataset.theme;
+  return t ? t === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+}
+function applyTheme(t) {
+  if (t === "dark" || t === "light") document.documentElement.dataset.theme = t;
+  $("theme").replaceChildren(icon(isDark() ? ICONS.sun : ICONS.moon, 17));
+}
+$("theme").addEventListener("click", () => {
+  const next = isDark() ? "light" : "dark";
+  try { localStorage.setItem("desk-theme", next); } catch (e) { /* private mode: the choice just isn't remembered */ }
+  applyTheme(next);
+});
+applyTheme(storedTheme());
+
+function renderStatus(state) {
+  const st = state.status, el = $("status");
+  if (state.empty || !st || !st.last_event_ts) { el.replaceChildren(h("span", { class: "dot" }), "Desken har ikke kørt endnu"); return; }
+  el.replaceChildren(h("span", { class: "dot" + (st.running ? " on" : "") }),
+    h("strong", { text: st.running ? "Kører" : "Stoppet" }),
+    st.running ? "scannede kl. " + clock(st.last_event_ts) : "sidst aktiv " + when(st.last_event_ts));
+}
+
+let lastKey = "";
+function render(state) {
+  renderStatus(state);
+  const key = JSON.stringify({ ...state, generated_ts: 0 });
+  if (key === lastKey) return;
+  lastKey = key;
+  const main = $("main");
+  if (state.empty || !state.status.last_event_ts) {
+    main.replaceChildren(card("Ingen data endnu", null,
+      h("div", { class: "empty", text: "Start desken med kommandoen  python3 -m desk run --dashboard 8787  – så dukker afkast, handler og afvisninger op her." })));
+    $("foot").textContent = "";
+    return;
+  }
+  hideTip();
+  const panel = (id, ...kids) => h("div", { class: "panel", id: "panel-" + id, "data-tab": id, role: "tabpanel", "aria-labelledby": "tab-" + id, hidden: id !== activeTab }, kids);
+  main.replaceChildren(
+    panel("overblik", heroCard(state), kpis(state), testCard(state), chartCard(state), openCard(state),
+      h("div", { class: "grid2" }, daysCard(state), activityCard(state, 7))),
+    panel("handler", statsCard(state), shadowCard(state), openCard(state), closedCard(state, 50)),
+    panel("marked", windowCard(state), h("div", { class: "grid2" }, funnelCard(state), killsCard(state)),
+      h("div", { class: "grid2" }, scoresCard(state), recentKillsCard(state))),
+    panel("desk", speedCard(state), healthCard(state), runsCard(state), rulesCard(state), activityCard(state, 25)));
+  selectTab(activeTab);
+  $("foot").textContent = "Papirhandel: ingen rigtige penge er i spil. Siden opdaterer sig selv hvert 5. sekund.";
+}
+
+async function tick() {
+  let state;
+  try {
+    const res = await fetch("api/state", { cache: "no-store" });
+    if (!res.ok) throw new Error(res.status);
+    state = await res.json();
+  } catch (e) {
+    document.body.classList.add("stale");           // keep the last frame, dimmed
+    $("status").replaceChildren(h("span", { class: "dot" }), "Ingen forbindelse til desken – prøver igen");
+    return;
+  }
+  document.body.classList.remove("stale");
+  render(state);                                    // a bug in rendering should surface, not look like a lost connection
+}
+let resizeTimer = 0;
+addEventListener("resize", () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(drawCharts, 120); });
+tick();
+setInterval(tick, 5000);
+</script>
+</body>
+</html>

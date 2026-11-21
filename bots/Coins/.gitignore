@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+# Live journal + paper book (SQLite). Large and rebuilt by the desk; summaries are committed instead.
+runs/*.db
+runs/*.db-*
+runs/*/events.jsonl
+runs/*/desk.log
+# The current day's report is rewritten at every restart; the finished day's copy is committed once.
+runs/paper-*/report.md

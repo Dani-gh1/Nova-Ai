@@ -1,0 +1,2 @@
+# Wallets you already trust as "smart money", one Solana address per line.
+# The desk also learns its own (see desk/smart_wallets.py); seeded wallets are always counted.

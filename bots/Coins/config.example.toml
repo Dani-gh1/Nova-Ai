@@ -1,0 +1,48 @@
+# Copy to my.toml, edit, and run:  python3 -m desk run --config my.toml
+# Only the keys you set are changed; everything else keeps the defaults in desk/config.py.
+
+scan_interval_seconds = 20
+data_dir = "runs"
+
+[scout]
+min_pair_age_minutes = 30
+max_pair_age_hours = 72
+min_mcap_usd = 300000
+max_mcap_usd = 20000000
+
+[filter]
+min_lp_locked_pct = 95
+min_liquidity_usd = 40000
+min_volume_1h_usd = 50000
+max_top10_pct = 25
+max_dev_pct = 3
+max_dev_dead_launches = 3
+max_bundle_pct = 10
+max_price_change_1h_pct = 80
+
+[analyst]
+min_score = 73
+real_buyer_min_usd = 25
+dust_usd = 5
+min_smart_wallet_book = 10
+
+[analyst.weights]
+momentum = 0.20
+unique_buyers = 0.20
+buy_sell = 0.15
+holder_growth = 0.15
+liq_mcap = 0.15
+smart_wallets = 0.15
+
+[executor]
+starting_equity_usd = 10000
+max_position_pct = 1          # fixed stake per trade, % of equity (code cap: 8)
+max_open_positions = 3        # 0 = no limit
+reentry_cooldown_minutes = 120  # wait this long after a sale before rebuying the coin (0 = off)
+max_price_impact_pct = 1      # 0 = no cap; orders shrink until the quote moves price <= this
+
+[risk]
+stop_loss_pct = 6
+trail_trigger_pct = 8
+trail_distance_pct = 6
+poll_seconds = 1
