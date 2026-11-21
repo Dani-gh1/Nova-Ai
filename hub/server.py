@@ -15,7 +15,9 @@ import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 
 from .adapters import normalize
+from .live import VENUES, Kasse, live_bots, positions_for, venue_of
 from .leader import SmartLeader
+from .notify import Notifier
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -280,7 +282,7 @@ def bot_overview(bot: dict) -> dict:
         try:
             data = bot_data(bot)
             out["best"] = best_of(data["strategies"])
-            out["strategies"] = [{"name": x.get("name"), "return_pct": x.get("return_pct"), "trades": x.get("trades") or 0}
+            out["strategies"] = [{"key": x.get("key"), "name": x.get("name"), "return_pct": x.get("return_pct"), "trades": x.get("trades") or 0}
                                  for x in data["strategies"]]          # til forsidens tabel over alle strategier            out["_cands"] = smart_candidates(data["strategies"], bot)      # bruges kun af Smart-botten
             out["trades"] = {"open": sum(x.get("open") or 0 for x in data["strategies"]),
                              "closed": sum(x.get("trades") or 0 for x in data["strategies"])}
@@ -307,6 +309,8 @@ class Overview:
         self.build = build or (lambda: self._build())
         self.rows: list | None = None
         self.smart = smart                     # Smart strategi: følger altid den strategi, der er steget mest
+        self.live_smart: SmartLeader | None = None     # Smart for rigtige penge: samme regel, kun strategier, der kan handles for rigtigt
+        self.live: Kasse | None = None             # Kassen: rigtige penge fordelt på markederne
         self.at = 0.0
         self.lock = threading.Lock()
         self.busy = False
@@ -323,8 +327,9 @@ class Overview:
                     continue                   # botten svarede ikke: Smart-botten beholder dens seneste svar
                 cands = r.pop("_cands") or []
                 fresh = not r.get("idle") and r.get("scan_age") is not None and r["scan_age"] <= STALE_AFTER_S   # lukket marked kan ikke vælges
-                if self.smart is not None:
-                    self.smart.feed(r["key"], cands, fresh)
+                for sb in (self.smart, self.live_smart):
+                    if sb is not None:
+                        sb.feed(r["key"], cands, fresh)
             with self.lock:
                 self.rows, self.at = rows, self.now()
         finally:
@@ -517,6 +522,10 @@ def make_handler(bots: list[dict], throttle: Throttle | None = None, ratelimit: 
                     overview.get()
                     out = overview.smart.view() if overview.smart is not None else None
                     return self._send(200, "application/json", json.dumps(out).encode())
+                if path == "/api/live":
+                    ov = overview
+                    out = None if ov.live is None else {**ov.live.view(), "smart": ov.live_smart.view() if ov.live_smart else None}
+                    return self._send(200, "application/json", json.dumps(out).encode())
                 m = re.match(r"^/api/bot/([a-z0-9_-]+)$", path)
                 if m and m.group(1) in by_key:
                     try:
@@ -551,6 +560,80 @@ def make_handler(bots: list[dict], throttle: Throttle | None = None, ratelimit: 
     return Handler
 
 
+def live_plan(weights, bots_by_key: dict, total_usd: float, data_of=None) -> tuple[dict, list[str]]:
+    """Smarts strategi(er) -> {marked: {symbol: (long/short, USD, gearing)}}. Hver plads deles ligeligt på strategiens positioner."""
+    data_of = data_of or (lambda b: bot_data(b))
+    plan: dict[str, dict] = {}
+    names = []
+    for sl, w in weights:
+        bot = bots_by_key.get(sl["bot"])
+        venue = venue_of(bot) if bot else None
+        if venue is None:
+            continue
+        pos = positions_for(sl, data_of(bot), VENUES[venue]["kind"])
+        names.append(f"{sl['name']} ({sl['bot_name']})")
+        for sym, side, lev in pos:
+            cur = plan.setdefault(venue, {}).get(sym)
+            usd = total_usd * w / len(pos) + (cur[1] if cur and cur[0] == side else 0.0)
+            plan[venue][sym] = (side, usd, lev)
+    return plan, names
+
+
+def stalls(ov: "Overview", now: float | None = None) -> list[tuple[str, str]]:
+    """Det, der er gået i stå lige nu: (nøgle, tekst). Botter, der ikke kører eller ikke scanner, og en Smart, der står stille."""
+    now = now or time.time()
+    out = []
+    for b in ov.rows or []:
+        if not b.get("configured") or b.get("idle"):
+            continue
+        if not b.get("up"):
+            out.append((f"bot:{b['key']}", f"{b['name']} kører ikke" + (f": {b['issue']}" if b.get("issue") else "")))
+        elif b.get("scan_age") is not None and b["scan_age"] > STALE_AFTER_S:
+            out.append((f"bot:{b['key']}", f"{b['name']} har ikke scannet i {int(b['scan_age'] // 60)} min."))
+    upd = (ov.smart.state.get("updated") if ov.smart else None) or now
+    if now - upd > 30 * 60:
+        out.append(("smart", f"Smart strategi har ikke opdateret i {int((now - upd) // 60)} min."))
+    return out
+
+
+def watch_stalls(ov: "Overview", note: Notifier) -> None:
+    """Hvert 5. minut: besked til telefonen om det, der er gået i stå (højst hver 3. time om det samme)."""
+    time.sleep(20 * 60)                                  # efter en genstart: giv botterne tid til at starte
+    while True:
+        try:
+            for key, text in stalls(ov):
+                note.send("Nova AI: noget er gået i stå", text, key=key, every=3 * 3600)
+        except Exception as e:
+            print(f"Vagt: fejl: {e!r}", flush=True)
+        time.sleep(300)
+
+
+def start_live(ov: "Overview", bots: list[dict], note: Notifier | None = None) -> None:
+    """Rigtige penge, hvis HUB_LIVE er sat: Smart strategi vælger strategien, Kassen fordeler pengene til markederne."""
+    if os.environ.get("HUB_LIVE", "").strip() in ("", "0", "off"):
+        return
+    say = lambda m: print(m, flush=True)
+    allow = live_bots(bots)
+    by_key = {b["key"]: b for b in bots}
+    ov.live_smart = SmartLeader(Path(os.environ.get("HUB_LIVE_SMART_FILE") or ROOT / "logs" / "smart-live.json"), log=say,
+                                   expected=len(allow), allow=allow)
+    ov.live = Kasse(log=say)
+    ov.live.notify = (lambda text: note.async_send("Nova AI", text)) if note else None
+    say(f"Kassen: {('SIMULERING' if ov.live.mode == 'dry' else 'RIGTIGE PENGE')} på {', '.join(v.meta['name'] for v in ov.live.venues.values())}; "
+        f"vælger blandt {len(allow)} botter: {', '.join(sorted(allow))}")
+
+    def loop():
+        while True:
+            try:
+                ov.live_smart.step()
+                plan, names = live_plan(ov.live_smart.weights(), by_key, ov.live.total())
+                ov.live.run(plan, ", ".join(names) or None)
+            except Exception as e:
+                say(f"Kasse: fejl i runden: {e!r}")
+            time.sleep(60)
+    threading.Thread(target=loop, daemon=True, name="live").start()
+
+
 def serve(host: str, port: int, bots: list[dict] | None = None) -> None:
     bots = bots if bots is not None else load_bots()
     host, problem = check_public_config({**os.environ, "HUB_HOST": host})
@@ -569,6 +652,10 @@ def serve(host: str, port: int, bots: list[dict] | None = None) -> None:
                                   log=lambda m: print(m, flush=True), expected=expected)
     # Smart strategi kører hele tiden, også når ingen kigger: henter friske tal fra botterne og tager et skridt hvert minut
     threading.Thread(target=ov.smart.run, args=(ov.fresh,), daemon=True, name="smart").start()
+    note = Notifier()
+    ov.smart.on_switch = lambda text: note.async_send("Smart skiftede", text)
+    start_live(ov, bots, note)
+    threading.Thread(target=watch_stalls, args=(ov, note), daemon=True, name="watch").start()
     httpd = ThreadingHTTPServer((host, port), handler)
     httpd.daemon_threads = True
     print(f"Hub: http://{host}:{port}", flush=True)

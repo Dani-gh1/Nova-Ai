@@ -56,6 +56,23 @@ restart() {
   if [ "$OS" = Darwin ]; then launchctl kickstart -k "gui/$(id -u)/ai.hub.dashboard" || true; else systemctl restart "$1"; fi
 }
 
+# Nye versioner kræver din godkendelse: uden "apply" hentes og tjekkes der kun, og du får en besked på telefonen.
+# Godkend (og genstart) med:  sudo /home/ubuntu/Nova-AI/deploy/update.sh apply      (HUB_AUTO_UPDATE=1 = som før, af sig selv)
+if [ "${1:-}" != apply ] && [ "${HUB_AUTO_UPDATE:-0}" != 1 ]; then
+  as_user git -C "$HUB_DIR" fetch -q origin 2>/dev/null || { say "kunne ikke hente fra GitHub"; exit 0; }
+  new="$(as_user git -C "$HUB_DIR" rev-list --count HEAD..FETCH_HEAD 2>/dev/null || echo 0)"
+  [ "$new" -gt 0 ] 2>/dev/null || exit 0
+  tip="$(as_user git -C "$HUB_DIR" rev-parse FETCH_HEAD)"; seen="$HUB_DIR/logs/update-announced"
+  [ "$(cat "$seen" 2>/dev/null)" = "$tip" ] && exit 0
+  msg="$(as_user git -C "$HUB_DIR" log --format='• %s' HEAD..FETCH_HEAD | head -5)"
+  say "$new nye ændringer venter på din godkendelse"
+  [ -n "${NTFY_TOPIC:-}" ] && [ "$DRY" != 1 ] && curl -fsS -m 10 -H "Title: Nova AI: ny version klar" \
+    -d "$new ændring(er). Godkend: sudo $HUB_DIR/deploy/update.sh apply
+$msg" "https://ntfy.sh/$NTFY_TOPIC" >/dev/null 2>&1
+  echo "$tip" > "$seen"; chown "$RUN_USER" "$seen" 2>/dev/null
+  exit 0
+fi
+
 (cd "$HUB_DIR" && as_user env HUB_EXTRA_BACKUP="${HUB_UPDATE_NOVA_DIR:-}" python3 -m hub backup >/dev/null 2>&1) || true     # kopi af alle botters data før noget hentes
 hub_changed=0
 hub_before="$(as_user git -C "$HUB_DIR" rev-parse HEAD 2>/dev/null)"

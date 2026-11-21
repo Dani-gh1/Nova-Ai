@@ -180,31 +180,39 @@ a.ext:hover{color:var(--ink);background:var(--soft)}
   td.name{min-width:120px}
 }
 [hidden]{display:none!important}
+.brandlink{display:flex;align-items:center;gap:10px;color:inherit;text-decoration:none}
+.hero{display:flex;align-items:center;gap:14px;margin:6px 0 18px}.hero img{width:64px;height:64px;filter:drop-shadow(0 6px 18px rgba(91,91,240,.35))}
+.hero h1{font-size:30px;letter-spacing:-.02em;background:linear-gradient(90deg,var(--acc),#ec4899);-webkit-background-clip:text;background-clip:text;color:transparent}
+.kpis.two{grid-template-columns:repeat(2,minmax(0,1fr))}
+.kpi .down{font-size:12.5px;color:var(--neg);margin-top:6px;line-height:1.5}
+td.swap{display:flex;flex-wrap:wrap;align-items:center;gap:8px}td.swap .arrow{font-weight:700;white-space:nowrap}
+a.back{display:inline-block;margin-bottom:12px;color:var(--ink2);text-decoration:none;font-size:14px;border:1px solid var(--line);border-radius:99px;padding:5px 13px;background:var(--surface)}
+.calhead{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:8px}.calhead p{grid-column:1/-1}
+.calnav{border:1px solid var(--line);background:var(--surface);border-radius:99px;width:32px;height:32px;cursor:pointer;font-size:18px;color:var(--ink)}
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.cal .dow{font-size:12px;color:var(--mute);text-align:center}
+.cal .day{border:1px solid var(--line);border-radius:10px;padding:6px;min-height:52px;display:flex;flex-direction:column;justify-content:space-between}
+.cal .day .d{font-size:11.5px;color:var(--mute)}.cal .day b{font-size:12.5px;text-align:right}
+.cal .day.pos{background:color-mix(in srgb,var(--pos) 12%,transparent)}.cal .day.neg{background:color-mix(in srgb,var(--neg) 12%,transparent)}
+.cal .day.pos b{color:var(--pos)}.cal .day.neg b{color:var(--neg)}
+@media (max-width:640px){.cal .day b{font-size:10px}.cal .day{min-height:44px;padding:4px}}
 </style>
 </head>
 <body>
 <header>
   <div class="bar">
-    <div class="brand"><img class="logo" src="/static/logo.svg" width="30" height="30" alt=""><b>Nova AI</b>
-      <button class="pill home" id="home" type="button" role="tab"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"/></svg>Alle botter</button>
-      <span class="badge">Kun papirhandel · fiktive penge</span></div>
-    <nav class="scroller" id="tabs" role="tablist" aria-label="Botter"></nav>
-  </div>
-  <div class="subbar" id="subbar" hidden>
-    <div class="bar"><nav class="subs scroller" id="subs" role="tablist" aria-label="Sider" style="padding-bottom:0"></nav></div>
+    <div class="brand"><a href="#" class="brandlink"><img class="logo" src="/static/logo.svg" width="34" height="34" alt=""><b>Nova AI</b></a></div>
   </div>
 </header>
 <main id="main"></main>
 
 <script>
 "use strict";
-const SUBS = [["overblik", "Overblik", "M4 19V5M4 19h16M8 15l3-4 3 2 5-7"], ["strategier", "Strategier", "M4 6h16M4 12h16M4 18h10"],
-  ["desk", "Desk", "M5 4h14v6H5zM5 14h14v6H5zM8.5 7h.01M8.5 17h.01"], ["handler", "Handler", "M7 7h11l-3-3M17 17H6l3 3"]];
 const OV = "overblik";
 const PALETTE = ["#5b5bf0", "#f59e0b", "#10b981", "#ec4899", "#0ea5e9", "#8b5cf6", "#ef4444", "#14b8a6"];
 const $ = (id) => document.getElementById(id);
 let RAW = null;
-let BOTS = [], curKey = OV, curSub = "", DATA = null, lastJson = "", seq = 0, extra = {}, chartState = null;
+let BOTS = [], curKey = OV, DATA = null, lastJson = "", seq = 0, chartState = null;
 
 /* ---------- små hjælpere ---------- */
 function h(tag, attrs, ...kids) {
@@ -245,22 +253,16 @@ const tick = (since, cls) => since ? h("span", { class: "tick " + (cls || ""), "
 setInterval(() => document.querySelectorAll("[data-since]").forEach((e) => { e.textContent = dur(Date.now() / 1000 - Number(e.dataset.since)); }), 1000);
 
 /* ---------- topnavigation ---------- */
-function drawTabs() {
-  const mk = (key, text, state) => h("button", { class: "pill", role: "tab", "aria-selected": String(key === curKey), type: "button", onclick: () => go(key) },
-    state != null && h("span", { class: "dot " + state }), h("span", { class: "t" }, text));
-  const home = $("home"); home.setAttribute("aria-selected", String(curKey === OV)); home.onclick = () => go(OV);
-  $("tabs").replaceChildren(...BOTS.map((b) => mk(b.key, b.name, !b.configured ? "" : b.up ? "up" : "down")));
-  const cur = BOTS.find((x) => x.key === curKey);
-  $("subbar").hidden = curKey === OV || !(cur && cur.configured && cur.up);
-  $("subs").replaceChildren(...SUBS.map(([id, text, icon]) => h("button", { class: "sub", role: "tab", type: "button",
-    "aria-selected": String(id === curSub), onclick: () => go(curKey, id) }, sv("svg", { viewBox: "0 0 24 24", "aria-hidden": "true" }, sv("path", { d: icon })), text)));
+/* Sider: forsiden (#) og én side pr. strategi (#s/<bot>/<strategi>) */
+let curStrat = null;
+function route() {
+  const [a, b, c] = location.hash.slice(1).split("/");
+  curStrat = a === "s" && b && c ? { bot: decodeURIComponent(b), key: decodeURIComponent(c) } : null;
+  curKey = curStrat ? "s" : OV;
+  DATA = null; lastJson = ""; chartState = null;
+  render(); window.scrollTo({ top: 0 });
 }
-function go(key, sub) {
-  curKey = key; curSub = key === OV ? "" : (SUBS.some((s) => s[0] === sub) ? sub : "overblik");
-  history.replaceState(null, "", "#" + key + (curSub ? "/" + curSub : ""));
-  DATA = null; RAW = null; lastJson = ""; extra = {}; chartState = null;
-  drawTabs(); render(); window.scrollTo({ top: 0 });
-}
+const stratHref = (bot, key) => `#s/${encodeURIComponent(bot)}/${encodeURIComponent(key)}`;
 
 /* ---------- data ---------- */
 async function api(path) {
@@ -269,95 +271,41 @@ async function api(path) {
   return r.json();
 }
 async function refreshBots() {
-  try { BOTS = await api("/api/bots"); } catch (e) { return; }
-  drawTabs();
+  try { BOTS = await api("/api/bots"); } catch (e) {}
 }
 async function load(force) {
   const my = ++seq;
   if (curKey === OV) {
     try {
-      const [rows, sm] = await Promise.all([api("/api/overview"), api("/api/smart").catch(() => null)]);
-      if (my === seq && curKey === OV) renderHub(rows, sm);
+      const [rows, live, sm] = await Promise.all([api("/api/overview"), api("/api/live").catch(() => null), api("/api/smart").catch(() => null)]);
+      if (my === seq && curKey === OV) renderHub(rows, live, sm);
     } catch (e) {}
     return;
   }
-  const b = bot();
-  if (!b || !b.configured || !b.up) return;
+  const st = curStrat;
   try {
-    const d = await api("/api/bot/" + b.key);
+    const d = await api("/api/bot/" + st.bot);
     if (my !== seq) return;
     const j = JSON.stringify(d);
     if (!force && j === lastJson) return;
     lastJson = j; setData(d); render(true);
   } catch (e) {
-    if (my === seq && !DATA) view(h("div", { class: "msg" }, h("h2", {}, "Kunne ikke hente data"), h("p", {}, `${b.name} svarer ikke som forventet. Prøver igen om lidt.`)));
+    if (my === seq && !DATA) view(h("div", { class: "msg" }, h("h2", {}, "Kunne ikke hente strategien"), h("p", {}, "Markedet svarer ikke lige nu. Prøver igen om lidt.")));
   }
 }
 const money = (v, c) => (v > 0 ? "+" : v < 0 ? "−" : "") + nf(Math.abs(v), Math.abs(v) < 100 ? 2 : 0) + " " + c.currency;
 function setData(d) { RAW = d; DATA = d; }      /* botternes tal har allerede deres gebyrer med (se reglerne under hver strategi) */
-function botHead() {
-  const b = bot();
-  if (curKey === OV || !b) return null;
-  return h("div", { class: "bothead" }, h("a", { class: "back", href: "#overblik" }, "← Alle botter"),
-    h("b", {}, b.name));
-}
-function view(...kids) { $("main").replaceChildren(h("div", { class: "view" }, botHead(), ...kids)); }
-
+function view(...kids) { $("main").replaceChildren(h("div", { class: "view" }, ...kids)); }
 function render(keepScroll) {
   if (curKey === OV) { load(true); return; }
-  const b = bot();
-  if (!b) { go(OV); return; }
-  if (b.note) return view(h("div", { class: "msg" }, h("h2", {}, b.note_short || "Ikke tilgængelig"), h("p", {}, b.note)));
-  if (!b.configured) return view(h("div", { class: "msg" }, h("h2", {}, "Ikke koblet på endnu"), h("p", {}, "Koden er ikke hentet eller sat op."),
-    h("p", {}, "Kør ", h("code", {}, "git pull"), " i Nova AI-mappen.")));
-  if (!b.up) return view(h("div", { class: "msg" }, h("h2", {}, `${b.name} kører ikke`), h("p", {}, "Start den med ", h("code", {}, "python3 -m hub run"), ".")));
   if (!DATA) { load(true); return; }
   const y = window.scrollY;
-  ({ overblik: vOverblik, strategier: vStrategier, desk: vDesk, handler: vHandler })[curSub]();
+  vStrategy();
   if (keepScroll) window.scrollTo({ top: y });
 }
 
 /* ---------- fælles dele ---------- */
-const sorted = () => [...DATA.strategies].sort((a, b) => (b.return_pct ?? -1e9) - (a.return_pct ?? -1e9));
-function colors(list) { const m = {}; let i = 0; for (const s of list) { if (i >= PALETTE.length) break; if ((s.curve || []).length > 1) m[s.key] = PALETTE[i++]; } return m; }
 function kpi(l, v, s, cls, s2) { return h("div", { class: "card kpi" }, h("div", { class: "l" }, l), h("div", { class: "v num " + (cls || "") }, v), s && h("div", { class: "s" }, s), s2 && h("div", { class: "s" }, s2)); }
-
-/* ---------- OVERBLIK ---------- */
-function vOverblik() {
-  const list = sorted(), col = colors(list), best = list.find((s) => s.return_pct != null && Math.round(s.return_pct * 100) !== 0);   // 0 % tæller ikke
-  const plus = list.filter((s) => s.return_pct > 0).length;
-  const avg = list.length ? list.reduce((a, s) => a + (s.return_pct || 0), 0) / list.length : 0;
-  const closed = list.reduce((a, s) => a + (s.trades || 0), 0), openPos = list.reduce((a, s) => a + (s.open || 0), 0);
-  const wrap = h("div", { class: "chart", id: "chart" });
-  const legend = h("div", { class: "legend" });
-  view(
-    h("div", { class: "grid kpis" },
-      kpi("Bedste strategi", best ? pct(best.return_pct) : "–", best && best.name, best && tone(best.return_pct)),
-      kpi("Strategier i plus", `${plus} af ${list.length}`),
-      kpi("Gennemsnit", pct(avg), "alle strategier", tone(avg)),
-      kpi("Har samlet data i", tick((DATA && DATA.since) || (bot() || {}).since), "siden botten fik sine første data"),
-      kpi("Handler", String(closed + openPos), `${openPos} åbne · ${closed} lukkede` + (closed < 20 ? " (for få til konklusioner)" : ""))),
-    h("div", { class: "card" },
-      h("div", { class: "head" }, h("h2", {}, "Afkast over tid"), h("p", {}, "I procent af papirkontoen, efter gebyrer og slip. De bedste strategier er farvet.")),
-      wrap, legend),
-    h("div", { class: "card" },
-      h("div", { class: "head" }, h("h2", {}, "Alle strategier"), h("p", {}, "Sorteret efter afkast")),
-      h("div", { class: "tw" }, h("table", {},
-        h("thead", {}, h("tr", {}, h("th", {}, "Strategi"), h("th", { class: "n" }, "Afkast"), h("th", { class: "n" }, "Handler"),
-          h("th", { class: "n hide-m" }, "Vundet"), h("th", { class: "n hide-m" }, "Åbne"), h("th", { class: "n hide-m" }, "Maks. fald"))),
-        h("tbody", {}, list.map((s) => h("tr", { onmouseenter: () => focusLine(s.key), onmouseleave: () => focusLine(null) },
-          h("td", { class: "name" }, h("i", { class: "sw", style: "background:" + (col[s.key] || "var(--grey)") }),
-            s.name, s.group && h("span", { class: "tag hide-m" }, s.group)),
-          h("td", { class: "n " + tone(s.return_pct) }, pct(s.return_pct)),
-          h("td", { class: "n" }, String(s.trades ?? 0)),
-          h("td", { class: "n hide-m" }, s.win_rate == null ? "–" : nf(s.win_rate, 0) + " %"),
-          h("td", { class: "n hide-m" }, String(s.open ?? 0)),
-          h("td", { class: "n hide-m" }, s.max_dd == null ? "–" : nf(s.max_dd) + " %")))))),
-      h("p", { class: "note" }, "Gebyrer og slip er regnet med i botternes egne tal. Hvilke gebyrer, står under hver strategis regler.")));
-  drawChart(wrap, list, col);
-  legend.replaceChildren(...list.filter((s) => col[s.key]).map((s) => h("span", {}, h("i", { style: "background:" + col[s.key] }), s.name)),
-    ...(list.some((s) => (s.curve || []).length > 1 && !col[s.key]) ? [h("span", { class: "mute" }, h("i", { style: "background:var(--grey)" }), "øvrige")] : []));
-}
 
 /* glat kurve (monoton kubisk interpolation – ingen overshoot) */
 function smooth(p) {
@@ -439,137 +387,126 @@ function drawChart(el, list, col) {
   });
   svg.addEventListener("pointerleave", () => { tip.style.opacity = 0; cross.setAttribute("opacity", 0); });
 }
-function focusLine(key) {
-  if (!chartState) return;
-  for (const [k, p] of Object.entries(chartState.lines)) {
-    p.classList.toggle("dim", key != null && k !== key);
-    p.setAttribute("stroke-width", key === k ? 3.4 : p.getAttribute("data-base"));
-  }
-}
-
-/* ---------- STRATEGIER ---------- */
-function vStrategier() {
-  const q = (extra.q || "").toLowerCase(), by = extra.sort || "afkast";
-  let list = sorted();
-  if (by === "navn") list = [...list].sort((a, b) => a.name.localeCompare(b.name, "da"));
-  if (by === "handler") list = [...list].sort((a, b) => (b.trades || 0) - (a.trades || 0));
-  const shown = list.filter((s) => !q || (s.name + " " + (s.description || "") + " " + (s.group || "")).toLowerCase().includes(q));
-  const cards = shown.map((s) => h("article", { class: "card sc" },
-    h("div", { class: "top" }, h("div", {}, h("h3", {}, s.name), s.group && h("span", { class: "grp" }, s.group)),
-      h("div", { class: "big num " + tone(s.return_pct) }, pct(s.return_pct))),
-    s.description && h("p", { class: "desc" }, s.description),
-    h("div", { class: "stats" },
-      h("div", {}, h("b", {}, String(s.trades ?? 0)), h("span", {}, "Handler")),
-      h("div", {}, h("b", {}, s.win_rate == null ? "–" : nf(s.win_rate, 0) + " %"), h("span", {}, "Vundet")),
-      h("div", {}, h("b", {}, String(s.open ?? 0)), h("span", {}, "Åbne")),
-      h("div", {}, h("b", {}, s.max_dd == null ? "–" : nf(s.max_dd) + " %"), h("span", {}, "Maks. fald"))),
-    s.rules.length ? h("div", { class: "rules" }, h("h4", {}, "Regler"), h("div", { class: "kvs" }, s.rules.map(([a, b]) => h("div", { class: "kv" }, h("span", {}, a), h("b", {}, b))))) : null));
-  const inp = h("input", { type: "search", placeholder: "Søg i strategier …", value: extra.q || "", "aria-label": "Søg i strategier" });
-  const sel = h("select", { "aria-label": "Sortér", onchange: (e) => { extra.sort = e.target.value; vStrategier(); } },
-    [["afkast", "Sortér: afkast"], ["navn", "Sortér: navn"], ["handler", "Sortér: handler"]].map(([v, t]) => h("option", { value: v, selected: v === by }, t)));
-  const box = h("div", {}, shown.length ? h("div", { class: "strat" }, cards) : h("div", { class: "card empty" }, "Ingen strategier matcher."));
-  inp.oninput = () => { extra.q = inp.value; vStrategierList(box); };
-  view(h("div", { class: "tools" }, inp, sel), box);
-}
-function vStrategierList(box) {   // kun listen opdateres under søgning, så feltet beholder fokus
-  const keep = extra.q; vStrategier(); const n = document.querySelector(".tools input"); n.focus(); n.setSelectionRange(keep.length, keep.length);
-}
-
-/* ---------- DESK ---------- */
-function vDesk() {
-  const d = DATA.desk, b = bot();
-  const age = DATA.scan ? Math.max(0, Date.now() / 1000 - DATA.scan) : null, idle = DATA.idle;
-  view(
-    h("div", { class: "grid kpis" }, idle ? kpi("Seneste scanning", "Børsen er lukket", idle) : kpi("Seneste scanning", ago(age), age == null ? "botten oplyser det ikke" : age > STALE ? "scanner ikke lige nu" : "scanner løbende", age != null && age > STALE ? "neg" : ""),
-      d.kpis.map(([l, v]) => kpi(l, String(v)))),
-    h("div", { class: "sections" }, d.sections.filter((s) => s.rows.length).map((s) => h("section", { class: "card" }, h("h2", {}, s.title),
-      h("div", { class: "kvs" }, s.rows.map(([a, c]) => h("div", { class: "kv" }, h("span", {}, a), h("b", {}, c === "" ? "" : String(c)))))))),
-    h("p", { class: "note" }, h("a", { class: "ext", href: `/b/${b.key}/`, target: "_blank", rel: "noopener" }, "Åbn botens originale dashboard ↗")));
-}
-
-/* ---------- HANDLER ---------- */
-function vHandler() {
-  const mode = extra.mode || (DATA.trades.closed.length || !DATA.trades.open.length ? "closed" : "open"), strat = extra.strat || "", limit = extra.limit || 40;
-  const rows = DATA.trades[mode === "open" ? "open" : "closed"].filter((r) => !strat || r.strategy === strat);
-  const names = [...new Set([...DATA.trades.open, ...DATA.trades.closed].map((r) => r.strategy))].sort((a, b) => a.localeCompare(b, "da"));
-  const seg = h("div", { class: "seg", role: "group", "aria-label": "Visning" }, [["closed", `Lukkede (${DATA.trades.closed.length})`], ["open", `Åbne (${DATA.trades.open.length})`]].map(([v, t]) =>
-    h("button", { type: "button", "aria-pressed": String(v === mode), onclick: () => { extra.mode = v; extra.limit = 40; vHandler(); } }, t)));
-  const sel = h("select", { "aria-label": "Filtrér strategi", onchange: (e) => { extra.strat = e.target.value; extra.limit = 40; vHandler(); } },
-    h("option", { value: "" }, "Alle strategier"), names.map((n) => h("option", { value: n, selected: n === strat }, n)));
-  const total = rows.length;
-  view(h("div", { class: "tools" }, seg, sel),
-    h("div", { class: "card" },
-      total ? h("div", { class: "tw" }, h("table", {},
-        h("thead", {}, h("tr", {}, h("th", {}, "Tid"), h("th", {}, "Strategi"), h("th", {}, "Marked"), h("th", { class: "hide-m" }, "Retning"),
-          h("th", { class: "n" }, "Resultat"), h("th", { class: "hide-m" }, "Info"))),
-        h("tbody", {}, rows.slice(0, limit).map((r) => h("tr", {},
-          h("td", { class: "mute" }, when(r.ts)), h("td", { class: "name" }, r.strategy),
-          h("td", { class: "name" }, r.symbol, h("span", { class: "under" }, r.side)),
-          h("td", { class: "hide-m" }, r.side || "–"),
-          h("td", { class: "n " + tone(r.result_pct) }, pct(r.result_pct)),
-          h("td", { class: "hide-m mute", style: "white-space:normal;max-width:260px" }, r.detail || "–")))))) :
-        h("div", { class: "empty" }, mode === "open" ? "Ingen åbne handler lige nu." : "Ingen lukkede handler endnu. De dukker op, når en strategi har solgt noget."),
-      total > limit ? h("button", { class: "more", type: "button", onclick: () => { extra.limit = limit + 60; vHandler(); } }, `Vis flere (${total - limit} tilbage)`) : null));
+/* ---------- STRATEGI-SIDE: handler og afkast de seneste 24 timer, graf og regler ---------- */
+function vStrategy() {
+  const b = BOTS.find((x) => x.key === curStrat.bot) || { name: curStrat.bot };
+  const s = (DATA.strategies || []).find((x) => String(x.key) === curStrat.key || x.name === curStrat.key);
+  const back = h("a", { class: "back", href: "#" }, "← Forsiden");
+  if (!s) return view(back, h("div", { class: "msg" }, h("h2", {}, "Strategien findes ikke"), h("p", {}, "Den er måske omdøbt eller fjernet.")));
+  const now = Date.now() / 1000, day = now - 86400, cv = s.curve || [];
+  const at = (t) => { let v = null; for (const p of cv) { if (p[0] <= t) v = p[1]; else break; } return v; };
+  const base = at(day) ?? (cv.length ? cv[0][1] : null), last = cv.length ? cv[cv.length - 1][1] : null;
+  const r24 = base != null && last != null && 100 + base > 0 ? ((100 + last) / (100 + base) - 1) * 100 : null;
+  const mine = (t) => t.strategy === s.name || t.strategy === String(s.key);
+  const open = (DATA.trades.open || []).filter(mine), closed = (DATA.trades.closed || []).filter((t) => mine(t) && t.ts >= day);
+  const wrap = h("div", { class: "chart", style: "height:240px" });
+  const recent = { ...s, curve: cv.filter((p) => p[0] >= day - 3600) };
+  view(back,
+    h("div", { class: "card" }, h("div", { class: "head" }, h("h2", {}, s.name), h("p", {}, `${b.name}${s.description ? " · " + s.description : ""}`)),
+      h("div", { class: "grid kpis", style: "margin-bottom:14px" },
+        kpi("Seneste 24 timer", pct(r24), "afkast efter gebyrer", tone(r24)),
+        kpi("I alt", pct(s.return_pct), "siden strategien startede", tone(s.return_pct)),
+        kpi("Handler (24 t)", String(closed.length), `${open.length} åbne nu`),
+        kpi("Vundet", s.win_rate == null ? "–" : nf(s.win_rate, 0) + " %", `${s.trades ?? 0} lukkede i alt`)),
+      wrap),
+    h("div", { class: "card" }, h("div", { class: "head" }, h("h2", {}, "Handler de seneste 24 timer")),
+      open.length + closed.length ? h("div", { class: "tw" }, h("table", {},
+        h("thead", {}, h("tr", {}, h("th", {}, "Tid"), h("th", {}, "Hvad"), h("th", { class: "hide-m" }, "Retning"), h("th", { class: "n" }, "Resultat"))),
+        h("tbody", {}, [...open.map((t) => ({ ...t, isOpen: true })), ...closed].sort((a, z) => z.ts - a.ts).map((t) => h("tr", {},
+          h("td", { class: "mute" }, when(t.ts) + (t.isOpen ? " · åben" : "")), h("td", { class: "name" }, t.symbol), h("td", { class: "hide-m" }, t.side || ""),
+          h("td", { class: "n " + tone(t.result_pct) }, t.result_pct == null ? "–" : pct(t.result_pct))))))) :
+        h("div", { class: "empty" }, "Ingen handler de seneste 24 timer.")),
+    (s.rules || []).length ? h("div", { class: "card" }, h("div", { class: "head" }, h("h2", {}, "Regler")),
+      h("div", { class: "kvs" }, s.rules.map(([a, z]) => h("div", { class: "kv" }, h("span", {}, a), h("b", {}, z))))) : null);
+  requestAnimationFrame(() => { if (wrap.isConnected) drawChart(wrap, [recent], { [s.key]: "var(--acc)" }); });
 }
 
 /* ---------- HUB-OVERBLIK (alle botter) ---------- */
-/* Smart strategi: følger altid den strategi, der er steget mest siden start, og skifter i samme øjeblik, en anden overhaler */
+/* Kassen: rigtige penge (eller simulering), fordelt på markederne efter Smart strategi */
+function liveCard(lv) {
+  if (!lv) return null;
+  const sim = lv.mode === "dry", usd = (v) => `${nf(v, 2)} USD`, pf = lv.smart;
+  const head = h("div", { class: "head" }, h("h2", {}, sim ? "Kassen (simulering)" : "Kassen · rigtige penge"),
+    h("p", {}, "Her lægges pengene ind. Smart strategi (samme regel, men kun strategier, der kan handles for rigtigt) bestemmer, hvilken strategi pengene følger, og Kassen flytter pengene til det marked, den handles på."));
+  const rows = lv.venues.flatMap((v) => v.holdings.map((x) => ({ ...x, venue: v.name })));
+  return h("div", { class: "card" }, head,
+    lv.problem ? h("p", { class: "note", style: "color:var(--warn)" }, lv.problem) : null,
+    h("div", { class: "grid kpis", style: "margin-bottom:14px" },
+      kpi("I Kassen", `${nf(lv.value_dkk, 0)} kr.`, `${usd(lv.value_usd)} · lagt ind ${nf(lv.deposited_dkk, 0)} kr.`, tone(lv.return_pct)),
+      kpi("Afkast", pct(lv.return_pct), ["kørt i ", tick(lv.since)], tone(lv.return_pct), `gebyrer betalt: ${usd(lv.fees_usd)}`),
+      kpi("Følger", lv.following || "Kontant", pf && pf.following_gain != null ? `${pct(pf.following_gain)} siden start · Smart for rigtige penge: ${pct(pf.return_pct)}` : "venter på, at en strategi stiger"),
+      kpi("Markeder", String(lv.venues.length), lv.venues.map((v) => `${v.name}: ${usd(v.value_usd)}`).join(" · "))),
+    h("div", { class: "tw" }, h("table", {},
+      h("thead", {}, h("tr", {}, h("th", {}, "Marked"), h("th", { class: "n" }, "Værdi"), h("th", { class: "n" }, "Kontant"), h("th", { class: "n" }, "Positioner"))),
+      h("tbody", {}, lv.venues.map((v) => h("tr", {}, h("td", { class: "name" }, v.name + (v.problem ? " ⚠" : "")), h("td", { class: "n" }, usd(v.value_usd)),
+        h("td", { class: "n" }, usd(v.cash_usd)), h("td", { class: "n" }, String(v.holdings.length))))))),
+    rows.length ? h("div", { class: "tw" }, h("table", {},
+      h("thead", {}, h("tr", {}, h("th", {}, "Position"), h("th", { class: "hide-m" }, "Marked"), h("th", { class: "n" }, "Værdi"))),
+      h("tbody", {}, rows.map((x) => h("tr", {}, h("td", { class: "name" }, `${x.symbol} · ${x.side}${x.lev > 1 ? " " + x.lev + "x" : ""}`),
+        h("td", { class: "mute hide-m" }, x.venue), h("td", { class: "n" }, usd(x.usd))))))) : null,
+    lv.orders.length || lv.transfers.length ? h("div", { class: "tw" }, h("table", {},
+      h("thead", {}, h("tr", {}, h("th", {}, "Seneste"), h("th", {}, "Hvad"), h("th", { class: "n" }, "Beløb"))),
+      h("tbody", {}, [...lv.orders.map((o) => ({ ts: o.ts, what: `${o.side} ${o.dir} ${o.symbol} (${o.venue})`, usd: o.usd })),
+        ...lv.transfers.map((t) => ({ ts: t.ts, what: `Flyttet fra ${t.from} til ${t.to}`, usd: t.usd }))]
+        .sort((a, b) => b.ts - a.ts).slice(0, 12)
+        .map((x) => h("tr", {}, h("td", { class: "mute" }, when(x.ts)), h("td", { class: "name" }, x.what), h("td", { class: "n" }, usd(x.usd))))))) : null,
+    h("p", { class: "note" }, sim ? "Simulering: rigtige kurser og børsernes gebyrer, men ingen ordrer sendes. Se README for, hvordan rigtige penge slås til."
+      : "Rigtige ordrer. Læg penge ind med  python3 -m hub kasse indskud <kr>  og tag dem ud med  python3 -m hub kasse udbetal <kr>  på serveren."));
+}
+/* Smart strategi: følger den strategi, der fører i dag; skift vises som "solgt --resultat--> købt" */
 function smartCard(sm) {
-  const head = h("div", { class: "head" }, h("h2", {}, "Smart strategi"),
-    h("p", {}, `Følger altid den strategi, der er steget mest, siden Smart startede${sm && sm.count ? ` (blandt ${sm.count} strategier i ${sm.bots} botter)` : ""}, og skifter i samme øjeblik, en anden overhaler den.`));
-  if (!sm) return h("div", { class: "card" }, head, h("div", { class: "empty" }, "Starter, når botterne har svaret første gang."));
+  if (!sm) return h("div", { class: "card" }, h("div", { class: "head" }, h("h2", {}, "Smart strategi")), h("div", { class: "empty" }, "Starter, når markederne har svaret første gang."));
   const wrap = h("div", { class: "chart", style: "height:200px" });
-  const box = h("div", { class: "card" }, head,
+  const box = h("div", { class: "card" }, h("div", { class: "head" }, h("h2", {}, "Smart strategi")),
     sm.warning ? h("p", { class: "note", style: "color:var(--warn)" }, sm.warning) : null,
     h("div", { class: "grid kpis", style: "margin-bottom:14px" },
-      kpi("Afkast", pct(sm.return_pct), ["kørt i ", tick(sm.since)], tone(sm.return_pct)),
-      kpi("På kontoen nu", `${nf(sm.value, 0)} ${sm.currency}`, `lagt ind: ${nf(sm.capital, 0)} ${sm.currency} · ${money(sm.value - sm.capital, sm)}`, tone(sm.value - sm.capital)),
-      kpi("Følger nu", sm.following || "Venter", sm.following ? `${sm.following_bot} · ${pct(sm.following_gain)} siden start` : "på at en strategi stiger",
-        null, sm.following ? ["siden ", when(sm.held_since)] : null),
-      kpi("Skift", String(sm.switches), "gange en anden har overhalet")),
+      kpi("I dag", pct(sm.today_pct), "starter forfra ved midnat", tone(sm.today_pct)),
+      kpi("I alt", pct(sm.return_pct), `${nf(sm.value, 0)} ${sm.currency} af ${nf(sm.capital, 0)}`, tone(sm.return_pct)),
+      kpi("Følger nu", sm.following || "Venter", sm.following ? `${sm.following_bot} · ${pct(sm.following_gain)} i dag` : "på at en strategi stiger i dag"),
+      kpi("Skift", String(sm.switches), "i alt")),
     wrap,
-    sm.leaders.length ? h("div", { class: "tw" }, h("table", {},
-      h("thead", {}, h("tr", {}, h("th", {}, "Steget mest siden start"), h("th", { class: "n" }, "Siden start"))),
-      h("tbody", {}, sm.leaders.map((x) => h("tr", {}, h("td", { class: "name" }, `${x.held ? "▶ " : ""}${x.name} (${x.bot_name})`),
-        h("td", { class: "n " + tone(x.gain) }, pct(x.gain))))))) : null,
     sm.recent.length ? h("div", { class: "tw" }, h("table", {},
-      h("thead", {}, h("tr", {}, h("th", {}, "Skift"), h("th", {}, "Til"), h("th", { class: "n" }, "Smart da"), h("th", { class: "hide-m" }, "Hvorfor"))),
-      h("tbody", {}, sm.recent.map((x) => h("tr", {}, h("td", { class: "mute" }, when(x.ts)), h("td", { class: "name" }, `${x.to} (${x.to_bot})`),
-        h("td", { class: "n " + tone(x.smart_pct) }, pct(x.smart_pct)), h("td", { class: "mute hide-m" }, x.why)))))) : null,
-    h("p", { class: "note" }, "Som en rigtig konto: Smart stiger og falder med den strategi, den følger. Eksempel: strategi 1 stiger til +2 %, så står Smart på +2 %. Strategi 2 stiger til +1,5 %: ingen betydning. Falder strategi 1 derefter, falder Smart med, og i det øjeblik strategi 1 kommer under strategi 2 (ved +1,5 %), skifter Smart til strategi 2 og står på +1,5 %."));
+      h("thead", {}, h("tr", {}, h("th", {}, "Tid"), h("th", {}, "Skift"))),
+      h("tbody", {}, sm.recent.map((x) => h("tr", {}, h("td", { class: "mute" }, when(x.ts)),
+        h("td", { class: "swap" }, h("span", { class: "name" }, x.from || "Start"),
+          h("span", { class: "arrow " + tone(x.result_pct) }, x.result_pct == null ? "→" : `–${pct(x.result_pct)}→`),
+          h("span", { class: "name" }, x.to, h("span", { class: "mute" }, ` (${x.to_bot})`)))))))) : null);
   requestAnimationFrame(() => { if (wrap.isConnected) drawChart(wrap, [{ key: "smart", name: "Smart strategi", curve: sm.curve }], { smart: "var(--acc)" }); });
   return box;
 }
-function renderHub(rows, sm) {
-  const link = (b) => h("a", { href: "#" + b.key }, b.name);
-  const ranked = rows.filter((b) => b.best && b.best.name).sort((x, y) => y.best.return_pct - x.best.return_pct);
-  const running = rows.filter((b) => b.up).length;
+/* Månedskalender: hvad Smart har tjent hver dag */
+let calShift = 0;
+function calendarCard(sm) {
+  if (!sm) return null;
+  const now = new Date(), first = new Date(now.getFullYear(), now.getMonth() + calShift, 1);
+  const y = first.getFullYear(), m = first.getMonth(), days = new Date(y, m + 1, 0).getDate(), lead = (first.getDay() + 6) % 7;
+  const key = (d) => `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+  const vals = Array.from({ length: days }, (_, i) => sm.days[key(i + 1)]);
+  const total = vals.filter((v) => v != null).reduce((a, v) => a * (1 + v / 100), 1);
+  const cells = [...Array(lead).fill(null), ...vals.map((v, i) => ({ d: i + 1, v }))];
+  const nav = (dx) => h("button", { class: "calnav", type: "button", onclick: () => { calShift += dx; load(true); } }, dx < 0 ? "‹" : "›");
+  return h("div", { class: "card" }, h("div", { class: "head calhead" }, nav(-1),
+      h("h2", {}, first.toLocaleDateString("da-DK", { month: "long", year: "numeric" })), calShift < 0 ? nav(1) : h("span", {}),
+      h("p", {}, `Smart pr. dag · måneden: ${pct((total - 1) * 100)}`)),
+    h("div", { class: "cal" }, ...["man", "tir", "ons", "tor", "fre", "lør", "søn"].map((d) => h("div", { class: "dow" }, d)),
+      ...cells.map((c) => c ? h("div", { class: "day " + (c.v == null ? "" : tone(c.v)) }, h("span", { class: "d" }, String(c.d)),
+        h("b", {}, c.v == null ? "" : pct(c.v))) : h("div", {}))));
+}
+function renderHub(rows, live, sm) {
+  const conf = rows.filter((b) => b.configured);
+  const ok = conf.filter((b) => b.up && (b.idle || (b.scan_age != null && b.scan_age <= STALE)));
+  const bad = conf.filter((b) => !ok.includes(b));
+  const why = (b) => `${b.name}: ${!b.up ? "kører ikke" : "scanner ikke"}${b.issue ? " – " + b.issue : ""}`;
   view(
-    h("div", { class: "grid kpis" },
-      kpi("Handler i alt", String(rows.reduce((a, b) => a + (b.trades ? b.trades.open + b.trades.closed : 0), 0)), `${rows.reduce((a, b) => a + (b.trades ? b.trades.closed : 0), 0)} lukkede`),
-      kpi("Botter der scanner", `${rows.filter((b) => b.up && (b.idle || (b.scan_age != null && b.scan_age <= STALE))).length} af ${rows.filter((b) => b.configured).length}`,
-        rows.some((b) => !b.configured) ? `${rows.filter((b) => !b.configured).length} slået fra eller ikke hentet her` : `${running} kører`),
-      kpi("Bedste strategi", ranked[0] ? pct(ranked[0].best.return_pct) : "–", ranked[0] && `${ranked[0].name} · ${ranked[0].best.name}`, ranked[0] && tone(ranked[0].best.return_pct)),
-      kpi("Smart strategi", sm ? pct(sm.return_pct) : "–", sm ? (sm.following ? `følger ${sm.following} (${sm.following_bot})` : "venter på, at en strategi stiger") : "starter", sm && tone(sm.return_pct), sm && ["⏱ ", tick(sm.since)])),
+    h("div", { class: "hero" }, h("img", { src: "/static/logo.svg", alt: "" }), h("h1", {}, "Nova AI")),
+    h("div", { class: "grid kpis two" },
+      kpi("Markeder der scanner", `${ok.length} af ${conf.length}`, bad.length && bad.length < 5 ? null : (bad.length ? `${bad.length} er nede` : "alle kører"),
+        bad.length ? "neg" : "pos", bad.length && bad.length < 5 ? h("div", { class: "down" }, bad.map((b) => h("div", {}, why(b)))) : null),
+      kpi("Smart strategi", sm ? pct(sm.today_pct) : "–", sm ? (sm.following ? `i dag · følger ${sm.following}` : "i dag · venter på, at en strategi stiger") : "starter", sm && tone(sm.today_pct))),
     smartCard(sm),
-    h("div", { class: "card" }, h("div", { class: "head" }, h("h2", {}, "Kører de?"), h("p", {}, "Status for alle botter lige nu")),
-      h("div", { class: "tw" }, h("table", {}, h("thead", {}, h("tr", {}, h("th", {}, "Bot"), h("th", { class: "hide-m" }, "Investerer i"), h("th", {}, "Status"),
-        h("th", { class: "hide-m" }, "Seneste scanning"), h("th", { class: "hide-m" }, "Samler data"), h("th", { class: "hide-m" }, "Handler"),
-        h("th", { class: "n" }, h("span", { class: "hide-m" }, "Strategier i plus"), h("span", { class: "under" }, "I plus")))),
-        h("tbody", {}, rows.map((b) => {
-          const stale = b.up && !b.idle && b.scan_age != null && b.scan_age > STALE;
-          const text = !b.configured ? (b.note_short || (b.note ? "Ikke tilgængelig" : "Ikke koblet på")) : !b.up ? "Kører ikke" : b.mode === "dashboard" ? "Kun dashboard" : b.idle ? "Venter på børsen" : stale ? "Scanner ikke" : b.scan_age == null ? "Kører" : "Scanner";
-          const dot = !b.configured ? "" : !b.up ? "down" : stale ? "warn" : "up";
-          return h("tr", {}, h("td", { class: "name" }, link(b), h("span", { class: "under" }, b.invests || "")), h("td", { class: "hide-m" }, b.invests || "–"),
-            h("td", {}, h("span", { class: "st" }, h("span", { class: "dot " + dot }), text), h("span", { class: "under" }, b.up ? "Scannet " + ago(b.scan_age) + (b.trades ? " · " + (b.trades.open + b.trades.closed ? `${b.trades.open} åbne, ${b.trades.closed} lukkede` : "ingen handler endnu") : "") : ""),
-              (b.idle || b.issue || (b.note && !b.configured)) ? h("div", { class: "issue", title: b.idle || b.issue || b.note }, b.idle || b.issue || b.note) : null),
-            h("td", { class: "hide-m " + (stale ? "neg" : "mute") }, b.up ? (b.idle ? "børsen er lukket" : ago(b.scan_age)) : "–"),
-            h("td", { class: "hide-m num" }, tick(b.since)),
-            h("td", { class: "hide-m" }, b.trades ? (b.trades.open + b.trades.closed ? `${b.trades.open} åbne · ${b.trades.closed} lukkede` : "Ingen endnu") : "–"),
-            h("td", { class: "n" }, b.best ? `${b.best.positive} af ${b.best.count}` : "–"));
-        }))))),
-    allStrategiesCard(rows),
-    h("p", { class: "note" }, "Kun papirhandel med fiktive penge. Med få lukkede handler er tallene mest held eller uheld. Afkast er uden garanti for, at det holder med rigtige penge."));
+    calendarCard(sm),
+    liveCard(live),
+    allStrategiesCard(rows));
 }
 
 /* Alle strategier i alle botter, bedste først. Top 20 vises; "Se alle" viser resten (huskes ved opdatering hvert 15. sekund). */
@@ -582,11 +519,11 @@ function allStrategiesCard(rows) {
   const more = all.length > 20 ? h("button", { class: "more", type: "button", onclick: () => { showAllStrategies = !showAllStrategies; load(true); } },
     showAllStrategies ? "Vis kun top 20" : `Se alle ${all.length} strategier`) : null;
   return h("div", { class: "card" }, h("div", { class: "head" }, h("h2", {}, "Bedste strategier"),
-      h("p", {}, "Alle strategier i alle botter. Afkast efter omkostninger, i procent af papirkontoen. Strategier uden afkast endnu tæller ikke.")),
-    all.length ? h("div", { class: "tw" }, h("table", {}, h("thead", {}, h("tr", {}, h("th", { class: "hide-m" }, "#"), h("th", {}, "Strategi"), h("th", {}, "Bot"),
+      h("p", {}, "Tryk på en strategi for at se dens handler og afkast de seneste 24 timer.")),
+    all.length ? h("div", { class: "tw" }, h("table", {}, h("thead", {}, h("tr", {}, h("th", { class: "hide-m" }, "#"), h("th", {}, "Strategi"), h("th", {}, "Marked"),
         h("th", { class: "n" }, "Afkast"), h("th", { class: "n" }, h("span", { class: "hide-m" }, "Lukkede handler"), h("span", { class: "under" }, "Handler")))),
-      h("tbody", {}, list.map((s, i) => h("tr", {}, h("td", { class: "mute hide-m" }, String(i + 1)), h("td", { class: "name" }, s.name),
-        h("td", {}, h("a", { href: "#" + s.bot.key + "/strategier" }, s.bot.name)),
+      h("tbody", {}, list.map((s, i) => h("tr", {}, h("td", { class: "mute hide-m" }, String(i + 1)), h("td", { class: "name" }, h("a", { href: stratHref(s.bot.key, s.key ?? s.name) }, s.name)),
+        h("td", { class: "mute" }, s.bot.name),
         h("td", { class: "n " + tone(s.return_pct) }, pct(s.return_pct)),
         h("td", { class: "n" }, String(s.trades), s.trades < 20 ? h("span", { class: "tag hide-m" }, "få") : null)))))) :
       h("div", { class: "empty" }, "Ingen strategier med afkast endnu."),
@@ -595,13 +532,12 @@ function allStrategiesCard(rows) {
 
 /* ---------- start ---------- */
 let rz;
-addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(() => { if (curKey !== OV && curSub === "overblik" && DATA) vOverblik(); }, 150); });
-addEventListener("hashchange", () => { const [b, s] = location.hash.slice(1).split("/"); if (b && (b !== curKey || (s || "") !== curSub)) go(BOTS.some((x) => x.key === b) ? b : OV, s); });
+addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(() => { if (curKey !== OV && DATA) vStrategy(); }, 150); });
+addEventListener("hashchange", route);
 (async function init() {
   await refreshBots();
-  const [b, s] = location.hash.slice(1).split("/");
-  go(BOTS.some((x) => x.key === b) ? b : OV, s);
-  setInterval(refreshBots, 10000);
+  route();
+  setInterval(refreshBots, 60000);
   setInterval(() => load(false), 15000);
 })();
 </script>

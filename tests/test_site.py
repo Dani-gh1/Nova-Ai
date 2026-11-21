@@ -35,13 +35,14 @@ class SiteTests(unittest.TestCase):
         for page in PAGES:
             self.assertIn("serviceWorker.register(", page.read_text(encoding="utf-8"))
 
-    def test_the_global_overview_is_a_pinned_button_and_every_bot_page_names_its_bot(self):
+    def test_no_bot_pages_only_the_front_page_and_a_page_per_strategy(self):
         shell = (Path(__file__).resolve().parent.parent / "hub" / "shell.html").read_text(encoding="utf-8")
-        self.assertIn('id="home"', shell)
-        self.assertIn("Alle botter", shell)
-        self.assertIn("function botHead()", shell)                          # ingen bot-side uden tydelig overskrift
-        self.assertNotIn('mk(OV, "Overblik"', shell)                        # ligger ikke længere i rækken, der ruller væk
-        self.assertIn("!(cur && cur.configured && cur.up)", shell)          # bundmenuen vises kun, når botten kan vises
+        self.assertNotIn("Alle botter", shell)                              # ønsket fjernet
+        self.assertNotIn("Kun papirhandel · fiktive penge", shell)
+        self.assertNotIn('id="tabs"', shell)                                # ingen botfaner
+        self.assertIn("function vStrategy()", shell)                        # strategi-siden
+        self.assertIn("stratHref(", shell)                                  # forsiden linker til den
+        self.assertIn("function calendarCard(", shell)                      # månedskalenderen
 
     def test_the_shell_is_set_up_for_the_home_screen(self):
         shell = (Path(__file__).resolve().parent.parent / "hub" / "shell.html").read_text(encoding="utf-8")
