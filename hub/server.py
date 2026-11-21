@@ -99,17 +99,51 @@ def data_since(data: dict) -> float | None:
     return min(trades) if trades else None
 
 
-def bot_data(bot: dict) -> dict:
-    """Fælles format for én bot (cachet i 15 sekunder, så flere faner og besøgende ikke belaster botten)."""
-    hit = _cache.get(bot["key"])
-    if hit and time.time() - hit[0] < 15:
-        return hit[1]
-    data = normalize(bot, lambda sub: upstream(bot, sub, timeout=25))     # en travl bot når at svare, i stedet for at arbejde forgæves
+FRESH_S = 15                     # så gammelt må en bots svar være, før der hentes et nyt
+KEEP_S = 30 * 60                 # ældre svar end dette vises ikke (så venter vi på et nyt)
+_fetching: set[str] = set()
+_fetch_lock = threading.Lock()
+_fetch_slots = threading.BoundedSemaphore(3)      # højst 3 botter spørges ad gangen i baggrunden: skåner en lille server
+
+
+def _fetch(bot: dict, timeout: float) -> dict:
+    data = normalize(bot, lambda sub: upstream(bot, sub, timeout=timeout))
     data["since"] = data_since(data)
     for st in data.get("strategies") or []:
         st["rules"] = [*(st.get("rules") or []), fee_rule(bot)]
     _cache[bot["key"]] = (time.time(), data)
     return data
+
+
+def _refresh_in_background(bot: dict) -> None:
+    with _fetch_lock:
+        if bot["key"] in _fetching:
+            return
+        _fetching.add(bot["key"])
+
+    def go():
+        try:
+            with _fetch_slots:
+                _fetch(bot, timeout=120)          # ingen venter på svaret: giv en travl bot god tid (ingen BrokenPipe)
+        except (OSError, ValueError, KeyError, TypeError):
+            pass
+        finally:
+            with _fetch_lock:
+                _fetching.discard(bot["key"])
+    threading.Thread(target=go, daemon=True).start()
+
+
+def bot_data(bot: dict) -> dict:
+    """Fælles format for én bot. Har vi et svar, gives det med det samme (og et nyt hentes i baggrunden, hvis det er over
+    FRESH_S sekunder gammelt), så siden aldrig venter på en langsom bot. Kun første gang ventes der på botten."""
+    hit = _cache.get(bot["key"])
+    age = time.time() - hit[0] if hit else None
+    if hit and age < FRESH_S:
+        return hit[1]
+    if hit and age < KEEP_S:
+        _refresh_in_background(bot)
+        return hit[1]
+    return _fetch(bot, timeout=25)
 
 
 LOG_DIR = Path(os.environ.get("HUB_LOG_DIR", ROOT / "logs"))
@@ -123,6 +157,8 @@ def last_problem(bot: dict) -> str:
         except OSError:
             continue
         for line in reversed(tail.splitlines()):
+            if re.search(r"BrokenPipe|ConnectionReset|ConnectionAborted", line):
+                continue                     # hubben (eller en browser) lagde på, mens botten svarede: ikke en fejl i botten
             if re.search(r"Error|Exception|fejlede|svarer ikke|spærret|Traceback", line) and 'File "' not in line:
                 return line.strip()[-170:]
     return ""
