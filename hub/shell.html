@@ -629,7 +629,7 @@ function smartCard(sm) {
         h("td", { class: "mute hide-m" }, x.why || "")))))) : null,
     h("p", { class: "note" }, `Sådan vælger den: kun strategier med mindst ${r.min_trades} lukkede handler og ${r.min_history_h} timers historik. `
       + `Point = afkast efter gebyrer de seneste ${r.lookback_h} timer minus halvdelen af det største fald. Den skifter kun, når en anden har mindst `
-      + `${nf(r.switch_margin, 0)} point mere, og tidligst ${r.min_hold_h} timer efter sidste skift. Falder kontoen ${nf(r.stop_pct, 0)} % fra toppen, `
+      + `${nf(r.switch_margin, 0)} point mere, og tidligst ${r.min_hold_h} timer efter sidste skift. Den følger aldrig et lukket marked: står en strategi stille i ${r.flat_h} timer, kan den ikke vælges, og står den, den følger, stille, skifter den med det samme. Falder kontoen ${nf(r.stop_pct, 0)} % fra toppen, `
       + `eller svarer strategiens bot ikke i ${r.dead_h} timer, går den ud med det samme. Har ingen strategi positive point, står pengene kontant. `
       + `Hver handel og hvert skift koster de gebyrer, der er sat under Rigtige penge.`));
   requestAnimationFrame(() => { if (wrap.isConnected) drawChart(wrap, [{ key: "smart", name: "Smart strategi", curve: sm.curve }], { smart: "var(--acc)" }); });

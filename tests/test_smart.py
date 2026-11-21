@@ -14,7 +14,8 @@ T0 = 1_700_000_000
 def cand(name, pts, now_h, bot="b", trades=50, open_=0, per=0.0):
     """Strategi med kurve [(timer, %)] op til nu (now_h timer efter T0)."""
     cv = [[T0 + h * H, v] for h, v in pts if h <= now_h]
-    return {"id": f"{bot}:{name}", "name": name, "bot": bot, "bot_name": bot.upper(), "curve": cv, "raw_now": cv[-1][1],
+    moved = next((cv[i + 1][0] for i in range(len(cv) - 2, -1, -1) if cv[i][1] != cv[-1][1]), cv[0][0])
+    return {"id": f"{bot}:{name}", "name": name, "bot": bot, "bot_name": bot.upper(), "curve": cv, "raw_now": cv[-1][1], "moved_at": moved,
             "trades": trades, "open": open_, "per": per, "tax": 0.0, "capital": 10000.0, "currency": "kr."}
 
 
@@ -164,6 +165,25 @@ class SmartBotTests(unittest.TestCase):
         sb.step()
         self.assertEqual(sb.view()["following"], "A")
 
+    def test_never_picks_a_market_that_stands_still(self):
+        clk = Clock(24)
+        sb = self.bot(clk)
+        closed = lambda h: cand("Lukket", [(i, min(i, 20) * 1.0) for i in range(0, 200)], h)      # +20 %, men stille siden time 20
+        moving = lambda h: cand("Kører", [(i, i * 0.1) for i in range(0, 200)], h)
+        self.run_hours(sb, clk, {"x": [closed, moving]}, [24])
+        self.assertEqual(sb.view()["following"], "Kører")
+
+    def test_leaves_at_once_when_the_followed_strategy_stops_moving(self):
+        clk = Clock(24)
+        sb = self.bot(clk)
+        a = lambda h: cand("A", [(i, i * 0.5 if i <= 24 else 12.0) for i in range(0, 200)], h)    # marked lukker lige efter indgang
+        b = lambda h: cand("B", [(i, i * 0.2) for i in range(0, 200)], h)
+        self.run_hours(sb, clk, {"x": [a, b]}, range(24, 25 + S.FLAT_H + 1))
+        v = sb.view()
+        self.assertEqual(v["following"], "B")
+        self.assertIn("stille", v["recent"][0]["why"])
+        self.assertLess(v["recent"][0]["ts"] - (T0 + 24 * H), S.MIN_HOLD_H * H)       # ventede ikke minimumstiden
+
     def test_score_prefers_steady_over_wild(self):
         steady = cand("S", [(i, i * 0.2) for i in range(0, 49)], 48)
         wild = cand("W", [(i, (i * 0.2) + (15 if i % 2 else -15)) for i in range(0, 49)], 48)
@@ -195,6 +215,9 @@ class CandidateTests(unittest.TestCase):
         ov = Overview([], build=lambda: [dict(r) for r in rows], smart=Fake())
         ov.get()
         self.assertEqual(fed, [("a", 1, True), ("c", 0, False)])
+        rows.append({"key": "d", "_cands": [], "scan_age": 10, "idle": "Lukket (weekend)"})
+        fed.clear(); ov.at = 0; ov.get(); __import__("time").sleep(0.3)
+        self.assertIn(("d", 0, False), fed)                           # lukket marked: kan ikke vælges
         self.assertTrue(all("_cands" not in r for r in ov.rows))
 
 

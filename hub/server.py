@@ -235,12 +235,13 @@ def smart_candidates(strategies: list[dict], c: dict, bot: dict) -> list[dict]:
             continue
         cv.sort(key=lambda p: p[0])
         raw_now = cv[-1][1]
+        moved_at = next((cv[i + 1][0] for i in range(len(cv) - 2, -1, -1) if cv[i][1] != raw_now), cv[0][0])    # sidst den rørte sig
         if on:
             cost = (st.get("trades") or 0) * per + (st.get("open") or 0) * per / 2
             a, z = cv[0][0], cv[-1][0]
             cv = [[t, v - cost * ((t - a) / (z - a) if z > a else 1)] for t, v in cv]
         out.append({"id": f"{bot['key']}:{st.get('key')}", "name": st.get("name") or str(st.get("key")), "bot": bot["key"],
-                    "bot_name": bot.get("name", bot["key"]), "curve": cv, "raw_now": raw_now, "trades": st.get("trades") or 0,
+                    "bot_name": bot.get("name", bot["key"]), "curve": cv, "raw_now": raw_now, "moved_at": moved_at, "trades": st.get("trades") or 0,
                     "open": st.get("open") or 0, "per": per if on else 0.0, "tax": c["tax_pct"] if on else 0.0,
                     "capital": c["capital"], "currency": c["currency"]})
     return out
@@ -349,7 +350,7 @@ class Overview:
                 cands = r.pop("_cands") or []
                 taxes += [c["tax"] for c in cands]
                 if self.smart_bot is not None:
-                    fresh = bool(r.get("idle")) or (r.get("scan_age") is not None and r["scan_age"] <= STALE_AFTER_S)
+                    fresh = not r.get("idle") and r.get("scan_age") is not None and r["scan_age"] <= STALE_AFTER_S   # lukket marked kan ikke vælges
                     self.smart_bot.feed(r["key"], cands, fresh)
             with self.lock:
                 self.rows, self.at = rows, self.now()

@@ -10,6 +10,8 @@ Reglerne (valgt til rigtige penge – hellere lidt for forsigtig end at jagte he
     En strategi, der stiger stille og roligt, slår en, der er steget lige så meget med store udsving.
   * Skifter kun, når en anden har mindst SWITCH_MARGIN point mere, og tidligst MIN_HOLD_H timer efter sidste skift.
     Så betaler den ikke skiftegebyrer for at hoppe frem og tilbage på støj.
+  * Aldrig i et marked, der står stille: en strategi, hvis bot melder lukket marked, eller som ikke har bevæget sig
+    i FLAT_H timer, kan ikke vælges. Står den, der følges, stille i FLAT_H timer, skiftes der med det samme.
   * Nødudgang: falder kontoen STOP_PCT % fra toppen, siden den gik ind i strategien, eller svarer strategiens bot ikke
     i DEAD_H timer, forlades den med det samme (og den må ikke vælges igen i COOLDOWN_H timer).
   * Har ingen strategi positive point, står pengene kontant og venter.
@@ -28,20 +30,22 @@ from pathlib import Path
 VERSION = 3
 TICK_S = 60                 # så tit botten tager et skridt
 REFRESH_S = 300             # så tit den henter friske tal fra botterne (skåner en lille server; strategierne ændrer sig kun ved handler)
-LOOKBACK_H = 48             # point regnes over så mange timer (eller det, der findes, hvis historikken er kortere)
+LOOKBACK_H = 24             # point regnes over så mange timer (eller det, der findes, hvis historikken er kortere)
 MIN_HISTORY_H = 12          # så lang historik skal en strategi mindst have
 MIN_TRADES = 20             # så mange lukkede handler skal en strategi mindst have
-SWITCH_MARGIN = 3.0         # så mange point mere skal en anden have, før der skiftes
-MIN_HOLD_H = 12             # tidligst så mange timer efter sidste skift (undtagen nødudgang)
+SWITCH_MARGIN = 2.0         # så mange point mere skal en anden have, før der skiftes
+MIN_HOLD_H = 4              # tidligst så mange timer efter sidste skift (undtagen nødudgang)
 STOP_PCT = 8.0              # nødudgang: fald fra toppen siden indgang
 DEAD_H = 2                  # nødudgang: strategiens bot har ikke svaret så længe
 STALE_S = 30 * 60           # en bot, der ikke har svaret så længe, kan ikke vælges
 COOLDOWN_H = 24             # en strategi, der er forladt via nødudgang, må ikke vælges så længe
 MAX_POINTS = 3000           # gemte punkter i grafen (tyndes ud, når der er flere)
+FLAT_H = 3                  # står en strategi stille så længe (lukket marked, ingen handler), kan den ikke vælges,
+                            # og står den, der følges, stille så længe, skiftes der med det samme til en, der bevæger sig
 WARMUP_S = 15 * 60          # efter start: vælg først, når alle botter har svaret (eller der er gået så længe)
 
 RULES = {"lookback_h": LOOKBACK_H, "min_history_h": MIN_HISTORY_H, "min_trades": MIN_TRADES, "switch_margin": SWITCH_MARGIN,
-         "min_hold_h": MIN_HOLD_H, "warmup_min": WARMUP_S // 60, "stop_pct": STOP_PCT, "dead_h": DEAD_H, "cooldown_h": COOLDOWN_H}
+         "min_hold_h": MIN_HOLD_H, "flat_h": FLAT_H, "warmup_min": WARMUP_S // 60, "stop_pct": STOP_PCT, "dead_h": DEAD_H, "cooldown_h": COOLDOWN_H}
 
 
 def state_file() -> Path:
@@ -124,10 +128,18 @@ class SmartBot:
             cv = c.get("curve") or []
             if (c.get("trades") or 0) < MIN_TRADES or len(cv) < 2 or now - cv[0][0] < MIN_HISTORY_H * 3600:
                 continue
+            if self._flat(c, now):
+                continue
             sc = score(c, now)
             if sc is not None:
                 out[cid] = sc
         return out
+
+    @staticmethod
+    def _flat(c: dict, now: float) -> bool:
+        """Har strategien stået stille i FLAT_H timer (lukket marked eller ingen handler)?"""
+        moved = c.get("moved_at")
+        return moved is not None and now - moved >= FLAT_H * 3600
 
     # ---------- ét skridt ----------
     def step(self) -> None:
@@ -188,9 +200,13 @@ class SmartBot:
             return self._leave(now, scores, allc, f"{h['bot_name']} har ikke svaret i {DEAD_H} timer")
         if st["acct"] < h.get("peak", st["acct"]) * (1 - STOP_PCT / 100):
             return self._leave(now, scores, allc, f"kontoen faldt over {STOP_PCT:g} % fra toppen")
+        cur = scores.get(h["id"])
+        if h["id"] in allc and self._flat(allc[h["id"]][0], now):          # står stille: skift med det samme til en, der bevæger sig
+            if best is not None and best != h["id"] and best_sc > 0:
+                return self._switch(now, best, allc, f"{h['name']} har stået stille i {FLAT_H} timer")
+            return
         if now - h["entered"] < MIN_HOLD_H * 3600:
             return
-        cur = scores.get(h["id"])
         if cur is None:
             cur = score(allc[h["id"]][0], now) if h["id"] in allc else None
         if best is not None and best != h["id"] and best_sc > 0 and (cur is None or best_sc >= cur + SWITCH_MARGIN):
