@@ -26,7 +26,8 @@ import time
 from pathlib import Path
 
 VERSION = 3
-TICK_S = 60                 # så tit botten kigger
+TICK_S = 60                 # så tit botten tager et skridt
+REFRESH_S = 300             # så tit den henter friske tal fra botterne (skåner en lille server; strategierne ændrer sig kun ved handler)
 LOOKBACK_H = 48             # point regnes over så mange timer (eller det, der findes, hvis historikken er kortere)
 MIN_HISTORY_H = 12          # så lang historik skal en strategi mindst have
 MIN_TRADES = 20             # så mange lukkede handler skal en strategi mindst have
@@ -252,9 +253,12 @@ class SmartBot:
     def run(self, refresh, stop: threading.Event | None = None) -> None:
         """Baggrundsløkken: hent friske data fra botterne (refresh) og tag et skridt, hvert TICK_S sekund."""
         stop = stop or threading.Event()
+        last = 0.0
         while not stop.is_set():
             try:
-                refresh()
+                if self.now() - last >= REFRESH_S:
+                    last = self.now()
+                    refresh()
                 self.step()
             except Exception as e:                  # botten må aldrig dø af én dårlig runde
                 self.log(f"Smart-bot: fejl i runden: {e!r}")

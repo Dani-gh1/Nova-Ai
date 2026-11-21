@@ -103,7 +103,7 @@ def bot_data(bot: dict) -> dict:
     hit = _cache.get(bot["key"])
     if hit and time.time() - hit[0] < 15:
         return hit[1]
-    data = normalize(bot, lambda sub: upstream(bot, sub, timeout=10))
+    data = normalize(bot, lambda sub: upstream(bot, sub, timeout=25))     # en travl bot når at svare, i stedet for at arbejde forgæves
     data["since"] = data_since(data)
     _cache[bot["key"]] = (time.time(), data)
     return data
@@ -336,7 +336,7 @@ class Overview:
         self.busy = False
 
     def _build(self) -> list:
-        with ThreadPoolExecutor(max_workers=min(8, len(self.bots) or 1)) as ex:     # højst 8 ad gangen: skåner en lille server
+        with ThreadPoolExecutor(max_workers=min(3, len(self.bots) or 1)) as ex:     # højst 3 ad gangen: skåner en lille server
             return list(ex.map(bot_overview, self.bots))
 
     def _refresh(self) -> None:
