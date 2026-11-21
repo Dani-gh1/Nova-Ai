@@ -1,0 +1,25 @@
+[Unit]
+Description=desk - papirhandels-bot til prediktionsmarkeder (kun fiktive penge)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=desk
+Group=desk
+WorkingDirectory=/opt/desk
+ExecStart=/usr/bin/python3 -m desk run
+Restart=always
+RestartSec=15
+Environment=PYTHONUNBUFFERED=1
+# Hemmeligheder/indstillinger (fx DESK_NTFY_TOPIC) i en env-fil uden for repoet:
+EnvironmentFile=-/etc/desk/desk.env
+# Hærdning
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/opt/desk/data /opt/desk/reports
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>desk · papirhandel</title>
+<style>
+:root{
+  color-scheme: light;
+  --bg:#f4f4f2; --surface:#fcfcfb; --border:#e3e2de; --grid:#ecebe7;
+  --text:#0b0b0b; --text-2:#52514e; --muted:#7c7b77;
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --other:#c9c8c3;
+  --good:#0a7d32; --bad:#c0352f; --accent:#2a78d6;
+}
+@media (prefers-color-scheme: dark){
+  :root:where(:not([data-theme="light"])){
+    color-scheme: dark;
+    --bg:#111110; --surface:#1a1a19; --border:#2e2e2c; --grid:#262624;
+    --text:#f0efec; --text-2:#c3c2b7; --muted:#8f8e88;
+    --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --other:#4a4a47;
+    --good:#4cc47a; --bad:#ef7470; --accent:#3987e5;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --bg:#111110; --surface:#1a1a19; --border:#2e2e2c; --grid:#262624;
+  --text:#f0efec; --text-2:#c3c2b7; --muted:#8f8e88;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --other:#4a4a47;
+  --good:#4cc47a; --bad:#ef7470; --accent:#3987e5;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-text-size-adjust:100%}
+header{position:sticky;top:0;z-index:5;background:var(--surface);border-bottom:1px solid var(--border)}
+.top{display:flex;align-items:center;gap:10px;padding:10px 16px;max-width:1100px;margin:0 auto}
+.top h1{font-size:17px;margin:0;font-weight:650;letter-spacing:-.01em}
+.badge{font-size:12px;color:var(--text-2);border:1px solid var(--border);border-radius:999px;padding:2px 8px;white-space:nowrap}
+.spacer{flex:1}
+nav{display:flex;gap:2px;max-width:1100px;margin:0 auto;padding:0 8px;overflow-x:auto}
+nav button{background:none;border:0;border-bottom:2px solid transparent;color:var(--text-2);font:inherit;padding:10px 12px;cursor:pointer;white-space:nowrap}
+nav button[aria-selected="true"]{color:var(--text);border-bottom-color:var(--accent);font-weight:600}
+main{max-width:1100px;margin:0 auto;padding:16px}
+section[hidden]{display:none}
+.grid{display:grid;gap:12px}
+.tiles{grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;min-width:0}
+.card h2{font-size:15px;margin:0 0 4px;font-weight:620}
+.card h3{font-size:14px;margin:0;font-weight:620}
+.sub{color:var(--text-2);font-size:13px}
+.muted{color:var(--muted);font-size:12px}
+.big{font-size:26px;font-weight:650;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+.up::before{content:"▲ ";color:var(--good);font-size:.75em}
+.down::before{content:"▼ ";color:var(--bad);font-size:.75em}
+.flat::before{content:"● ";color:var(--muted);font-size:.7em}
+.chart{position:relative;width:100%}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin:6px 0 8px;font-size:13px;color:var(--text-2)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{display:inline-block;width:14px;height:3px;border-radius:2px}
+.legend i.dot{width:9px;height:9px;border-radius:50%}
+.tip{position:absolute;pointer-events:none;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:12px;box-shadow:0 4px 14px rgba(0,0,0,.12);min-width:150px;z-index:3;display:none}
+.tip b{font-weight:600}
+.tip .row{display:flex;justify-content:space-between;gap:12px;align-items:center}
+.tip .row i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
+.cards{grid-template-columns:repeat(auto-fill,minmax(250px,1fr))}
+.scard .head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.scard .kv{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 10px;margin-top:10px}
+.scard .kv div{display:flex;flex-direction:column;min-width:0}
+.scard .kv span:first-child{color:var(--muted);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.scard .kv span:last-child{font-size:14px;font-weight:560}
+.spark{margin-top:8px;height:40px}
+.filters{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+#epoch{max-width:46vw}
+select,.btn{font:inherit;font-size:14px;padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text)}
+.btn{cursor:pointer}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--grid);vertical-align:top}
+th{color:var(--text-2);font-weight:600;font-size:12px}
+td.r,th.r{text-align:right}
+a{color:var(--accent);text-decoration:none}
+.pill{display:inline-block;font-size:11px;border:1px solid var(--border);border-radius:999px;padding:1px 7px;color:var(--text-2)}
+.pipeline{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:13px}
+.pipeline span.a{border:1px solid var(--border);border-radius:8px;padding:4px 9px;background:var(--bg)}
+.notice{font-size:13px;color:var(--text-2);border-left:3px solid var(--accent);padding:6px 10px;background:var(--surface);border-radius:4px;margin-bottom:12px}
+.empty{color:var(--muted);text-align:center;padding:28px 8px;font-size:14px}
+details summary{cursor:pointer;color:var(--text-2);font-size:13px}
+@media (max-width:640px){
+  main{padding:12px}
+  .wide{display:none}
+  .top{padding:10px 12px}
+  .big{font-size:22px}
+  table.resp thead{display:none}
+  table.resp tr{display:block;border:1px solid var(--border);border-radius:10px;margin-bottom:8px;padding:6px 10px;background:var(--surface)}
+  table.resp td{display:flex;justify-content:space-between;gap:10px;border:0;padding:3px 0;text-align:right}
+  table.resp td::before{content:attr(data-l);color:var(--text-2);text-align:left}
+  table.resp td.title{display:block;text-align:left;font-weight:600}
+  table.resp td.title::before{content:none}
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="top">
+    <h1>desk</h1><span class="badge">Kun papirhandel<span class="wide"> · fiktive penge</span></span>
+    <span class="spacer"></span>
+    <select id="epoch" aria-label="Epoch"></select>
+  </div>
+  <nav role="tablist">
+    <button role="tab" data-tab="oversigt" aria-selected="true">Oversigt</button>
+    <button role="tab" data-tab="strategier" aria-selected="false">Strategier</button>
+    <button role="tab" data-tab="handler" aria-selected="false">Handler</button>
+    <button role="tab" data-tab="regler" aria-selected="false">Regler</button>
+  </nav>
+</header>
+<main>
+  <section id="oversigt">
+    <div class="grid tiles" id="tiles"></div>
+    <div class="card" style="margin-top:12px">
+      <h2>Afkast over tid</h2>
+      <div class="sub">Afkast i procent af startkapitalen, pr. strategi. De tre bedste og kontrolgruppen er fremhævet.</div>
+      <div class="legend" id="eqLegend"></div>
+      <div class="chart" id="eqChart"></div>
+    </div>
+    <div class="card" style="margin-top:12px">
+      <h2>Kalibrering</h2>
+      <div class="sub" id="calSub">Forudsagt sandsynlighed mod faktisk andel JA-udfald. Punkter på diagonalen er perfekt kalibreret.</div>
+      <div class="legend" id="calLegend"></div>
+      <div class="chart" id="calChart" style="max-width:520px"></div>
+      <details style="margin-top:8px"><summary>Vis som tabel</summary><div id="calTable"></div></details>
+    </div>
+  </section>
+  <section id="strategier" hidden>
+    <div class="notice" id="btNote"></div>
+    <div class="grid cards" id="scards"></div>
+  </section>
+  <section id="handler" hidden>
+    <div class="filters">
+      <select id="fStrat" aria-label="Strategi"><option value="">Alle strategier</option></select>
+      <select id="fStatus" aria-label="Status"><option value="">Alle</option><option value="open">Åbne</option><option value="closed">Lukkede</option></select>
+    </div>
+    <div id="tradesBox"></div>
+  </section>
+  <section id="regler" hidden>
+    <div class="card"><h2>Agenter</h2>
+      <div class="pipeline" style="margin:8px 0"><span class="a">Scout</span>→<span class="a">Filter</span>→<span class="a">Analyst</span>→<span class="a">Risk</span>→<span class="a">Executor</span><span class="muted">· Logger skriver alt til SQLite</span></div>
+      <div class="sub">Hver agent får kun det forrige trins output (hård overdragelse). Strategierne vælger blandt Analystens signaler; Risk og Executor kører pr. strategi på hver sin virtuelle konto.</div>
+    </div>
+    <div class="card" style="margin-top:12px"><h2>Strategiernes regelsæt</h2><div id="stratRules"></div></div>
+    <div class="card" style="margin-top:12px"><h2>Tærskler (config.py)</h2><div id="settings"></div></div>
+  </section>
+</main>
+<script>
+"use strict";
+const $ = s => document.querySelector(s);
+const nf1 = new Intl.NumberFormat("da-DK",{minimumFractionDigits:1,maximumFractionDigits:1});
+const nf0 = new Intl.NumberFormat("da-DK",{maximumFractionDigits:0});
+const pct = (v,sign=true) => v==null||isNaN(v) ? "–" : (sign && v>0 ? "+" : v<0 ? "−" : "") + nf1.format(Math.abs(v)) + " %";
+const dec3 = v => v.toFixed(3).replace(".", ",");
+const prob = v => v==null ? "–" : nf0.format(v*100) + " %";
+const dir = v => v>0.05 ? "up" : v<-0.05 ? "down" : "flat";
+const esc = s => String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmtTime = ts => ts ? new Date(ts*1000).toLocaleString("da-DK",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}) : "–";
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+let EPOCH = "";
+const api = p => fetch(p + (p.includes("?")?"&":"?") + (EPOCH?"epoch="+EPOCH:"")).then(r=>r.json());
+
+/* ---------- faner ---------- */
+const tabs = [...document.querySelectorAll("nav button")];
+function show(name){
+  tabs.forEach(b=>b.setAttribute("aria-selected", b.dataset.tab===name));
+  document.querySelectorAll("main section").forEach(s=>s.hidden = s.id!==name);
+  try{ localStorage.setItem("desk-tab", name) }catch(e){}
+  load(name);
+}
+tabs.forEach(b=>b.onclick=()=>show(b.dataset.tab));
+
+/* ---------- blød kurve (monoton kubisk, ingen oversving) ---------- */
+function smoothPath(pts){
+  const n = pts.length; if(!n) return "";
+  if(n<3) return "M"+pts.map(p=>p[0].toFixed(1)+","+p[1].toFixed(1)).join("L");
+  const dx=[],dy=[],m=[],t=[];
+  for(let i=0;i<n-1;i++){dx[i]=pts[i+1][0]-pts[i][0]; dy[i]=pts[i+1][1]-pts[i][1]; m[i]=dx[i]?dy[i]/dx[i]:0}
+  t[0]=m[0]; t[n-1]=m[n-2];
+  for(let i=1;i<n-1;i++){ t[i] = (m[i-1]*m[i]<=0) ? 0 : (m[i-1]+m[i])/2 }
+  for(let i=0;i<n-1;i++){ if(m[i]===0){t[i]=0;t[i+1]=0;continue} const a=t[i]/m[i], b=t[i+1]/m[i], h=a*a+b*b; if(h>9){const s=3/Math.sqrt(h); t[i]=s*a*m[i]; t[i+1]=s*b*m[i]} }
+  let d="M"+pts[0][0].toFixed(1)+","+pts[0][1].toFixed(1);
+  for(let i=0;i<n-1;i++){ const h=dx[i]/3;
+    d+="C"+(pts[i][0]+h).toFixed(1)+","+(pts[i][1]+t[i]*h).toFixed(1)+" "+(pts[i+1][0]-h).toFixed(1)+","+(pts[i+1][1]-t[i+1]*h).toFixed(1)+" "+pts[i+1][0].toFixed(1)+","+pts[i+1][1].toFixed(1)}
+  return d;
+}
+function niceTicks(lo,hi,count=5){
+  if(lo===hi){lo-=1;hi+=1}
+  const span=hi-lo, step0=span/count, mag=Math.pow(10,Math.floor(Math.log10(step0)));
+  const step=[1,2,2.5,5,10].map(x=>x*mag).find(x=>span/x<=count) || 10*mag;
+  const out=[]; for(let v=Math.floor(lo/step)*step; v<=hi+1e-9; v+=step) out.push(+v.toFixed(6));
+  return out;
+}
+
+/* ---------- Afkast over tid ---------- */
+function equityChart(data){
+  const box=$("#eqChart"), leg=$("#eqLegend");
+  const series=data.series.filter(s=>s.points.length);
+  if(!series.length){ box.innerHTML='<div class="empty">Ingen data endnu. Kurverne dukker op efter første cyklus.</div>'; leg.innerHTML=""; return }
+  const last=s=>s.points[s.points.length-1][1];
+  const ranked=[...series].sort((a,b)=>last(b)-last(a));
+  const hi=ranked.filter(s=>s.key!=="kontrol").slice(0,3).map(s=>s.key);
+  if(series.find(s=>s.key==="kontrol")) hi.push("kontrol");
+  const color={}; hi.forEach((k,i)=>color[k]="var(--s"+(i+1)+")");
+  const W=Math.max(320, box.clientWidth||700), H=W<500?230:280, L=46, R=12, T=10, B=26;
+  let x0=Infinity,x1=-Infinity,y0=0,y1=0;
+  series.forEach(s=>s.points.forEach(([t,v])=>{x0=Math.min(x0,t);x1=Math.max(x1,t);y0=Math.min(y0,v);y1=Math.max(y1,v)}));
+  if(x0===x1){x0-=1800;x1+=1800}
+  const yt=niceTicks(y0,y1,W<500?4:5); y0=Math.min(y0,yt[0]); y1=Math.max(y1,yt[yt.length-1]);
+  const X=t=>L+(t-x0)/(x1-x0)*(W-L-R), Y=v=>T+(1-(v-y0)/(y1-y0||1))*(H-T-B);
+  let g="";
+  yt.forEach(v=>{ g+=`<line x1="${L}" x2="${W-R}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--grid)" stroke-width="1"/>`+
+    `<text x="${L-6}" y="${Y(v)+4}" text-anchor="end" font-size="11" fill="var(--muted)">${pct(v)}</text>` });
+  g+=`<line x1="${L}" x2="${W-R}" y1="${Y(0)}" y2="${Y(0)}" stroke="var(--muted)" stroke-width="1" stroke-dasharray="3 3"/>`;
+  const nx=W<500?3:5; for(let i=0;i<=nx;i++){ const t=x0+(x1-x0)*i/nx;
+    g+=`<text x="${X(t)}" y="${H-6}" text-anchor="${i===0?"start":i===nx?"end":"middle"}" font-size="11" fill="var(--muted)">${new Date(t*1000).toLocaleDateString("da-DK",{day:"numeric",month:"short"})}</text>` }
+  const rest=series.filter(s=>!hi.includes(s.key)), main=hi.map(k=>series.find(s=>s.key===k));
+  rest.forEach(s=>{ g+=`<path d="${smoothPath(s.points.map(([t,v])=>[X(t),Y(v)]))}" fill="none" stroke="var(--other)" stroke-width="1.25"/>` });
+  main.forEach(s=>{ g+=`<path d="${smoothPath(s.points.map(([t,v])=>[X(t),Y(v)]))}" fill="none" stroke="${color[s.key]}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>` });
+  // direkte etiketter i højre side for fremhævede (kun hvis plads)
+  g+=`<line id="xh" y1="${T}" y2="${H-B}" stroke="var(--muted)" stroke-width="1" visibility="hidden"/><g id="xdots"></g>`;
+  g+=`<rect x="${L}" y="${T}" width="${W-L-R}" height="${H-T-B}" fill="transparent" id="hit"/>`;
+  box.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Afkast over tid pr. strategi">${g}</svg><div class="tip" id="eqTip"></div>`;
+  leg.innerHTML = main.map(s=>`<span><i style="background:${color[s.key]}"></i>${esc(s.name)} <b class="num">${pct(last(s))}</b></span>`).join("")
+    + (rest.length?`<span><i style="background:var(--other)"></i>Øvrige ${rest.length}</span>`:"");
+  const svg=box.querySelector("svg"), tip=$("#eqTip"), xh=svg.querySelector("#xh"), dots=svg.querySelector("#xdots");
+  const near=(s,t)=>{let b=s.points[0];for(const p of s.points){if(Math.abs(p[0]-t)<Math.abs(b[0]-t))b=p}return b};
+  function move(ev){
+    const r=svg.getBoundingClientRect(), sx=(ev.touches?ev.touches[0].clientX:ev.clientX)-r.left, px=sx*W/r.width;
+    const t=x0+(Math.min(Math.max(px,L),W-R)-L)/(W-L-R)*(x1-x0);
+    xh.setAttribute("x1",X(t)); xh.setAttribute("x2",X(t)); xh.setAttribute("visibility","visible");
+    const vals=main.map(s=>({s,p:near(s,t)}));
+    dots.innerHTML=vals.map(({s,p})=>`<circle cx="${X(p[0])}" cy="${Y(p[1])}" r="4" fill="${color[s.key]}" stroke="var(--surface)" stroke-width="2"/>`).join("");
+    const others=rest.map(s=>near(s,t)[1]);
+    tip.innerHTML=`<div class="muted">${fmtTime(t)}</div>`+vals.sort((a,b)=>b.p[1]-a.p[1]).map(({s,p})=>`<div class="row"><span><i style="background:${color[s.key]}"></i>${esc(s.name)}</span><b class="num">${pct(p[1])}</b></div>`).join("")
+      +(others.length?`<div class="row muted"><span>Øvrige (spænd)</span><span class="num">${pct(Math.min(...others))} … ${pct(Math.max(...others))}</span></div>`:"");
+    tip.style.display="block";
+    const left=sx+14+tip.offsetWidth>r.width? sx-tip.offsetWidth-14 : sx+14;
+    tip.style.left=Math.max(0,left)+"px"; tip.style.top="8px";
+  }
+  function out(){ tip.style.display="none"; xh.setAttribute("visibility","hidden"); dots.innerHTML="" }
+  const hit=svg.querySelector("#hit");
+  hit.addEventListener("mousemove",move); hit.addEventListener("touchmove",move,{passive:true});
+  hit.addEventListener("touchstart",move,{passive:true}); hit.addEventListener("mouseleave",out); hit.addEventListener("touchend",()=>setTimeout(out,1500));
+}
+
+/* ---------- Kalibrering ---------- */
+function calChart(data){
+  const box=$("#calChart");
+  let src=data.live, label="live (skyggehandler)";
+  if((!src||src.n<30) && data.backtest && data.backtest.n){ src=data.backtest; label="seneste backtest (for få afgjorte live-handler endnu)" }
+  $("#calSub").textContent = "Forudsagt sandsynlighed mod faktisk andel JA-udfald – kilde: "+label+". Punkter på diagonalen er perfekt kalibreret.";
+  if(!src || !src.n){ box.innerHTML='<div class="empty">Ingen afgjorte markeder endnu.</div>'; $("#calLegend").innerHTML=""; $("#calTable").innerHTML=""; return }
+  const W=Math.max(300, Math.min(520, box.clientWidth||520)), H=W, L=44, R=10, T=10, B=34;
+  const X=v=>L+v*(W-L-R), Y=v=>T+(1-v)*(H-T-B);
+  let g="";
+  [0,.25,.5,.75,1].forEach(v=>{ g+=`<line x1="${X(0)}" x2="${X(1)}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--grid)"/><text x="${L-6}" y="${Y(v)+4}" text-anchor="end" font-size="11" fill="var(--muted)">${nf0.format(v*100)} %</text>`
+    + `<text x="${X(v)}" y="${H-B+16}" text-anchor="middle" font-size="11" fill="var(--muted)">${nf0.format(v*100)} %</text>` });
+  g+=`<text x="${(L+W-R)/2}" y="${H-2}" text-anchor="middle" font-size="11" fill="var(--text-2)">Forudsagt sandsynlighed</text>`;
+  g+=`<line x1="${X(0)}" y1="${Y(0)}" x2="${X(1)}" y2="${Y(1)}" stroke="var(--muted)" stroke-dasharray="4 4"/>`;
+  const sets=[["analyst","Analyst","var(--s1)"],["market","Markedets pris","var(--s2)"]];
+  const pts=[];
+  sets.forEach(([k,name,col])=>{
+    const b=src[k]||[];
+    g+=`<polyline points="${b.map(p=>X(p.predicted).toFixed(1)+","+Y(p.actual).toFixed(1)).join(" ")}" fill="none" stroke="${col}" stroke-width="1.5" opacity=".5"/>`;
+    b.forEach(p=>{ const r=Math.max(4,Math.min(9,2+Math.sqrt(p.n)/2)); pts.push({k,name,col,p});
+      g+=`<circle cx="${X(p.predicted)}" cy="${Y(p.actual)}" r="${r}" fill="${col}" stroke="var(--surface)" stroke-width="2"/>` });
+  });
+  box.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Kalibreringsgraf">${g}</svg><div class="tip" id="calTip"></div>`;
+  const bm=src.brier_market, ba=src.brier_analyst;
+  $("#calLegend").innerHTML=sets.map(([k,n,c])=>`<span><i class="dot" style="background:${c}"></i>${n}${k==="analyst"&&ba!=null?` · Brier ${dec3(ba)}`:k==="market"&&bm!=null?` · Brier ${dec3(bm)}`:""}</span>`).join("")+`<span class="muted">n = ${nf0.format(src.n)}</span>`;
+  const svg=box.querySelector("svg"), tip=$("#calTip");
+  svg.addEventListener("mousemove",ev=>{ const r=svg.getBoundingClientRect(), mx=(ev.clientX-r.left)*W/r.width, my=(ev.clientY-r.top)*H/r.height;
+    let best=null,bd=1e9; pts.forEach(o=>{const d=Math.hypot(X(o.p.predicted)-mx,Y(o.p.actual)-my); if(d<bd){bd=d;best=o}});
+    if(!best||bd>28){tip.style.display="none";return}
+    tip.innerHTML=`<b>${best.name}</b><div class="row"><span>Forudsagt</span><span class="num">${prob(best.p.predicted)}</span></div><div class="row"><span>Faktisk JA</span><span class="num">${prob(best.p.actual)}</span></div><div class="row"><span>Antal</span><span class="num">${nf0.format(best.p.n)}</span></div>`;
+    tip.style.display="block"; tip.style.left=Math.min(ev.clientX-r.left+12, r.width-tip.offsetWidth)+"px"; tip.style.top=(ev.clientY-r.top+12)+"px" });
+  svg.addEventListener("mouseleave",()=>tip.style.display="none");
+  const rows=[...Array(10).keys()].map(i=>{ const a=(src.analyst||[]).find(b=>b.bucket===i), m=(src.market||[]).find(b=>b.bucket===i);
+    return `<tr><td>${i*10}–${i*10+10} %</td><td class="r">${a?prob(a.actual)+" ("+a.n+")":"–"}</td><td class="r">${m?prob(m.actual)+" ("+m.n+")":"–"}</td></tr>`}).join("");
+  $("#calTable").innerHTML=`<table><thead><tr><th>Forudsagt</th><th class="r">Analyst: faktisk JA (n)</th><th class="r">Marked: faktisk JA (n)</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+/* ---------- Oversigt ---------- */
+async function loadOverview(){
+  const [o,eq,cal]=await Promise.all([api("/api/overview"),api("/api/equity"),fetch("/api/calibration"+(EPOCH?"?epoch="+EPOCH:"")).then(r=>r.json())]);
+  const sel=$("#epoch");
+  if(!sel.options.length){ sel.innerHTML=o.epochs.map(e=>`<option value="${e.id}">Epoch ${e.id}${e.note?" · "+esc(e.note):""}</option>`).join("") }
+  const lr=o.last_run, ago=lr&&lr.ended_ts? Math.round((o.now-lr.ended_ts)/60) : null;
+  const stale = ago!=null && ago*60 > o.cycle_seconds*3;
+  const tile=(label,val,sub,cls="")=>`<div class="card"><div class="sub">${label}</div><div class="big ${cls}">${val}</div><div class="muted">${sub}</div></div>`;
+  $("#tiles").innerHTML =
+    tile("Bedste strategi", pct(o.best.ret), esc(o.best.name), "num "+dir(o.best.ret)) +
+    tile("Kontrol (møntkast)", pct(o.control), `${o.beat_control} af ${o.n_strategies-1} strategier slår kontrollen`, "num "+dir(o.control)) +
+    tile("Dårligste strategi", pct(o.worst.ret), esc(o.worst.name), "num "+dir(o.worst.ret)) +
+    tile("Skyggehandler", o.shadow.hit_rate==null?nf0.format(o.shadow.n):pct(o.shadow.hit_rate,false), o.shadow.hit_rate==null?`${nf0.format(o.shadow.n)} scorede markeder, ingen afgjort endnu`:`træfsikkerhed · ${nf0.format(o.shadow.settled)} af ${nf0.format(o.shadow.n)} afgjort · snit ${pct(o.shadow.avg_pnl_pct)} pr. kontrakt`) +
+    tile("Positioner", nf0.format(o.open_positions), `åbne · ${nf0.format(o.trades)} handler i alt i denne epoch`) +
+    tile("Seneste cyklus", lr? (lr.status==="ok"?"OK":esc(lr.status)) : "–", lr? `${ago!=null?ago+" min siden":"kører"}${stale?" · botten ser ud til at stå stille":""} · ${nf0.format(lr.n_scout||0)} → ${nf0.format(lr.n_filter||0)} → ${nf0.format(lr.n_signals||0)} markeder` : "botten har ikke kørt endnu");
+  equityChart(eq); calChart(cal);
+}
+
+/* ---------- Strategier ---------- */
+function spark(vals){
+  if(!vals||vals.length<2) return '<div class="muted spark" style="display:flex;align-items:center">Ingen kurve endnu</div>';
+  const W=240,H=40, lo=Math.min(0,...vals), hi=Math.max(0,...vals), X=i=>i/(vals.length-1)*W, Y=v=>2+(1-(v-lo)/((hi-lo)||1))*(H-4);
+  return `<svg class="spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true"><line x1="0" x2="${W}" y1="${Y(0)}" y2="${Y(0)}" stroke="var(--grid)" stroke-dasharray="3 3"/><path d="${smoothPath(vals.map((v,i)=>[X(i),Y(v)]))}" fill="none" stroke="var(--s1)" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>`;
+}
+async function loadStrategies(){
+  const d=await api("/api/strategies");
+  const bt=d.backtest;
+  $("#btNote").innerHTML = bt ? `Backtest-kolonnen er fra seneste backtest (${fmtTime(bt.ts)}, ${bt.params.days} dage, rapport <code>reports/${esc(bt.report_path)}</code>). Backtest bruger syntetisk orderbog – se forbehold i rapporten.` : "Ingen backtest kørt endnu (<code>python -m desk backtest</code>).";
+  const sorted=[...d.strategies].sort((a,b)=>b.return_pct-a.return_pct);
+  $("#scards").innerHTML = sorted.map(s=>`<div class="card scard">
+    <div class="head"><div><h3>${esc(s.name)}</h3><div class="muted">${esc(s.description)}</div></div>
+    <div class="big num ${dir(s.return_pct)}" style="font-size:20px">${pct(s.return_pct)}</div></div>
+    ${spark(s.spark)}
+    <div class="kv">
+      <div><span>Kontanter</span><span class="num">${pct(s.cash_pct,false)}</span></div>
+      <div><span>Åbne</span><span class="num">${s.open}</span></div>
+      <div><span>Lukkede</span><span class="num">${s.closed}</span></div>
+      <div><span>Træfsikkerhed</span><span class="num">${pct(s.win_rate,false)}</span></div>
+      <div><span>Maks. fald</span><span class="num">${s.max_drawdown?pct(-s.max_drawdown):"0,0 %"}</span></div>
+      <div><span>Backtest</span><span class="num">${s.backtest?pct(s.backtest.return_pct):"–"}</span></div>
+    </div></div>`).join("");
+}
+
+/* ---------- Handler ---------- */
+async function loadTrades(){
+  const fs=$("#fStrat");
+  if(fs.options.length<2){ const r=await api("/api/rules"); r.strategies.forEach(s=>fs.add(new Option(s.name,s.key))) }
+  const d=await api(`/api/trades?strategy=${encodeURIComponent(fs.value)}&status=${$("#fStatus").value}`);
+  if(!d.trades.length){ $("#tradesBox").innerHTML='<div class="empty card">Ingen handler med disse filtre.</div>'; return }
+  const side=s=>s==="YES"?"JA":"NEJ";
+  $("#tradesBox").innerHTML=`<div class="card" style="padding:6px 10px"><table class="resp"><thead><tr><th>Marked</th><th>Strategi</th><th>Side</th><th class="r">Indgang</th><th class="r">Nu / exit</th><th class="r">Indsats</th><th class="r">Resultat</th><th>Status</th><th>Åbnet</th></tr></thead><tbody>`+
+    d.trades.map(t=>`<tr>
+      <td class="title">${t.url?`<a href="${esc(t.url)}" target="_blank" rel="noopener">${esc(t.title)}</a>`:esc(t.title)} <span class="pill">${esc(t.platform)}</span> <span class="pill">${esc(t.topic)}</span></td>
+      <td data-l="Strategi">${esc(t.strategy_name)}</td>
+      <td data-l="Side">${side(t.side)}</td>
+      <td data-l="Indgang" class="r num">${prob(t.entry_price)}</td>
+      <td data-l="Nu / exit" class="r num">${prob(t.current_price)}</td>
+      <td data-l="Indsats" class="r num">${pct(t.cost,false)} af start</td>
+      <td data-l="Resultat" class="r num"><span class="${dir(t.result_pct)}">${pct(t.result_pct)}</span></td>
+      <td data-l="Status">${t.status==="open"?"Åben":t.status==="settled"?"Afgjort":"Lukket"}${t.exit_reason?` · ${esc(t.exit_reason)}`:""}<div class="muted">${esc(t.reason||"")}</div></td>
+      <td data-l="Åbnet" class="num">${fmtTime(t.opened_ts)}</td></tr>`).join("")+`</tbody></table></div>
+      <div class="muted" style="margin-top:6px">Indgang/exit er markedspris (= sandsynlighed). Indsats er i procent af startkapitalen; resultat i procent af indsatsen.</div>`;
+}
+$("#fStrat").onchange=loadTrades; $("#fStatus").onchange=loadTrades;
+
+/* ---------- Regler ---------- */
+const LABELS={size_pct:"Indsats pr. handel (% af konto)",max_positions:"Maks. åbne positioner",max_entries_per_cycle:"Maks. nye pr. cyklus",stop_loss_pct:"Stop-loss (% tab af indsats)",take_profit_pct:"Gevinstsikring (%)",exit_hours_before_close:"Udgang timer før afgørelse",max_pct_per_market:"Loft pr. marked (%)",max_pct_per_topic:"Loft pr. emne (%)"};
+async function loadRules(){
+  const d=await api("/api/rules");
+  $("#stratRules").innerHTML=`<table class="resp"><thead><tr><th>Strategi</th><th>Type</th><th>Regler</th><th>Risiko</th></tr></thead><tbody>`+
+    d.strategies.map(s=>`<tr><td class="title">${esc(s.name)}<div class="muted">${esc(s.description)}</div></td><td data-l="Type"><span class="pill">${esc(s.mode)}</span></td>
+      <td data-l="Regler"><code>${esc(JSON.stringify(s.rules))}</code></td>
+      <td data-l="Risiko">${Object.keys(LABELS).map(k=>`${LABELS[k]}: <b class="num">${s[k]===0?"fra":nf1.format(s[k])}</b>`).join("<br>")}</td></tr>`).join("")+`</tbody></table>`;
+  const groups={}; Object.entries(d.settings).forEach(([k,v])=>{const g=k.split("_")[0]; (groups[g]=groups[g]||[]).push([k,v])});
+  $("#settings").innerHTML=Object.entries(groups).map(([g,rows])=>`<details ${["SCOUT","FILTER","RISK","EXEC"].includes(g)?"open":""}><summary>${esc(g)}</summary><table><tbody>${rows.map(([k,v])=>`<tr><td><code>${esc(k)}</code></td><td class="r num">${esc(Array.isArray(v)?v.join(", "):v)}</td></tr>`).join("")}</tbody></table></details>`).join("");
+}
+
+/* ---------- styring ---------- */
+const loaders={oversigt:loadOverview,strategier:loadStrategies,handler:loadTrades,regler:loadRules};
+function load(name){ loaders[name]().catch(e=>console.error(e)) }
+$("#epoch").onchange=e=>{ EPOCH=e.target.value; load(document.querySelector('nav [aria-selected="true"]').dataset.tab) };
+let tab="oversigt"; try{ tab=localStorage.getItem("desk-tab")||"oversigt" }catch(e){}
+show(loaders[tab]?tab:"oversigt");
+setInterval(()=>{ const t=document.querySelector('nav [aria-selected="true"]').dataset.tab; if(t!=="regler") load(t) }, 60000);
+let rz; window.addEventListener("resize",()=>{clearTimeout(rz); rz=setTimeout(()=>{ if(!$("#oversigt").hidden) loadOverview() },250)});
+</script>
+</body>
+</html>
