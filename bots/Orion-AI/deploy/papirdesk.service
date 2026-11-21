@@ -1,0 +1,28 @@
+[Unit]
+Description=Papirdesk – papirhandels-bot (KUN fiktive penge)
+After=network-online.target
+Wants=network-online.target
+# aldrig "giv op" – Restart=always skal altid prøve igen
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=papirdesk
+Group=papirdesk
+WorkingDirectory=/opt/papirdesk
+ExecStart=/usr/bin/python3 -m desk run
+Restart=always
+RestartSec=10
+KillSignal=SIGTERM
+TimeoutStopSec=20
+Environment=PYTHONUNBUFFERED=1
+
+# hærdning: botten må kun skrive i sin egen mappe
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/opt/papirdesk
+
+[Install]
+WantedBy=multi-user.target

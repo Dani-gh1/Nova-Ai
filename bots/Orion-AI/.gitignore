@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+state.json
+state.json.*
+.state.*
+desk.sqlite3*
+data/
