@@ -1,0 +1,308 @@
+{
+ "start": "2026-08-01",
+ "end": "2026-10-30",
+ "source": "synthetic",
+ "seed": 7,
+ "strategies": [
+  {
+   "name": "carry",
+   "title": "Carry",
+   "return_pct": 11.71,
+   "max_dd_pct": 26.1,
+   "trades": 206,
+   "win_rate": 39.8,
+   "avg_r": 0.08,
+   "profit_factor": 1.09,
+   "swap_pct": 1.99,
+   "spread_pct": 9.7,
+   "sharpe": 0.65
+  },
+  {
+   "name": "breakout-london",
+   "title": "Breakout London",
+   "return_pct": 11.01,
+   "max_dd_pct": 12.82,
+   "trades": 171,
+   "win_rate": 36.8,
+   "avg_r": 0.07,
+   "profit_factor": 1.11,
+   "swap_pct": -0.29,
+   "spread_pct": 8.88,
+   "sharpe": 0.97
+  },
+  {
+   "name": "scalp-overlap",
+   "title": "Scalp overlap",
+   "return_pct": 7.74,
+   "max_dd_pct": 17.23,
+   "trades": 334,
+   "win_rate": 44.3,
+   "avg_r": 0.03,
+   "profit_factor": 1.04,
+   "swap_pct": 0,
+   "spread_pct": 32.28,
+   "sharpe": 0.71
+  },
+  {
+   "name": "tilfaeldig",
+   "title": "Tilf\u00e6ldig (kontrol)",
+   "return_pct": 4.74,
+   "max_dd_pct": 15.87,
+   "trades": 400,
+   "win_rate": 41.8,
+   "avg_r": 0.02,
+   "profit_factor": 1.02,
+   "swap_pct": -2.18,
+   "spread_pct": 16.04,
+   "sharpe": 0.32
+  },
+  {
+   "name": "kun-raavarer",
+   "title": "Kun r\u00e5varer",
+   "return_pct": 4.49,
+   "max_dd_pct": 14.5,
+   "trades": 108,
+   "win_rate": 39.8,
+   "avg_r": 0.04,
+   "profit_factor": 1.06,
+   "swap_pct": -0.08,
+   "spread_pct": 3.7,
+   "sharpe": 0.64
+  },
+  {
+   "name": "meanrev-asien",
+   "title": "Mean reversion Asien",
+   "return_pct": 3.84,
+   "max_dd_pct": 8.17,
+   "trades": 145,
+   "win_rate": 51.7,
+   "avg_r": 0.03,
+   "profit_factor": 1.07,
+   "swap_pct": 0,
+   "spread_pct": 6.24,
+   "sharpe": 0.63
+  },
+  {
+   "name": "kraesen",
+   "title": "Kr\u00e6sen",
+   "return_pct": 2.1,
+   "max_dd_pct": 10.03,
+   "trades": 217,
+   "win_rate": 43.3,
+   "avg_r": 0.03,
+   "profit_factor": 1.05,
+   "swap_pct": 0.02,
+   "spread_pct": 4.18,
+   "sharpe": 0.52
+  },
+  {
+   "name": "breakout-newyork",
+   "title": "Breakout New York",
+   "return_pct": 1.15,
+   "max_dd_pct": 24.08,
+   "trades": 185,
+   "win_rate": 34.1,
+   "avg_r": 0.02,
+   "profit_factor": 1.01,
+   "swap_pct": -0.37,
+   "spread_pct": 10.15,
+   "sharpe": 0.1
+  },
+  {
+   "name": "trend-langsom",
+   "title": "Langsom trend",
+   "return_pct": -12.38,
+   "max_dd_pct": 20.27,
+   "trades": 245,
+   "win_rate": 39.6,
+   "avg_r": -0.04,
+   "profit_factor": 0.89,
+   "swap_pct": -0.45,
+   "spread_pct": 5.94,
+   "sharpe": -0.87
+  },
+  {
+   "name": "aggressiv",
+   "title": "Aggressiv",
+   "return_pct": -16.89,
+   "max_dd_pct": 27.0,
+   "trades": 117,
+   "win_rate": 37.6,
+   "avg_r": -0.07,
+   "profit_factor": 0.87,
+   "swap_pct": -0.68,
+   "spread_pct": 9.48,
+   "sharpe": -1.08
+  },
+  {
+   "name": "korrelation",
+   "title": "Korrelation",
+   "return_pct": -17.36,
+   "max_dd_pct": 25.32,
+   "trades": 82,
+   "win_rate": 31.7,
+   "avg_r": -0.22,
+   "profit_factor": 0.64,
+   "swap_pct": 0.16,
+   "spread_pct": 2.99,
+   "sharpe": -1.59
+  },
+  {
+   "name": "kun-majors",
+   "title": "Kun majors",
+   "return_pct": -18.23,
+   "max_dd_pct": 25.96,
+   "trades": 168,
+   "win_rate": 36.9,
+   "avg_r": -0.11,
+   "profit_factor": 0.81,
+   "swap_pct": -0.55,
+   "spread_pct": 6.91,
+   "sharpe": -1.87
+  },
+  {
+   "name": "nyhedsfilter",
+   "title": "Nyhedsfilter",
+   "return_pct": -18.96,
+   "max_dd_pct": 26.66,
+   "trades": 153,
+   "win_rate": 36.6,
+   "avg_r": -0.13,
+   "profit_factor": 0.76,
+   "swap_pct": -0.18,
+   "spread_pct": 5.55,
+   "sharpe": -2.12
+  },
+  {
+   "name": "trend",
+   "title": "Trend",
+   "return_pct": -19.61,
+   "max_dd_pct": 25.47,
+   "trades": 224,
+   "win_rate": 38.8,
+   "avg_r": -0.09,
+   "profit_factor": 0.82,
+   "swap_pct": -0.23,
+   "spread_pct": 7.83,
+   "sharpe": -1.65
+  },
+  {
+   "name": "standard",
+   "title": "Standard",
+   "return_pct": -20.52,
+   "max_dd_pct": 25.85,
+   "trades": 243,
+   "win_rate": 39.1,
+   "avg_r": -0.08,
+   "profit_factor": 0.83,
+   "swap_pct": -0.52,
+   "spread_pct": 8.59,
+   "sharpe": -1.6
+  },
+  {
+   "name": "momentum",
+   "title": "Momentum",
+   "return_pct": -20.98,
+   "max_dd_pct": 25.32,
+   "trades": 137,
+   "win_rate": 37.2,
+   "avg_r": -0.16,
+   "profit_factor": 0.73,
+   "swap_pct": -0.2,
+   "spread_pct": 5.13,
+   "sharpe": -2.05
+  },
+  {
+   "name": "swing",
+   "title": "Swing",
+   "return_pct": -21.84,
+   "max_dd_pct": 25.37,
+   "trades": 224,
+   "win_rate": 43.3,
+   "avg_r": -0.1,
+   "profit_factor": 0.79,
+   "swap_pct": -0.31,
+   "spread_pct": 5.35,
+   "sharpe": -1.96
+  },
+  {
+   "name": "mange-smaa",
+   "title": "Mange sm\u00e5",
+   "return_pct": -21.96,
+   "max_dd_pct": 25.85,
+   "trades": 1122,
+   "win_rate": 45.7,
+   "avg_r": -0.09,
+   "profit_factor": 0.84,
+   "swap_pct": -0.24,
+   "spread_pct": 14.11,
+   "sharpe": -3.92
+  }
+ ],
+ "shadows": [
+  {
+   "bucket": "50-59",
+   "n": 1118,
+   "win_rate": 36.0,
+   "avg_r": -0.011
+  },
+  {
+   "bucket": "60-69",
+   "n": 2755,
+   "win_rate": 34.3,
+   "avg_r": -0.067
+  },
+  {
+   "bucket": "70-79",
+   "n": 2332,
+   "win_rate": 37.9,
+   "avg_r": 0.038
+  },
+  {
+   "bucket": "80-89",
+   "n": 1534,
+   "win_rate": 35.1,
+   "avg_r": -0.059
+  },
+  {
+   "bucket": "90-99",
+   "n": 396,
+   "win_rate": 24.2,
+   "avg_r": -0.34
+  }
+ ],
+ "top_rejections": [
+  {
+   "reason": "strategien er stoppet i denne epoke (maks. drawdown)",
+   "n": 126659
+  },
+  {
+   "reason": "har allerede en position i instrumentet",
+   "n": 90345
+  },
+  {
+   "reason": "dagligt tabsloft n\u00e5et",
+   "n": 19379
+  },
+  {
+   "reason": "maks. 5 \u00e5bne positioner",
+   "n": 16257
+  },
+  {
+   "reason": "maks. 2 \u00e5bne positioner",
+   "n": 6600
+  },
+  {
+   "reason": "for stor USD-eksponering (4.0% risiko > 3.0%)",
+   "n": 5234
+  },
+  {
+   "reason": "2 st\u00e6rkt korrelerede positioner i samme retning",
+   "n": 1937
+  },
+  {
+   "reason": "for t\u00e6t p\u00e5 weekendlukning",
+   "n": 1341
+  }
+ ]
+}

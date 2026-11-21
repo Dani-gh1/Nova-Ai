@@ -1,0 +1,27 @@
+[Unit]
+Description=Desk – papirhandels-bot (forex + råvarer, kun fiktive penge)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=desk
+Group=desk
+WorkingDirectory=/opt/desk
+Environment=PYTHONUNBUFFERED=1
+Environment=DESK_DATA_DIR=/var/lib/desk
+# OANDA_TOKEN, NTFY_TOPIC m.m. ligger her (chmod 600, ejet af root)
+EnvironmentFile=-/etc/desk.env
+ExecStart=/usr/bin/python3 -m desk run
+Restart=always
+RestartSec=10
+StateDirectory=desk
+# hærdning: botten skal kun kunne skrive i sin egen datamappe
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/desk
+
+[Install]
+WantedBy=multi-user.target
