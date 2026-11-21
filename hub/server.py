@@ -142,7 +142,11 @@ def bot_data(bot: dict) -> dict:
     if hit and age < KEEP_S:
         _refresh_in_background(bot)
         return hit[1]
-    return _fetch(bot, timeout=25)
+    try:
+        return _fetch(bot, timeout=25)
+    except (OSError, ValueError, KeyError, TypeError):
+        _refresh_in_background(bot)              # for langsom til første svar: hent i baggrunden, så den er klar næste gang
+        raise
 
 
 LOG_DIR = Path(os.environ.get("HUB_LOG_DIR", ROOT / "logs"))
@@ -276,7 +280,8 @@ def bot_overview(bot: dict) -> dict:
         try:
             data = bot_data(bot)
             out["best"] = best_of(data["strategies"])
-            out["_cands"] = smart_candidates(data["strategies"], bot)      # bruges kun af Smart-botten
+            out["strategies"] = [{"name": x.get("name"), "return_pct": x.get("return_pct"), "trades": x.get("trades") or 0}
+                                 for x in data["strategies"]]          # til forsidens tabel over alle strategier            out["_cands"] = smart_candidates(data["strategies"], bot)      # bruges kun af Smart-botten
             out["trades"] = {"open": sum(x.get("open") or 0 for x in data["strategies"]),
                              "closed": sum(x.get("trades") or 0 for x in data["strategies"])}
             out["scan_age"] = max(0.0, time.time() - data["scan"]) if data.get("scan") else None

@@ -542,7 +542,7 @@ function smartCard(sm) {
 }
 function renderHub(rows, sm) {
   const link = (b) => h("a", { href: "#" + b.key }, b.name);
-  const ranked = rows.filter((b) => b.best && b.best.name).sort((x, y) => y.best.return_pct - x.best.return_pct), none = rows.filter((b) => !(b.best && b.best.name));
+  const ranked = rows.filter((b) => b.best && b.best.name).sort((x, y) => y.best.return_pct - x.best.return_pct);
   const running = rows.filter((b) => b.up).length;
   view(
     h("div", { class: "grid kpis" },
@@ -568,14 +568,29 @@ function renderHub(rows, sm) {
             h("td", { class: "hide-m" }, b.trades ? (b.trades.open + b.trades.closed ? `${b.trades.open} åbne · ${b.trades.closed} lukkede` : "Ingen endnu") : "–"),
             h("td", { class: "n" }, b.best ? `${b.best.positive} af ${b.best.count}` : "–"));
         }))))),
-    h("div", { class: "card" }, h("div", { class: "head" }, h("h2", {}, "Bedste strategi pr. bot"), h("p", {}, "Afkast efter omkostninger, i procent af papirkontoen. Strategier uden afkast endnu tæller ikke.")),
-      h("div", { class: "tw" }, h("table", {}, h("thead", {}, h("tr", {}, h("th", { class: "hide-m" }, "#"), h("th", {}, "Bot"), h("th", {}, "Bedste strategi"), h("th", { class: "n" }, "Afkast"),
-        h("th", { class: "n" }, h("span", { class: "hide-m" }, "Lukkede handler"), h("span", { class: "under" }, "Handler")))),
-        h("tbody", {}, ranked.map((b, i) => h("tr", {}, h("td", { class: "mute hide-m" }, String(i + 1)), h("td", {}, link(b)), h("td", { class: "name" }, b.best.name),
-          h("td", { class: "n " + tone(b.best.return_pct) }, pct(b.best.return_pct)),
-          h("td", { class: "n" }, String(b.best.trades), b.best.trades < 20 ? h("span", { class: "tag hide-m" }, "få") : null))),
-          none.map((b) => h("tr", {}, h("td", { class: "mute hide-m" }, "–"), h("td", {}, link(b)), h("td", { class: "mute" }, "–"), h("td", { class: "n mute" }, "–"), h("td", { class: "n mute" }, "–"))))))),
+    allStrategiesCard(rows),
     h("p", { class: "note" }, "Kun papirhandel med fiktive penge. Med få lukkede handler er tallene mest held eller uheld. Afkast er uden garanti for, at det holder med rigtige penge."));
+}
+
+/* Alle strategier i alle botter, bedste først. Top 20 vises; "Se alle" viser resten (huskes ved opdatering hvert 15. sekund). */
+let showAllStrategies = false;
+function allStrategiesCard(rows) {
+  const all = rows.flatMap((b) => (b.strategies || []).map((s) => ({ ...s, bot: b })))
+    .filter((s) => typeof s.return_pct === "number" && Math.round(s.return_pct * 100) !== 0)     // 0 % (intet afkast endnu) tæller ikke
+    .sort((x, y) => y.return_pct - x.return_pct);
+  const list = showAllStrategies ? all : all.slice(0, 20);
+  const more = all.length > 20 ? h("button", { class: "more", type: "button", onclick: () => { showAllStrategies = !showAllStrategies; load(true); } },
+    showAllStrategies ? "Vis kun top 20" : `Se alle ${all.length} strategier`) : null;
+  return h("div", { class: "card" }, h("div", { class: "head" }, h("h2", {}, "Bedste strategier"),
+      h("p", {}, "Alle strategier i alle botter. Afkast efter omkostninger, i procent af papirkontoen. Strategier uden afkast endnu tæller ikke.")),
+    all.length ? h("div", { class: "tw" }, h("table", {}, h("thead", {}, h("tr", {}, h("th", { class: "hide-m" }, "#"), h("th", {}, "Strategi"), h("th", {}, "Bot"),
+        h("th", { class: "n" }, "Afkast"), h("th", { class: "n" }, h("span", { class: "hide-m" }, "Lukkede handler"), h("span", { class: "under" }, "Handler")))),
+      h("tbody", {}, list.map((s, i) => h("tr", {}, h("td", { class: "mute hide-m" }, String(i + 1)), h("td", { class: "name" }, s.name),
+        h("td", {}, h("a", { href: "#" + s.bot.key + "/strategier" }, s.bot.name)),
+        h("td", { class: "n " + tone(s.return_pct) }, pct(s.return_pct)),
+        h("td", { class: "n" }, String(s.trades), s.trades < 20 ? h("span", { class: "tag hide-m" }, "få") : null)))))) :
+      h("div", { class: "empty" }, "Ingen strategier med afkast endnu."),
+    more);
 }
 
 /* ---------- start ---------- */

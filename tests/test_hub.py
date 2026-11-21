@@ -90,6 +90,16 @@ class HubTests(unittest.TestCase):
         self.assertIsNone(out["best"])
         self.assertNotIn("_cands", out)
 
+    def test_a_bot_too_slow_for_the_first_answer_is_fetched_in_the_background(self):
+        from unittest import mock
+        bot = {"key": "slow", "name": "Slow", "port": 1, "adapter": "nova"}
+        srv._cache.pop("slow", None)
+        with mock.patch.object(srv, "_fetch", side_effect=TimeoutError("timed out")), \
+                mock.patch.object(srv, "_refresh_in_background") as bg:
+            with self.assertRaises(TimeoutError):
+                srv.bot_data(bot)
+        bg.assert_called_once_with(bot)
+
     def test_a_client_hanging_up_is_not_shown_as_a_bot_problem(self):
         import tempfile
         log = ("ERROR scanning fejlede: HTTP 500\n" + "-" * 40 + "\n"
