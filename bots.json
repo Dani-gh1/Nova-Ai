@@ -25,9 +25,9 @@
     "www.nasdaqtrader.com",
     "en.wikipedia.org"
    ],
-   "costs": {
-    "fee_pct": 0.0,
-    "slip_pct": 0.05
+   "fees": {
+    "text": "Kurtage som hos Interactive Brokers: $0,005 pr. aktie (min. $1, maks. 1 %) + 0,05 % slip + halv spread pr. side",
+    "side_pct": 0.12
    }
   },
   {
@@ -50,9 +50,9 @@
    "hosts": [
     "query1.finance.yahoo.com"
    ],
-   "costs": {
-    "fee_pct": 0.0,
-    "slip_pct": 0.03
+   "fees": {
+    "text": "Spread som hos en forex-broker uden kurtage (typisk spread pr. par) + swap/rente for positioner over natten",
+    "side_pct": 0.02
    }
   },
   {
@@ -77,9 +77,9 @@
     "api.geckoterminal.com",
     "api.gopluslabs.io"
    ],
-   "costs": {
-    "fee_pct": 0.3,
-    "slip_pct": 1.5
+   "fees": {
+    "text": "DEX-gebyr 0,25–0,3 % pr. swap + gas + prisvirkning beregnet ud fra puljens størrelse",
+    "side_pct": 2.0
    }
   },
   {
@@ -109,9 +109,9 @@
     "clob.polymarket.com",
     "api.elections.kalshi.com"
    ],
-   "costs": {
-    "fee_pct": 0.5,
-    "slip_pct": 1.0
+   "fees": {
+    "text": "Markedets eget gebyr (Kalshi: 0,07 × P × (1−P) pr. kontrakt, Polymarket: oplyst gebyr) + køb til udbudspris og salg til bud",
+    "side_pct": 2.0
    }
   },
   {
@@ -135,9 +135,9 @@
     "fapi.binance.com",
     "api.bybit.com"
    ],
-   "costs": {
-    "fee_pct": 0.05,
-    "slip_pct": 0.05
+   "fees": {
+    "text": "0,05 % taker / 0,02 % maker pr. side af den gearede størrelse (Binance futures) + funding hver 8. time",
+    "side_pct": 0.15
    }
   },
   {
@@ -161,9 +161,9 @@
     "data-api.binance.vision",
     "api.binance.com"
    ],
-   "costs": {
-    "fee_pct": 0.1,
-    "slip_pct": 0.05
+   "fees": {
+    "text": "0,10 % gebyr pr. side (Binance spot, taker) + slip fra den rigtige ordrebog",
+    "side_pct": 0.15
    }
   },
   {
@@ -191,9 +191,9 @@
     "lite-api.jup.ag",
     "api.mainnet-beta.solana.com"
    ],
-   "costs": {
-    "fee_pct": 0.3,
-    "slip_pct": 1.5
+   "fees": {
+    "text": "Jupiter-pris med puljegebyr, prisvirkning og slip + $0,05 netværksgebyr pr. swap (Solana)",
+    "side_pct": 2.0
    }
   },
   {
@@ -274,15 +274,15 @@
     "www.nasdaqtrader.com",
     "en.wikipedia.org"
    ],
-   "costs": {
-    "fee_pct": 0.15,
-    "slip_pct": 0.1
-   },
    "nice": 10,
    "lite": {
     "config": {
      "SCAN_INTERVAL_MINUTES": 30
     }
+   },
+   "fees": {
+    "text": "Kurtage som hos Interactive Brokers: $0,005 pr. aktie (min. $1, maks. 1 %) + 0,05 % slip + halv spread pr. side",
+    "side_pct": 0.2
    }
   },
   {
@@ -352,15 +352,15 @@
     "data-api.binance.vision",
     "api.binance.com"
    ],
-   "costs": {
-    "fee_pct": 0.1,
-    "slip_pct": 0.2
-   },
    "nice": 10,
    "lite": {
     "config": {
      "SCAN_INTERVAL_SECONDS": 900
     }
+   },
+   "fees": {
+    "text": "0,10 % gebyr pr. side (Binance spot, taker) + slip fra den rigtige ordrebog",
+    "side_pct": 0.35
    }
   },
   {
@@ -390,11 +390,11 @@
     "lite-api.jup.ag",
     "api.mainnet-beta.solana.com"
    ],
-   "costs": {
-    "fee_pct": 0.3,
-    "slip_pct": 0.5
-   },
-   "nice": 10
+   "nice": 10,
+   "fees": {
+    "text": "Jupiter-pris med puljegebyr, prisvirkning og slip + $0,05 netværksgebyr pr. swap (Solana)",
+    "side_pct": 0.8
+   }
   },
   {
    "key": "bondai",
@@ -460,15 +460,15 @@
     "www.nasdaqtrader.com",
     "en.wikipedia.org"
    ],
-   "costs": {
-    "fee_pct": 0.0,
-    "slip_pct": 0.05
-   },
    "nice": 10,
    "lite": {
     "config": {
      "SCAN_INTERVAL_MINUTES": 30
     }
+   },
+   "fees": {
+    "text": "Kurtage som hos Interactive Brokers: $0,005 pr. aktie (min. $1, maks. 1 %) + 0,05 % slip + halv spread pr. side",
+    "side_pct": 0.12
    }
   },
   {
@@ -525,15 +525,15 @@
     "www.nasdaqtrader.com",
     "en.wikipedia.org"
    ],
-   "costs": {
-    "fee_pct": 0.0,
-    "slip_pct": 0.1
-   },
    "nice": 10,
    "lite": {
     "config": {
      "SCAN_INTERVAL_MINUTES": 30
     }
+   },
+   "fees": {
+    "text": "Kurtage som hos Interactive Brokers: $0,005 pr. aktie (min. $1, maks. 1 %) + 0,05 % slip + halv spread pr. side",
+    "side_pct": 0.15
    }
   },
   {
@@ -588,15 +588,15 @@
     "www.nasdaqtrader.com",
     "en.wikipedia.org"
    ],
-   "costs": {
-    "fee_pct": 0.0,
-    "slip_pct": 0.08
-   },
    "nice": 10,
    "lite": {
     "config": {
      "SCAN_INTERVAL_MINUTES": 30
     }
+   },
+   "fees": {
+    "text": "Kurtage som hos Interactive Brokers: $0,005 pr. aktie (min. $1, maks. 1 %) + 0,05 % slip + halv spread pr. side",
+    "side_pct": 0.15
    }
   },
   {
@@ -662,15 +662,15 @@
     "www.nasdaqtrader.com",
     "en.wikipedia.org"
    ],
-   "costs": {
-    "fee_pct": 0.0,
-    "slip_pct": 0.1
-   },
    "nice": 10,
    "lite": {
     "config": {
      "SCAN_INTERVAL_MINUTES": 30
     }
+   },
+   "fees": {
+    "text": "Kurtage som hos Interactive Brokers: $0,005 pr. aktie (min. $1, maks. 1 %) + 0,05 % slip + halv spread pr. side",
+    "side_pct": 0.15
    }
   },
   {
@@ -728,15 +728,15 @@
     "www.nasdaqtrader.com",
     "en.wikipedia.org"
    ],
-   "costs": {
-    "fee_pct": 0.0,
-    "slip_pct": 0.2
-   },
    "nice": 10,
    "lite": {
     "config": {
      "SCAN_INTERVAL_MINUTES": 30
     }
+   },
+   "fees": {
+    "text": "Kurtage som hos Interactive Brokers: $0,005 pr. aktie (min. $1, maks. 1 %) + 0,05 % slip + halv spread pr. side",
+    "side_pct": 0.3
    }
   },
   {
@@ -796,15 +796,15 @@
     "www.nasdaqtrader.com",
     "en.wikipedia.org"
    ],
-   "costs": {
-    "fee_pct": 0.0,
-    "slip_pct": 0.05
-   },
    "nice": 10,
    "lite": {
     "config": {
      "SCAN_INTERVAL_MINUTES": 30
     }
+   },
+   "fees": {
+    "text": "Kurtage som hos Interactive Brokers: $0,005 pr. aktie (min. $1, maks. 1 %) + 0,05 % slip + halv spread pr. side",
+    "side_pct": 0.12
    }
   },
   {
@@ -853,15 +853,15 @@
     "www.nasdaqtrader.com",
     "en.wikipedia.org"
    ],
-   "costs": {
-    "fee_pct": 0.2,
-    "slip_pct": 0.6
-   },
    "nice": 10,
    "lite": {
     "config": {
      "SCAN_INTERVAL_MINUTES": 30
     }
+   },
+   "fees": {
+    "text": "Kurtage som hos Interactive Brokers: $0,005 pr. aktie (min. $1, maks. 1 %) + 0,05 % slip + halv spread pr. side",
+    "side_pct": 0.5
    }
   },
   {
@@ -912,15 +912,15 @@
     "www.nasdaqtrader.com",
     "en.wikipedia.org"
    ],
-   "costs": {
-    "fee_pct": 0.0,
-    "slip_pct": 0.1
-   },
    "nice": 10,
    "lite": {
     "config": {
      "SCAN_INTERVAL_MINUTES": 30
     }
+   },
+   "fees": {
+    "text": "Kurtage som hos Interactive Brokers: $0,005 pr. aktie (min. $1, maks. 1 %) + 0,05 % slip + halv spread pr. side",
+    "side_pct": 0.15
    }
   },
   {
@@ -979,15 +979,15 @@
     "data-api.binance.vision",
     "api.binance.com"
    ],
-   "costs": {
-    "fee_pct": 0.1,
-    "slip_pct": 0.1
-   },
    "nice": 10,
    "lite": {
     "config": {
      "SCAN_INTERVAL_SECONDS": 900
     }
+   },
+   "fees": {
+    "text": "0,10 % gebyr pr. side (Binance spot, taker) + slip fra den rigtige ordrebog",
+    "side_pct": 0.2
    }
   },
   {
@@ -1046,15 +1046,15 @@
     "data-api.binance.vision",
     "api.binance.com"
    ],
-   "costs": {
-    "fee_pct": 0.1,
-    "slip_pct": 0.15
-   },
    "nice": 10,
    "lite": {
     "config": {
      "SCAN_INTERVAL_SECONDS": 900
     }
+   },
+   "fees": {
+    "text": "0,10 % gebyr pr. side (Binance spot, taker) + slip fra den rigtige ordrebog",
+    "side_pct": 0.25
    }
   },
   {
@@ -1107,15 +1107,15 @@
     "data-api.binance.vision",
     "api.binance.com"
    ],
-   "costs": {
-    "fee_pct": 0.1,
-    "slip_pct": 0.2
-   },
    "nice": 10,
    "lite": {
     "config": {
      "SCAN_INTERVAL_SECONDS": 900
     }
+   },
+   "fees": {
+    "text": "0,10 % gebyr pr. side (Binance spot, taker) + slip fra den rigtige ordrebog",
+    "side_pct": 0.3
    }
   },
   {
@@ -1329,15 +1329,15 @@
    "hosts": [
     "query1.finance.yahoo.com"
    ],
-   "costs": {
-    "fee_pct": 0.0,
-    "slip_pct": 0.04
-   },
    "nice": 10,
    "lite": {
     "desk.config": {
      "LOOP_SECONDS": 180
     }
+   },
+   "fees": {
+    "text": "Spread som hos en forex-broker uden kurtage (typisk spread pr. par) + swap/rente for positioner over natten",
+    "side_pct": 0.05
    }
   }
  ]

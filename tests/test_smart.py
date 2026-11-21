@@ -4,19 +4,19 @@ import unittest
 from pathlib import Path
 
 from hub import smart as S
-from hub.server import COST_DEFAULTS, Overview, smart_candidates
+from hub.server import Overview, fee_rule, smart_candidates
 from hub.smart import SmartBot, score
 
 H = 3600
 T0 = 1_700_000_000
 
 
-def cand(name, pts, now_h, bot="b", trades=50, open_=0, per=0.0):
+def cand(name, pts, now_h, bot="b", trades=50, open_=0, entry=0.0):
     """Strategi med kurve [(timer, %)] op til nu (now_h timer efter T0)."""
     cv = [[T0 + h * H, v] for h, v in pts if h <= now_h]
     moved = next((cv[i + 1][0] for i in range(len(cv) - 2, -1, -1) if cv[i][1] != cv[-1][1]), cv[0][0])
     return {"id": f"{bot}:{name}", "name": name, "bot": bot, "bot_name": bot.upper(), "curve": cv, "raw_now": cv[-1][1], "moved_at": moved,
-            "trades": trades, "open": open_, "per": per, "tax": 0.0, "capital": 10000.0, "currency": "kr."}
+            "trades": trades, "open": open_, "entry_cost": entry, "capital": 10000.0, "currency": "kr."}
 
 
 class Clock:
@@ -129,19 +129,19 @@ class SmartBotTests(unittest.TestCase):
         self.run_hours(sb, clk, {"b": [b]}, range(25, 25 + S.DEAD_H + 2))
         self.assertEqual(sb.view()["following"], "B")
 
-    def test_costs_for_trades_and_switches(self):
+    def test_trades_are_already_paid_but_a_switch_costs(self):
         clk = Clock(24)
         sb = self.bot(clk)
-        up = lambda tr, op: (lambda h: cand("A", [(i, i * 0.05) for i in range(0, 200)], h, trades=tr, open_=op, per=0.3))
-        self.run_hours(sb, clk, {"x": [up(20, 4)]}, [24])            # går ind: åbner 4 positioner à 0,15 %
+        up = lambda tr, op: (lambda h: cand("A", [(i, i * 0.05) for i in range(0, 200)], h, trades=tr, open_=op, entry=0.6))
+        self.run_hours(sb, clk, {"x": [up(20, 4)]}, [24])            # går ind: åbner strategiens positioner for 0,6 %
         v0 = sb.view()["value"]
-        self.assertAlmostEqual(v0, 10000 * (1 - 0.003 / 2) ** 4, delta=0.5)
-        clk.t = T0 + 24 * H                                          # samme kurve, men 2 handler lukket og 1 ny åbnet
+        self.assertAlmostEqual(v0, 10000 * (1 - 0.006), delta=0.01)
+        clk.t = T0 + 24 * H                                          # samme kurve, flere handler: botten har selv betalt dem
         sb.feed("x", [up(22, 3)(24)])
         sb.snap["x"]["at"] += 1
         sb.step()
-        self.assertLess(sb.view()["value"], v0)
-        self.assertGreater(sb.view()["costs_paid"], 0)
+        self.assertAlmostEqual(sb.view()["value"], v0, delta=0.01)
+        self.assertAlmostEqual(sb.view()["costs_paid"], 60, delta=0.01)
 
     def test_restart_continues_from_the_saved_account(self):
         clk = Clock(24)
@@ -189,7 +189,7 @@ class SmartBotTests(unittest.TestCase):
         sb = self.bot(clk)
         a = lambda h: cand("A", [(i, i * 0.30) for i in range(0, 200)], h)
         # B løber fra A, men har 40 åbne positioner à 0,3 %: at hoppe ind koster 6 %, mere end forspringet
-        b = lambda h: cand("B", [(i, i * 0.30 if i < 30 else 9 + (i - 30) * 1.0) for i in range(0, 200)], h, open_=40, per=0.3)
+        b = lambda h: cand("B", [(i, i * 0.30 if i < 30 else 9 + (i - 30) * 1.0) for i in range(0, 200)], h, open_=40, entry=6.0)
         self.run_hours(sb, clk, {"x": [a, b]}, range(24, 37))
         self.assertEqual(sb.view()["following"], "A")
         self.run_hours(sb, clk, {"x": [a, b]}, range(37, 60))          # forspringet vokser sig større end prisen: nu skifter den
@@ -202,17 +202,17 @@ class SmartBotTests(unittest.TestCase):
 
 
 class CandidateTests(unittest.TestCase):
-    def test_candidates_use_net_curves_and_skip_curves_without_time(self):
-        c = {**COST_DEFAULTS, "fee_pct": 0.1, "slip_pct": 0.0, "pos_pct": 10.0}
-        sts = [{"key": "a", "name": "A", "trades": 10, "open": 0, "curve": [[T0, 0], [T0 + H, 5]]},
+    def test_candidates_use_the_bots_own_numbers_and_a_realistic_switch_price(self):
+        bot = {"key": "bot", "name": "Bot", "fees": {"text": "0,10 % pr. side", "side_pct": 0.15}}
+        sts = [{"key": "a", "name": "A", "trades": 10, "open": 3, "curve": [[T0, 0], [T0 + H, 5]]},
+               {"key": "m", "name": "Mange", "trades": 10, "open": 25, "curve": [[T0, 0], [T0 + H, 5]]},
                {"key": "x", "name": "X", "trades": 0, "open": 0, "curve": [[0, 0], [1, 5]]}]
-        out = smart_candidates(sts, c, {"key": "bot", "name": "Bot"})
-        self.assertEqual([x["name"] for x in out], ["A"])
-        self.assertAlmostEqual(out[0]["curve"][-1][1], 5 - 10 * 0.1 * 0.2)       # 10 handler à 0,02 % af kontoen
-        self.assertEqual(out[0]["raw_now"], 5)
-        self.assertAlmostEqual(out[0]["per"], 0.02)
-        off = smart_candidates(sts, {**c, "enabled": False}, {"key": "bot", "name": "Bot"})
-        self.assertEqual((off[0]["curve"][-1][1], off[0]["per"]), (5, 0.0))
+        out = smart_candidates(sts, bot)
+        self.assertEqual([x["name"] for x in out], ["A", "Mange"])
+        self.assertEqual(out[0]["curve"][-1][1], 5)                              # botten har selv trukket gebyrerne
+        self.assertAlmostEqual(out[0]["entry_cost"], 0.3 * 0.15)                  # 3 positioner à 10 % af kontoen
+        self.assertAlmostEqual(out[1]["entry_cost"], 1.0 * 0.15)                  # højst hele kontoen
+        self.assertEqual(fee_rule(bot), ["Gebyrer (indregnet)", "0,10 % pr. side"])
 
     def test_overview_feeds_only_bots_that_answered(self):
         fed = []

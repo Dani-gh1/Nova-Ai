@@ -105,6 +105,8 @@ def bot_data(bot: dict) -> dict:
         return hit[1]
     data = normalize(bot, lambda sub: upstream(bot, sub, timeout=25))     # en travl bot når at svare, i stedet for at arbejde forgæves
     data["since"] = data_since(data)
+    for st in data.get("strategies") or []:
+        st["rules"] = [*(st.get("rules") or []), fee_rule(bot)]
     _cache[bot["key"]] = (time.time(), data)
     return data
 
@@ -125,73 +127,10 @@ def last_problem(bot: dict) -> str:
     return ""
 
 
-COST_DEFAULTS = {"enabled": True, "capital": 10000.0, "currency": "kr.", "fee_pct": 0.1, "slip_pct": 0.05,
-                 "fixed_fee": 0.0, "pos_pct": 10.0, "tax_pct": 0.0}
-COST_LIMITS = {"capital": (0, 1e9), "fee_pct": (0, 20), "slip_pct": (0, 20), "fixed_fee": (0, 1e6), "pos_pct": (0.1, 100), "tax_pct": (0, 100)}
-COST_LOCK = threading.Lock()
-
-
-def costs_file() -> Path:
-    return Path(os.environ.get("HUB_COSTS_FILE") or ROOT / "logs" / "costs.json")
-
-
-def clean_costs(raw, defaults: dict | None = None) -> dict:
-    """Gyldige indstillinger ud fra vilkårligt input: ukendte felter droppes, tal begrænses, tekst kortes.
-    `defaults` er botens egne standardtal (fx højere slip for memecoins), ellers fælles standard."""
-    raw = raw if isinstance(raw, dict) else {}
-    out = {**COST_DEFAULTS, **{k: v for k, v in (defaults or {}).items() if k in COST_DEFAULTS}}
-    out["enabled"] = bool(raw.get("enabled", out["enabled"]))
-    cur = raw.get("currency")
-    if isinstance(cur, str) and cur.strip():
-        out["currency"] = re.sub(r"[<>&\"']", "", cur.strip())[:6] or out["currency"]
-    for k, (lo, hi) in COST_LIMITS.items():
-        v = raw.get(k)
-        if isinstance(v, (int, float)) and not isinstance(v, bool) and v == v and abs(v) != float("inf"):
-            out[k] = round(min(hi, max(lo, float(v))), 4)
-    return out
-
-
-def load_costs() -> dict:
-    try:
-        data = json.loads(costs_file().read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        data = {}
-    return data if isinstance(data, dict) else {}
-
-
-def get_costs(key: str, defaults: dict | None = None) -> dict:
-    saved = load_costs().get(key)
-    return clean_costs({**(defaults or {}), **saved} if isinstance(saved, dict) else defaults, defaults)
-
-
-def net_strategies(strategies: list[dict], c: dict) -> list[dict]:
-    """Strategiernes afkast efter omkostninger (samme regnestykke som i dashboardet): hver lukket handel betaler ind og ud,
-    en åben kun indgangen. Position = andel af kontoen pr. handel. Skat tages kun af gevinst."""
-    if not c.get("enabled"):
-        return strategies
-    rt = 2 * (c["fee_pct"] + c["slip_pct"])
-    per = c["pos_pct"] / 100 * rt + (2 * c["fixed_fee"] / c["capital"] * 100 if c["capital"] > 0 else 0)
-    out = []
-    for st in strategies:
-        r = st.get("return_pct")
-        if not isinstance(r, (int, float)):
-            out.append(st)
-            continue
-        net = r - ((st.get("trades") or 0) * per + (st.get("open") or 0) * per / 2)
-        out.append({**st, "return_pct": net * (1 - c["tax_pct"] / 100) if net > 0 else net})
-    return out
-
-
-def save_costs(key: str, raw, defaults: dict | None = None) -> dict:
-    with COST_LOCK:
-        data = load_costs()
-        data[key] = clean_costs(raw, defaults)
-        f = costs_file()
-        f.parent.mkdir(parents=True, exist_ok=True)
-        tmp = f.with_suffix(".tmp")
-        tmp.write_text(json.dumps(data), encoding="utf-8")
-        tmp.replace(f)
-        return data[key]
+def fee_rule(bot: dict) -> list:
+    """Botens gebyrer som en regel, der vises under hver strategi (de er allerede trukket fra i botens egne tal)."""
+    f = bot.get("fees") or {}
+    return ["Gebyrer (indregnet)", f.get("text", "–")]
 
 
 STALE_AFTER_S = 20 * 60          # så længe uden scanning før overblikket advarer
@@ -221,29 +160,27 @@ def best_of(strategies: list[dict]) -> dict | None:
     return out
 
 
-def smart_candidates(strategies: list[dict], c: dict, bot: dict) -> list[dict]:
-    """Strategier klar til Smart-botten. `curve` er efter botens egne handelsomkostninger (fordelt jævnt over tid, uden skat)
-    og bruges til at give point; `raw_now` er strategiens rå stand lige nu, og `per` er prisen for én handel ind og ud
-    i procent af kontoen, så Smart-botten selv kan trække de handler, den faktisk følger med på."""
-    on = bool(c.get("enabled"))
-    per = c["pos_pct"] / 100 * 2 * (c["fee_pct"] + c["slip_pct"]) + (2 * c["fixed_fee"] / c["capital"] * 100 if c["capital"] > 0 else 0)
+POSITION_PCT = 10.0              # en strategis position er typisk så stor en del af kontoen (bruges til prisen for et skift)
+
+
+def smart_candidates(strategies: list[dict], bot: dict) -> list[dict]:
+    """Strategier klar til Smart-botten. Botternes egne tal har allerede deres gebyrer og slip med, så kurven bruges, som den er.
+    `entry_cost` er prisen i procent af kontoen for at gå ind i (eller ud af) strategiens åbne positioner ved et skift:
+    den investerede andel (højst hele kontoen) gange botens realistiske pris pr. side (`fees.side_pct` i bots.json)."""
+    side = float((bot.get("fees") or {}).get("side_pct", 0.2))
     out = []
     for st in strategies:
         cv = [p for p in st.get("curve") or [] if isinstance(p, (list, tuple)) and len(p) >= 2 and isinstance(p[0], (int, float))
               and p[0] > 1.0e9 and isinstance(p[1], (int, float))]
         if len(cv) < 2:
             continue
-        cv.sort(key=lambda p: p[0])
-        raw_now = cv[-1][1]
-        moved_at = next((cv[i + 1][0] for i in range(len(cv) - 2, -1, -1) if cv[i][1] != raw_now), cv[0][0])    # sidst den rørte sig
-        if on:
-            cost = (st.get("trades") or 0) * per + (st.get("open") or 0) * per / 2
-            a, z = cv[0][0], cv[-1][0]
-            cv = [[t, v - cost * ((t - a) / (z - a) if z > a else 1)] for t, v in cv]
+        cv = sorted([list(p[:2]) for p in cv], key=lambda p: p[0])
+        now_v = cv[-1][1]
+        moved_at = next((cv[i + 1][0] for i in range(len(cv) - 2, -1, -1) if cv[i][1] != now_v), cv[0][0])    # sidst den rørte sig
+        invested = min(1.0, (st.get("open") or 0) * POSITION_PCT / 100)
         out.append({"id": f"{bot['key']}:{st.get('key')}", "name": st.get("name") or str(st.get("key")), "bot": bot["key"],
-                    "bot_name": bot.get("name", bot["key"]), "curve": cv, "raw_now": raw_now, "moved_at": moved_at, "trades": st.get("trades") or 0,
-                    "open": st.get("open") or 0, "per": per if on else 0.0, "tax": c["tax_pct"] if on else 0.0,
-                    "capital": c["capital"], "currency": c["currency"]})
+                    "bot_name": bot.get("name", bot["key"]), "curve": cv, "raw_now": now_v, "moved_at": moved_at,
+                    "trades": st.get("trades") or 0, "open": st.get("open") or 0, "entry_cost": invested * side})
     return out
 
 
@@ -303,9 +240,8 @@ def bot_overview(bot: dict) -> dict:
         data: dict = {}      # ellers crasher `data.get` nedenfor, hvis bot_data fejler, og hele overblikket (og Smart strategi) går i stå
         try:
             data = bot_data(bot)
-            c = get_costs(bot["key"], bot.get("costs"))
-            out["best"] = best_of(net_strategies(data["strategies"], c))
-            out["_cands"] = smart_candidates(data["strategies"], c, bot)      # bruges kun af Smart-botten
+            out["best"] = best_of(data["strategies"])
+            out["_cands"] = smart_candidates(data["strategies"], bot)      # bruges kun af Smart-botten
             out["trades"] = {"open": sum(x.get("open") or 0 for x in data["strategies"]),
                              "closed": sum(x.get("trades") or 0 for x in data["strategies"])}
             out["scan_age"] = max(0.0, time.time() - data["scan"]) if data.get("scan") else None
@@ -331,7 +267,6 @@ class Overview:
         self.build = build or (lambda: self._build())
         self.rows: list | None = None
         self.smart_bot = smart                 # Smart-botten: følger den bedste strategi på tværs af alle botter
-        self.tax = 0.0
         self.at = 0.0
         self.lock = threading.Lock()
         self.busy = False
@@ -343,19 +278,15 @@ class Overview:
     def _refresh(self) -> None:
         try:
             rows = self.build()
-            taxes = []
             for r in rows:
                 if not isinstance(r, dict) or "_cands" not in r:
                     continue                   # botten svarede ikke: Smart-botten beholder dens seneste svar
                 cands = r.pop("_cands") or []
-                taxes += [c["tax"] for c in cands]
                 if self.smart_bot is not None:
                     fresh = not r.get("idle") and r.get("scan_age") is not None and r["scan_age"] <= STALE_AFTER_S   # lukket marked kan ikke vælges
                     self.smart_bot.feed(r["key"], cands, fresh)
             with self.lock:
                 self.rows, self.at = rows, self.now()
-                if taxes:
-                    self.tax = max(taxes)
         finally:
             self.busy = False
 
@@ -386,7 +317,7 @@ class Overview:
             self._refresh()
 
     def smart(self) -> dict | None:
-        return self.smart_bot.view(self.tax) if self.smart_bot is not None else None
+        return self.smart_bot.view() if self.smart_bot is not None else None
 
 
 class Throttle:
@@ -520,36 +451,6 @@ def make_handler(bots: list[dict], throttle: Throttle | None = None, ratelimit: 
                 throttle.ok(ip)
             return True
 
-        def do_POST(self):  # noqa: N802
-            """Eneste skrivning: gemmer en bots omkostningsindstillinger (/api/costs/<bot>). Kræver samme login som resten."""
-            path = self.path.partition("?")[0]
-            if not self._gate():
-                return
-            try:
-                m = re.match(r"^/api/costs/([a-z0-9_-]+)$", path)
-                if not m or m.group(1) not in by_key:
-                    return self._send(404, "text/plain; charset=utf-8", b"findes ikke")
-                if os.environ.get("HUB_OPEN") == "1" and not password and self.headers.get("Tailscale-Funnel-Request"):
-                    # åbent for alle uden kode: besøgende fra internettet må kun se. Dine egne enheder (via Tailscale) kan stadig ændre.
-                    return self._send(403, "text/plain; charset=utf-8", "Kun visning. Indstillinger kan kun ændres fra dine egne enheder.".encode())
-                origin = self.headers.get("Origin")
-                if origin and urllib.parse.urlsplit(origin).netloc != self.headers.get("Host"):      # kun fra dashboardet selv
-                    return self._send(403, "text/plain; charset=utf-8", "forkert oprindelse".encode())
-                if "application/json" not in self.headers.get("Content-Type", ""):
-                    return self._send(415, "text/plain; charset=utf-8", b"kun JSON")
-                n = int(self.headers.get("Content-Length") or 0)
-                if not 0 < n <= 4096:
-                    return self._send(413, "text/plain; charset=utf-8", "forkert størrelse".encode())
-                try:
-                    raw = json.loads(self.rfile.read(n).decode("utf-8"))
-                except ValueError:
-                    return self._send(400, "text/plain; charset=utf-8", "ugyldig JSON".encode())
-                self._send(200, "application/json", json.dumps(save_costs(m.group(1), raw, by_key[m.group(1)].get("costs"))).encode())
-            except (BrokenPipeError, ConnectionResetError):
-                pass
-            except Exception:
-                self._send(500, "application/json", b'{"error": "internal error"}')
-
         def do_GET(self):  # noqa: N802
             path, _, query = self.path.partition("?")
             if path == "/healthz":
@@ -578,9 +479,6 @@ def make_handler(bots: list[dict], throttle: Throttle | None = None, ratelimit: 
                 if path == "/api/smart":
                     overview.get()
                     return self._send(200, "application/json", json.dumps(overview.smart()).encode())
-                m = re.match(r"^/api/costs/([a-z0-9_-]+)$", path)
-                if m and m.group(1) in by_key:
-                    return self._send(200, "application/json", json.dumps(get_costs(m.group(1), by_key[m.group(1)].get("costs"))).encode())
                 m = re.match(r"^/api/bot/([a-z0-9_-]+)$", path)
                 if m and m.group(1) in by_key:
                     try:

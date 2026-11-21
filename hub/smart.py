@@ -17,8 +17,9 @@ Reglerne (valgt til rigtige penge – hellere lidt for forsigtig end at jagte he
   * Har ingen strategi positive point, står pengene kontant og venter.
   * Et skift skal kunne betale sig: point-forspringet skal være større end prisen for at lukke den gamle strategis
     åbne positioner og åbne den nyes (en strategi med mange åbne positioner og høje gebyrer er dyr at hoppe ind i).
-  * Omkostninger: hver handel i den fulgte strategi koster det samme som i strategien selv (botens Rigtige penge-tal),
-    og et skift koster at lukke den gamle strategis åbne positioner og åbne den nyes.
+  * Omkostninger: botternes egne tal har allerede realistiske gebyrer og slip med (se hver strategis regler), så de
+    handler, den fulgte strategi laver, er betalt. Et skift koster derudover at lukke den gamle strategis åbne positioner
+    og åbne den nyes (botens realistiske pris pr. side, `fees.side_pct` i bots.json).
 """
 from __future__ import annotations
 
@@ -160,11 +161,8 @@ class SmartBot:
                 if s["at"] > h.get("seen", 0):
                     if tr < h["trades"]:                                    # strategien er startet forfra: synk uden gevinst/tab
                         self.log(f"Smart-bot: {h['name']} ({h['bot_name']}) er startet forfra – følger videre fra nu")
-                    else:
-                        if 100 + h["v"] > 0:
-                            st["acct"] = max(0.0, st["acct"] * (100 + v) / (100 + h["v"]))
-                        units = max(0.0, (tr - h["trades"]) + (op - h["open"]) / 2)      # lukket = ud, åbnet = ind
-                        self._pay(units * c.get("per", 0.0))
+                    elif 100 + h["v"] > 0:                                    # strategiens egne gebyrer er med i dens tal
+                        st["acct"] = max(0.0, st["acct"] * (100 + v) / (100 + h["v"]))
                     h.update(v=v, trades=tr, open=op, seen=s["at"])
                     h["peak"] = max(h.get("peak", st["acct"]), st["acct"])
             scores = self._eligible(now)
@@ -193,8 +191,7 @@ class SmartBot:
         """Pris i procent for at åbne (eller lukke) strategiens åbne positioner."""
         if cid is None or cid not in allc:
             return 0.0
-        c = allc[cid][0]
-        return (c.get("open") or 0) * c.get("per", 0.0) / 2
+        return float(allc[cid][0].get("entry_cost") or 0.0)
 
     def _decide(self, now: float, scores: dict, allc: dict) -> None:
         st, h = self.state, self.state["held"]
@@ -233,12 +230,12 @@ class SmartBot:
 
     def _switch(self, now: float, to: str | None, allc: dict, why: str) -> None:
         st, h = self.state, self.state["held"]
-        if h and h["id"] in allc:                                  # luk den gamle strategis åbne positioner
-            self._pay((h.get("open") or 0) * allc[h["id"]][0].get("per", 0.0) / 2)
+        if h:
+            self._pay(self._cost(h["id"], allc))                   # luk den gamle strategis åbne positioner
         new = None
         if to is not None:
             c, s = allc[to]
-            self._pay((c.get("open") or 0) * c.get("per", 0.0) / 2)       # åbn den nyes positioner
+            self._pay(self._cost(to, allc))                        # åbn den nyes positioner
             new = {"id": to, "name": c["name"], "bot": c["bot"], "bot_name": c["bot_name"], "v": c["raw_now"],
                    "trades": c.get("trades") or 0, "open": c.get("open") or 0, "seen": s["at"], "entered": round(now),
                    "peak": st["acct"]}
@@ -249,11 +246,10 @@ class SmartBot:
         self.log(f"Smart-bot: {(h and h['name']) or 'kontant'} → {(new and new['name'] + ' (' + new['bot_name'] + ')') or 'kontant'}: {why}")
 
     # ---------- til dashboardet ----------
-    def view(self, tax: float = 0.0) -> dict:
+    def view(self) -> dict:
         with self.lock:
             st, h, now = self.state, self.state["held"], self.now()
-            keep = lambda v: v * (1 - tax / 100) if v > 0 else v
-            ret = keep((st["acct"] - 1) * 100)
+            ret = (st["acct"] - 1) * 100
             curve = st["curve"]
             if len(curve) > 200:
                 k = len(curve) / 200
@@ -275,7 +271,7 @@ class SmartBot:
                     "count": st.get("count", 0), "eligible": st.get("eligible", 0), "bots": st.get("bots", 0),
                     "switches": len(st["switches"]), "recent": st["switches"][-8:][::-1], "since": round(st["since"]),
                     "updated": st.get("updated"), "warning": stale, "rules": RULES,
-                    "curve": [[t, round(keep(v), 3)] for t, v in curve]}
+                    "curve": [[t, round(v, 3)] for t, v in curve]}
 
     def run(self, refresh, stop: threading.Event | None = None) -> None:
         """Baggrundsløkken: hent friske data fra botterne (refresh) og tag et skridt, hvert TICK_S sekund."""

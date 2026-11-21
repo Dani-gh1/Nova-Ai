@@ -38,12 +38,22 @@ python3 -m hub run
 Åbn <http://127.0.0.1:8080>. `run` starter botterne (hver på sin egen port, kun lokalt)
 og hubben. `python3 -m hub status` viser hvad der kører. Kun Python 3.11+ standardbibliotek.
 
-## Rigtige penge og omkostninger
+## Gebyrer
 
-Hver bot har en knap **💰 Rigtige penge** øverst. Her skriver du din kapital, gebyr og spread/slip pr. side, evt. et fast gebyr,
-hvor stor en del af kontoen hver handel fylder, og skat af gevinst. Afkast vises som standard **efter omkostninger** (hver bot har egne standardtal i `bots.json` under `costs`; slå fra i panelet) (graf, tabel
-og strategikort, også i kroner). Papirhandlen ændres ikke. Tallet er et skøn: hver lukket handel trækkes ind og ud, en åben kun indgangen.
-Indstillingerne gemmes på hubben i `logs/costs.json` (kræver samme login som resten).
+Alle botter regner selv realistiske gebyrer og slip ind i deres papirhandel, så alle tal i hubben er efter gebyrer:
+
+| Botter | Indregnet |
+|---|---|
+| Atlas og aktie-botterne | Kurtage som hos Interactive Brokers ($0,005 pr. aktie, min. $1, maks. 1 %) + 0,05 % slip + halv spread |
+| Orion og krypto-botterne | 0,10 % pr. side (Binance spot) + slip fra den rigtige ordrebog |
+| Quasar | 0,05 % taker / 0,02 % maker (Binance futures) + funding |
+| Meridian og Valuta | Spread som hos en forex-broker + swap over natten |
+| Comet | DEX-gebyr 0,25–0,3 % + gas + prisvirkning |
+| Nova og Nova Classic | Jupiter-pris med puljegebyr og prisvirkning + $0,05 pr. swap |
+| Delphi | Kalshis/Polymarkets egne gebyrer + køb til udbud og salg til bud |
+
+Teksten står under hver strategis regler (`fees.text` i `bots.json`). `fees.side_pct` er den realistiske pris pr. side,
+som Smart strategi betaler, når den skifter strategi og skal lukke og åbne positioner.
 
 ## Alle botter
 

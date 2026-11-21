@@ -154,22 +154,6 @@ code{background:var(--soft);border-radius:6px;padding:1px 6px;font-size:13px}
 a.ext{font-size:13px;color:var(--ink2);text-decoration:none;border:1px solid var(--line);border-radius:99px;padding:5px 12px;background:var(--surface)}
 a.ext:hover{color:var(--ink);background:var(--soft)}
 
-/* rigtige penge */
-.cbtn{margin-left:auto;display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:99px;padding:6px 14px;cursor:pointer;font-weight:600;font-size:14px}
-.cbtn:hover{background:var(--soft)}.cbtn.on{background:var(--acc);color:#fff;border-color:var(--acc)}
-dialog.cd{border:1px solid var(--line);border-radius:var(--r);background:var(--surface);color:var(--ink);box-shadow:var(--shadow);padding:22px;width:min(460px,calc(100vw - 28px));max-height:calc(100vh - 28px);overflow:auto}
-dialog.cd::backdrop{background:rgba(8,10,16,.5)}
-.cd h2{font-size:18px;margin-bottom:4px}.cd .sub2{margin:0 0 14px;color:var(--ink2);font-size:13.5px}
-.cd label{display:block;font-size:13px;color:var(--ink2);margin:12px 0 4px}.cd label small{color:var(--mute)}
-.cd input[type=number],.cd input[type=text]{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:9px 12px}
-.cd .two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.cd .sw2{display:flex;align-items:center;gap:10px;margin:0 0 6px;color:var(--ink);font-size:15px;font-weight:600}
-.cd .sw2 input{width:20px;height:20px;accent-color:var(--acc)}
-.cd .acts{display:flex;gap:10px;justify-content:flex-end;margin-top:18px}
-.cd .acts button{border:1px solid var(--line);background:var(--surface);border-radius:99px;padding:8px 18px;cursor:pointer}
-.cd .acts button.go{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
-.cd .err{color:var(--neg);font-size:13px;margin-top:10px;min-height:1em}
-.cd .pre{background:var(--soft);border-radius:12px;padding:10px 12px;font-size:13px;color:var(--ink2);margin-top:14px}
 
 @media (max-width:720px){
   main{padding:16px max(14px,env(safe-area-inset-right)) calc(88px + env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left))}
@@ -219,7 +203,7 @@ const SUBS = [["overblik", "Overblik", "M4 19V5M4 19h16M8 15l3-4 3 2 5-7"], ["st
 const OV = "overblik";
 const PALETTE = ["#5b5bf0", "#f59e0b", "#10b981", "#ec4899", "#0ea5e9", "#8b5cf6", "#ef4444", "#14b8a6"];
 const $ = (id) => document.getElementById(id);
-let COSTS = {}, RAW = null;
+let RAW = null;
 let BOTS = [], curKey = OV, curSub = "", DATA = null, lastJson = "", seq = 0, extra = {}, chartState = null;
 
 /* ---------- små hjælpere ---------- */
@@ -275,7 +259,6 @@ function go(key, sub) {
   curKey = key; curSub = key === OV ? "" : (SUBS.some((s) => s[0] === sub) ? sub : "overblik");
   history.replaceState(null, "", "#" + key + (curSub ? "/" + curSub : ""));
   DATA = null; RAW = null; lastJson = ""; extra = {}; chartState = null;
-  if (key !== OV) loadCosts(key);
   drawTabs(); render(); window.scrollTo({ top: 0 });
 }
 
@@ -310,75 +293,13 @@ async function load(force) {
     if (my === seq && !DATA) view(h("div", { class: "msg" }, h("h2", {}, "Kunne ikke hente data"), h("p", {}, `${b.name} svarer ikke som forventet. Prøver igen om lidt.`)));
   }
 }
-/* ---------- rigtige penge: kapital og omkostninger ---------- */
-const COST_DEF = { enabled: true, capital: 10000, currency: "kr.", fee_pct: 0.1, slip_pct: 0.05, fixed_fee: 0, pos_pct: 10, tax_pct: 0 };
-const costs = () => COSTS[curKey] || COST_DEF;
 const money = (v, c) => (v > 0 ? "+" : v < 0 ? "−" : "") + nf(Math.abs(v), Math.abs(v) < 100 ? 2 : 0) + " " + c.currency;
-/* Omkostning pr. handel i % af kontoen: positionens andel af kontoen x (gebyr + slip) x 2 (ind og ud) + faste gebyrer. En åben position har kun betalt indgangen. */
-function costOf(c) {
-  const rt = 2 * (c.fee_pct + c.slip_pct), fixedAcct = c.capital > 0 ? 2 * c.fixed_fee / c.capital * 100 : 0;
-  const fixedPos = c.capital > 0 && c.pos_pct > 0 ? 2 * c.fixed_fee / (c.capital * c.pos_pct / 100) * 100 : 0;
-  return { rt, perTrade: c.pos_pct / 100 * rt + fixedAcct, perTradePos: rt + fixedPos };
-}
-function withCosts(d, c) {
-  if (!c || !c.enabled) return d;
-  const o = structuredClone(d), k = costOf(c), keep = (v) => v > 0 ? v * (1 - c.tax_pct / 100) : v;
-  for (const s of o.strategies) {
-    if (typeof s.return_pct !== "number") continue;
-    const cost = (s.trades || 0) * k.perTrade + (s.open || 0) * k.perTrade / 2, net = keep(s.return_pct - cost);
-    s.gross_pct = s.return_pct; s.cost_pct = cost; s.return_pct = net;
-    s.net_money = c.capital * net / 100; s.cost_money = c.capital * cost / 100;
-    const cv = s.curve || [], n = cv.length, a = n ? cv[0][0] : 0, z = n ? cv[n - 1][0] : 1;
-    s.curve = cv.map((p) => { const f = z > a ? (p[0] - a) / (z - a) : 1; return [p[0], keep(p[1] - cost * f)]; });
-  }
-  for (const r of o.trades.closed) if (typeof r.result_pct === "number") r.result_pct -= k.perTradePos;
-  return o;
-}
-function setData(d) { RAW = d; DATA = withCosts(d, costs()); }
-async function loadCosts(key) {
-  try { COSTS[key] = await api("/api/costs/" + key); if (RAW && curKey === key) { DATA = withCosts(RAW, COSTS[key]); render(true); } } catch (e) {}
-}
-function costDialog() {
-  const b = bot(), c = { ...COST_DEF, ...costs() }, dlg = h("dialog", { class: "cd" });
-  const F = {}, field = (id, label, hint, type) => { F[id] = h("input", { type: type || "number", step: "any", min: "0", inputmode: type ? "text" : "decimal", value: c[id], id: "c_" + id }); return h("label", { for: "c_" + id }, label, hint ? h("small", {}, " " + hint) : null, F[id]); };
-  const on = h("input", { type: "checkbox", id: "c_on", checked: c.enabled });
-  const err = h("div", { class: "err", role: "alert" }), pre = h("div", { class: "pre" });
-  const read = () => { const o = { enabled: on.checked, currency: F.currency.value.trim() || "kr." };
-    for (const k of ["capital", "fee_pct", "slip_pct", "fixed_fee", "pos_pct", "tax_pct"]) o[k] = parseFloat(String(F[k].value).replace(",", ".")); return o; };
-  const upd = () => { const o = read(); if (Object.values(o).some((v) => typeof v === "number" && !isFinite(v))) { pre.textContent = "Udfyld alle felter med tal."; return; }
-    const k = costOf(o); pre.textContent = `Hver handel koster ca. ${nf(k.rt)} % af positionen (ind og ud), dvs. ${nf(k.perTrade, 3)} % af kontoen, ` +
-      `eller ${nf(o.capital * k.perTrade / 100)} ${o.currency} pr. handel med ${nf(o.capital, 0)} ${o.currency} i kapital.`; };
-  const close = () => { dlg.close(); dlg.remove(); };
-  dlg.append(h("h2", {}, `Rigtige penge · ${b ? b.name : ""}`),
-    h("p", { class: "sub2" }, "Læg din rigtige kapital ind og angiv omkostningerne, så afkastet vises efter gebyrer. Papirhandlen ændres ikke, kun visningen."),
-    h("label", { class: "sw2", for: "c_on" }, on, "Vis resultater efter omkostninger"),
-    h("div", { class: "two" }, field("capital", "Kapital", ""), field("currency", "Valuta", "", "text")),
-    h("div", { class: "two" }, field("fee_pct", "Gebyr pr. side (%)", "børs/mægler"), field("slip_pct", "Spread/slip pr. side (%)", "")),
-    h("div", { class: "two" }, field("fixed_fee", "Fast gebyr pr. side", "(i valuta)"), field("pos_pct", "Position pr. handel (%)", "af kontoen")),
-    field("tax_pct", "Skat af gevinst (%)", "0 = ingen"),
-    pre, err,
-    h("div", { class: "acts" }, h("button", { type: "button", onclick: close }, "Annullér"),
-      h("button", { type: "button", class: "go", onclick: async (e) => {
-        const o = read(); if (Object.values(o).some((v) => typeof v === "number" && !isFinite(v))) { err.textContent = "Udfyld alle felter med tal."; return; }
-        e.target.disabled = true; err.textContent = "";
-        try {
-          const r = await fetch("/api/costs/" + curKey, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(o) });
-          if (r.status === 403) { err.textContent = "Kun visning: indstillingerne kan kun ændres fra dine egne enheder."; e.target.disabled = false; return; }
-          if (!r.ok) throw new Error(r.status);
-          COSTS[curKey] = await r.json(); close(); drawTabs(); if (RAW) { DATA = withCosts(RAW, COSTS[curKey]); render(true); }
-        } catch (x) { err.textContent = "Kunne ikke gemme. Prøv igen."; e.target.disabled = false; }
-      } }, "Gem")));
-  Object.values(F).forEach((i) => i.addEventListener("input", upd)); on.addEventListener("change", upd); upd();
-  dlg.addEventListener("cancel", () => dlg.remove());
-  document.body.append(dlg); dlg.showModal();
-}
+function setData(d) { RAW = d; DATA = d; }      /* botternes tal har allerede deres gebyrer med (se reglerne under hver strategi) */
 function botHead() {
   const b = bot();
   if (curKey === OV || !b) return null;
   return h("div", { class: "bothead" }, h("a", { class: "back", href: "#overblik" }, "← Alle botter"),
-    h("b", {}, b.name), b.short ? h("small", {}, `(${b.short})`) : null,
-    h("button", { class: "cbtn" + (costs().enabled ? " on" : ""), type: "button", onclick: costDialog, "aria-label": "Rigtige penge og omkostninger" },
-      "💰 Rigtige penge", costs().enabled ? " · til" : ""));
+    h("b", {}, b.name), b.short ? h("small", {}, `(${b.short})`) : null);
 }
 function view(...kids) { $("main").replaceChildren(h("div", { class: "view" }, botHead(), ...kids)); }
 
@@ -411,21 +332,19 @@ function vOverblik() {
   const legend = h("div", { class: "legend" });
   view(
     h("div", { class: "grid kpis" },
-      kpi(costs().enabled ? "Bedste strategi (netto)" : "Bedste strategi", best ? pct(best.return_pct) : "–",
-        best && (best.name + (best.net_money != null ? ` · ${money(best.net_money, costs())}` : "")), best && tone(best.return_pct)),
+      kpi("Bedste strategi", best ? pct(best.return_pct) : "–", best && best.name, best && tone(best.return_pct)),
       kpi("Strategier i plus", `${plus} af ${list.length}`),
       kpi("Gennemsnit", pct(avg), "alle strategier", tone(avg)),
       kpi("Har samlet data i", tick((DATA && DATA.since) || (bot() || {}).since), "siden botten fik sine første data"),
       kpi("Handler", String(closed + openPos), `${openPos} åbne · ${closed} lukkede` + (closed < 20 ? " (for få til konklusioner)" : ""))),
     h("div", { class: "card" },
-      h("div", { class: "head" }, h("h2", {}, "Afkast over tid"), h("p", {}, costs().enabled ? "Efter gebyrer, slip og skat (omkostningerne er fordelt jævnt over tid). De bedste strategier er farvet." : "I procent af papirkontoen. De bedste strategier er farvet.")),
+      h("div", { class: "head" }, h("h2", {}, "Afkast over tid"), h("p", {}, "I procent af papirkontoen, efter gebyrer og slip. De bedste strategier er farvet.")),
       wrap, legend),
     h("div", { class: "card" },
       h("div", { class: "head" }, h("h2", {}, "Alle strategier"), h("p", {}, "Sorteret efter afkast")),
       h("div", { class: "tw" }, h("table", {},
         h("thead", {}, h("tr", {}, h("th", {}, "Strategi"), h("th", { class: "n" }, "Afkast"), h("th", { class: "n" }, "Handler"),
-          h("th", { class: "n hide-m" }, "Vundet"), h("th", { class: "n hide-m" }, "Åbne"), h("th", { class: "n hide-m" }, "Maks. fald"),
-          costs().enabled ? [h("th", { class: "n hide-m" }, "Før gebyrer"), h("th", { class: "n hide-m" }, "Gebyrer"), h("th", { class: "n" }, "Netto")] : null)),
+          h("th", { class: "n hide-m" }, "Vundet"), h("th", { class: "n hide-m" }, "Åbne"), h("th", { class: "n hide-m" }, "Maks. fald"))),
         h("tbody", {}, list.map((s) => h("tr", { onmouseenter: () => focusLine(s.key), onmouseleave: () => focusLine(null) },
           h("td", { class: "name" }, h("i", { class: "sw", style: "background:" + (col[s.key] || "var(--grey)") }),
             s.name, s.group && h("span", { class: "tag hide-m" }, s.group)),
@@ -433,11 +352,8 @@ function vOverblik() {
           h("td", { class: "n" }, String(s.trades ?? 0)),
           h("td", { class: "n hide-m" }, s.win_rate == null ? "–" : nf(s.win_rate, 0) + " %"),
           h("td", { class: "n hide-m" }, String(s.open ?? 0)),
-          h("td", { class: "n hide-m" }, s.max_dd == null ? "–" : nf(s.max_dd) + " %"),
-          s.net_money != null ? [h("td", { class: "n hide-m" }, pct(s.gross_pct)), h("td", { class: "n hide-m neg" }, "−" + nf(s.cost_pct) + " %"),
-            h("td", { class: "n " + tone(s.net_money) }, money(s.net_money, costs()))] : null))))),
-      costs().enabled ? h("p", { class: "note" }, `Kapital: ${nf(costs().capital, 0)} ${costs().currency} · gebyr ${nf(costs().fee_pct)} % + slip ${nf(costs().slip_pct)} % pr. side · position ${nf(costs().pos_pct, 0)} % af kontoen pr. handel` +
-        (costs().fixed_fee ? ` · fast gebyr ${nf(costs().fixed_fee)} ${costs().currency} pr. side` : "") + (costs().tax_pct ? ` · skat ${nf(costs().tax_pct, 0)} % af gevinst` : "") + " · et skøn ud fra papirhandlen") : null));
+          h("td", { class: "n hide-m" }, s.max_dd == null ? "–" : nf(s.max_dd) + " %")))))),
+      h("p", { class: "note" }, "Gebyrer og slip er regnet med i botternes egne tal. Hvilke gebyrer, står under hver strategis regler.")));
   drawChart(wrap, list, col);
   legend.replaceChildren(...list.filter((s) => col[s.key]).map((s) => h("span", {}, h("i", { style: "background:" + col[s.key] }), s.name)),
     ...(list.some((s) => (s.curve || []).length > 1 && !col[s.key]) ? [h("span", { class: "mute" }, h("i", { style: "background:var(--grey)" }), "øvrige")] : []));
@@ -547,9 +463,6 @@ function vStrategier() {
       h("div", {}, h("b", {}, s.win_rate == null ? "–" : nf(s.win_rate, 0) + " %"), h("span", {}, "Vundet")),
       h("div", {}, h("b", {}, String(s.open ?? 0)), h("span", {}, "Åbne")),
       h("div", {}, h("b", {}, s.max_dd == null ? "–" : nf(s.max_dd) + " %"), h("span", {}, "Maks. fald"))),
-    s.net_money != null ? h("div", { class: "rules" }, h("h4", {}, "Rigtige penge"), h("div", { class: "kvs" },
-      [["Før gebyrer", pct(s.gross_pct)], ["Gebyrer og slip", "−" + nf(s.cost_pct) + " % (" + money(-s.cost_money, costs()) + ")"], ["Netto", pct(s.return_pct) + " (" + money(s.net_money, costs()) + ")"]]
-        .map(([a, b]) => h("div", { class: "kv" }, h("span", {}, a), h("b", {}, b))))) : null,
     s.rules.length ? h("div", { class: "rules" }, h("h4", {}, "Regler"), h("div", { class: "kvs" }, s.rules.map(([a, b]) => h("div", { class: "kv" }, h("span", {}, a), h("b", {}, b))))) : null));
   const inp = h("input", { type: "search", placeholder: "Søg i strategier …", value: extra.q || "", "aria-label": "Søg i strategier" });
   const sel = h("select", { "aria-label": "Sortér", onchange: (e) => { extra.sort = e.target.value; vStrategier(); } },
@@ -631,7 +544,7 @@ function smartCard(sm) {
       + `Point = afkast efter gebyrer de seneste ${r.lookback_h} timer minus halvdelen af det største fald. Den skifter kun, når en anden har mindst `
       + `${nf(r.switch_margin, 0)} point mere, og tidligst ${r.min_hold_h} timer efter sidste skift. Den følger aldrig et lukket marked: står en strategi stille i ${r.flat_h} timer, kan den ikke vælges, og står den, den følger, stille, skifter den med det samme. Falder kontoen ${nf(r.stop_pct, 0)} % fra toppen, `
       + `eller svarer strategiens bot ikke i ${r.dead_h} timer, går den ud med det samme. Har ingen strategi positive point, står pengene kontant. `
-      + `Hver handel og hvert skift koster de gebyrer, der er sat under Rigtige penge.`));
+      + `Botternes tal har allerede realistiske gebyrer og slip med. Et skift koster derudover at lukke den gamle strategis positioner og åbne den nyes.`));
   requestAnimationFrame(() => { if (wrap.isConnected) drawChart(wrap, [{ key: "smart", name: "Smart strategi", curve: sm.curve }], { smart: "var(--acc)" }); });
   return box;
 }
