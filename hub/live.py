@@ -171,8 +171,11 @@ class LiveAccount:
             return {"qty": amount, "usd": amount * price * (1 - FEE), "id": "sim"}
         return self.broker.buy(symbol, amount) if side == "BUY" else self.broker.sell(symbol, amount)
 
-    def sync(self, targets: list[str], following: str | None) -> None:
-        """Gør beholdningen lig med `targets` (de mønter, den fulgte strategi ejer nu), lige store beløb."""
+    def sync(self, targets, following: str | None) -> None:
+        """Gør beholdningen lig med `targets`: {mønt: andel af kontoen} (eller en liste = lige store andele af hele kontoen).
+        Mønter, der ikke er med længere, sælges; nye købes for deres andel. Eksisterende justeres ikke (sparer gebyrer)."""
+        if isinstance(targets, (list, tuple)):
+            targets = {s: 1 / len(targets) for s in targets} if targets else {}
         with self.lock:
             st = self.state
             why = self.ready()
@@ -184,7 +187,8 @@ class LiveAccount:
                 return
             try:
                 flt = self.broker.filters()
-                targets = [s for s in dict.fromkeys(targets) if s in flt][:MAX_POSITIONS]
+                weight = {s: w for s, w in targets.items() if s in flt and w > 0}
+                targets = sorted(weight, key=weight.get, reverse=True)[:MAX_POSITIONS]
                 px = self.broker.prices(list(st["holdings"]) + targets)
                 st["prices"] = px
                 real_free = self.broker.free() if self.mode == "1" else None
@@ -203,16 +207,18 @@ class LiveAccount:
                 missing = [s for s in targets if s not in st["holdings"]]
                 if missing:
                     value = st["cash"] + sum(q * px.get(s, 0) for s, q in st["holdings"].items())
-                    each = min(value / len(targets), st["cash"] / len(missing))
-                    if real_free is not None:
-                        each = min(each, real_free.get("USDT", 0.0) / len(missing))
                     for sym in missing:
+                        each = min(value * weight[sym], st["cash"])
+                        if real_free is not None:
+                            each = min(each, real_free.get("USDT", 0.0))
                         if each < max(MIN_ORDER_USD, flt[sym]["min"]) or sym not in px:
                             continue
                         r = self._order("BUY", sym, each, px[sym])
                         st["cash"] -= r["usd"]
                         st["fees"] += r["usd"] - r["qty"] * px[sym]
                         st["holdings"][sym] = st["holdings"].get(sym, 0.0) + r["qty"]
+                        if real_free is not None:
+                            real_free["USDT"] = real_free.get("USDT", 0.0) - r["usd"]
                         self._note("KØB", sym, r, px[sym])
                 self._mark()
             except Exception as e:                        # en fejl hos børsen må aldrig vælte hubben; prøv igen næste runde

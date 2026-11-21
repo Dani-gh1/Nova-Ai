@@ -16,6 +16,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from .adapters import normalize
 from .live import LiveAccount, live_bots, targets_for
+from .portfolio import SmartPortfolio
 from .smart import SmartBot
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -268,7 +269,8 @@ class Overview:
         self.build = build or (lambda: self._build())
         self.rows: list | None = None
         self.smart_bot = smart                 # Smart-botten: følger den bedste strategi på tværs af alle botter
-        self.live_smart: SmartBot | None = None    # Live-Smart: samme regler, men kun strategier, der kan handles for rigtigt
+        self.portfolio: SmartPortfolio | None = None   # Smart-porteføljen: den primære strategi (op til 5 strategier på én gang)
+        self.live_smart: SmartPortfolio | None = None  # Live-porteføljen: samme regler, men kun strategier, der kan handles for rigtigt
         self.live: LiveAccount | None = None       # live-kontoen hos børsen
         self.at = 0.0
         self.lock = threading.Lock()
@@ -286,7 +288,7 @@ class Overview:
                     continue                   # botten svarede ikke: Smart-botten beholder dens seneste svar
                 cands = r.pop("_cands") or []
                 fresh = not r.get("idle") and r.get("scan_age") is not None and r["scan_age"] <= STALE_AFTER_S   # lukket marked kan ikke vælges
-                for sb in (self.smart_bot, self.live_smart):
+                for sb in (self.smart_bot, self.portfolio, self.live_smart):
                     if sb is not None:
                         sb.feed(r["key"], cands, fresh)
             with self.lock:
@@ -480,6 +482,10 @@ def make_handler(bots: list[dict], throttle: Throttle | None = None, ratelimit: 
                     return self._send(200, "application/json", json.dumps(out).encode())
                 if path == "/api/overview":
                     return self._send(200, "application/json", json.dumps(overview.get()).encode())
+                if path == "/api/portfolio":
+                    overview.get()
+                    out = overview.portfolio.view() if overview.portfolio is not None else None
+                    return self._send(200, "application/json", json.dumps(out).encode())
                 if path == "/api/live":
                     ov = overview
                     out = None if ov.live is None else {**ov.live.view(), "smart": ov.live_smart.view() if ov.live_smart else None}
@@ -528,8 +534,8 @@ def start_live(ov: "Overview", bots: list[dict]) -> None:
     say = lambda m: print(m, flush=True)
     allow = live_bots(bots)
     by_key = {b["key"]: b for b in bots}
-    ov.live_smart = SmartBot(Path(os.environ.get("HUB_LIVE_SMART_FILE") or ROOT / "logs" / "smart-live.json"), log=say,
-                             expected=len(allow), allow=allow)
+    ov.live_smart = SmartPortfolio(Path(os.environ.get("HUB_LIVE_SMART_FILE") or ROOT / "logs" / "portfolio-live.json"), log=say,
+                                   expected=len(allow), allow=allow)
     ov.live = LiveAccount(log=say)
     say(f"Live-konto: {('SIMULERING' if ov.live.mode == 'dry' else 'RIGTIGE PENGE')} hos {ov.live.broker.venue}, "
         f"budget {ov.live.budget:.0f} USD, vælger blandt {len(allow)} botter: {', '.join(sorted(allow))}")
@@ -538,9 +544,14 @@ def start_live(ov: "Overview", bots: list[dict]) -> None:
         while True:
             try:
                 ov.live_smart.step()
-                h = ov.live_smart.state.get("held")
-                data = bot_data(by_key[h["bot"]]) if h and h["bot"] in by_key else {}
-                ov.live.sync(targets_for(h, data), h and f"{h['name']} ({h['bot_name']})")
+                want: dict[str, float] = {}
+                names = []
+                for sl, w in ov.live_smart.weights():                  # hver plads: strategiens mønter, delt ligeligt
+                    syms = targets_for(sl, bot_data(by_key[sl["bot"]])) if sl["bot"] in by_key else []
+                    for sym in syms:
+                        want[sym] = want.get(sym, 0.0) + w / len(syms)
+                    names.append(f"{sl['name']} ({sl['bot_name']})")
+                ov.live.sync(want, ", ".join(names) or None)
             except Exception as e:
                 say(f"Live: fejl i runden: {e!r}")
             time.sleep(60)
@@ -564,6 +575,9 @@ def serve(host: str, port: int, bots: list[dict] | None = None) -> None:
     ov.smart_bot = SmartBot(log=lambda m: print(m, flush=True), expected=expected)
     # Smart-botten kører hele tiden, også når ingen kigger: henter friske tal fra botterne og tager et skridt hvert minut
     threading.Thread(target=ov.smart_bot.run, args=(ov.fresh,), daemon=True, name="smart-bot").start()
+    ov.portfolio = SmartPortfolio(Path(os.environ.get("HUB_PORTFOLIO_FILE") or ROOT / "logs" / "smart-portfolio.json"),
+                                  log=lambda m: print(m, flush=True), expected=expected)
+    threading.Thread(target=ov.portfolio.run, args=(lambda: None,), daemon=True, name="smart-portfolio").start()
     start_live(ov, bots)
     httpd = ThreadingHTTPServer((host, port), handler)
     httpd.daemon_threads = True

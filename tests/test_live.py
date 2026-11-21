@@ -56,6 +56,13 @@ class LiveTests(unittest.TestCase):
         self.assertEqual([o["side"] for o in v["orders"]][:2], ["KØB", "SÆLG"])
         self.assertTrue(all(o["sim"] for o in v["orders"]))
 
+    def test_portfolio_weights_leave_the_rest_in_cash(self):
+        a = self.acct()
+        a.sync({"BTCUSDT": 0.2, "ETHUSDT": 0.1}, "A, B")             # to pladser: 30 % investeret
+        v = a.view()
+        self.assertAlmostEqual(sum(h["usd"] for h in v["holdings"]), 30 * (1 - L.FEE), places=2)
+        self.assertAlmostEqual(v["cash_usd"], 70, places=2)
+
     def test_goes_to_cash_when_the_strategy_owns_nothing(self):
         a = self.acct()
         a.sync(["BTCUSDT"], "A")

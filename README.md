@@ -38,6 +38,20 @@ python3 -m hub run
 Åbn <http://127.0.0.1:8080>. `run` starter botterne (hver på sin egen port, kun lokalt)
 og hubben. `python3 -m hub status` viser hvad der kører. Kun Python 3.11+ standardbibliotek.
 
+## Smart strategi (den primære)
+
+Forsidens **Smart strategi** er en portefølje, der kører hele tiden i hubben og gemmer sin konto i `logs/smart-portfolio.json`:
+
+* Holder op til **5 strategier på én gang** på tværs af alle markeder (højst 2 fra samme bot), hver for 1/5 af kontoen.
+* Køber kun strategier, der **vokser stabilt**: i plus efter gebyrer over 6 timer, 24 timer og 3 dage, mindst 20 handler,
+  12 timers historik, højst 10 % fald og et åbent marked, der bevæger sig. Resten står kontant.
+* Sælger en plads, når strategien ikke er i plus over 24 timer, står stille i 3 timer, falder 5 % fra toppen, eller er ude af top 8,
+  og en bedre venter (tidligst 4 timer efter køb). Kun den ene plads skiftes.
+* Sammenlignes på forsiden med gennemsnittet af alle strategier og med den gamle Smart (én strategi ad gangen).
+
+**Live-kontoen** (`HUB_LIVE=dry` = simulering, `1` = rigtige penge) bruger samme regler, men kun strategier, der kan handles for
+rigtigt (i dag Orion-botterne hos Binance), og ejer de samme mønter som strategierne i porteføljen. Stop: opret `logs/live-stop`.
+
 ## Gebyrer
 
 Alle botter regner selv realistiske gebyrer og slip ind i deres papirhandel, så alle tal i hubben er efter gebyrer:
