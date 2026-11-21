@@ -582,12 +582,12 @@ function portfolioCard(pf) {
 function renderHub(rows, live, pf) {
   const link = (b) => h("a", { href: "#" + b.key }, b.name);
   const ranked = rows.filter((b) => b.best && b.best.name).sort((x, y) => y.best.return_pct - x.best.return_pct), none = rows.filter((b) => !(b.best && b.best.name));
-  const live = rows.filter((b) => b.up).length;
+  const running = rows.filter((b) => b.up).length;
   view(
     h("div", { class: "grid kpis" },
       kpi("Handler i alt", String(rows.reduce((a, b) => a + (b.trades ? b.trades.open + b.trades.closed : 0), 0)), `${rows.reduce((a, b) => a + (b.trades ? b.trades.closed : 0), 0)} lukkede`),
       kpi("Botter der scanner", `${rows.filter((b) => b.up && (b.idle || (b.scan_age != null && b.scan_age <= STALE))).length} af ${rows.filter((b) => b.configured).length}`,
-        rows.some((b) => !b.configured) ? `${rows.filter((b) => !b.configured).length} slået fra eller ikke hentet her` : `${live} kører`),
+        rows.some((b) => !b.configured) ? `${rows.filter((b) => !b.configured).length} slået fra eller ikke hentet her` : `${running} kører`),
       kpi("Bedste strategi", ranked[0] ? pct(ranked[0].best.return_pct) : "–", ranked[0] && `${ranked[0].name} · ${ranked[0].best.name}`, ranked[0] && tone(ranked[0].best.return_pct)),
       kpi("Smart strategi", pf ? pct(pf.return_pct) : "–", pf ? (pf.slots.length ? `${pf.slots.length} strategier · ${nf(pf.invested_pct, 0)} % investeret` : "kontant – venter på strategier, der vokser") : "starter", pf && tone(pf.return_pct), pf && ["⏱ ", tick(pf.since)])),
     portfolioCard(pf),
