@@ -49,8 +49,21 @@ Forsidens **Smart strategi** er en portefølje, der kører hele tiden i hubben o
   og en bedre venter (tidligst 4 timer efter køb). Kun den ene plads skiftes.
 * Sammenlignes på forsiden med gennemsnittet af alle strategier og med den gamle Smart (én strategi ad gangen).
 
-**Live-kontoen** (`HUB_LIVE=dry` = simulering, `1` = rigtige penge) bruger samme regler, men kun strategier, der kan handles for
-rigtigt (i dag Orion-botterne hos Binance), og ejer de samme mønter som strategierne i porteføljen. Stop: opret `logs/live-stop`.
+**Kassen** er stedet, de rigtige penge lægges ind. Live-porteføljen (samme regler, men kun strategier, der kan handles for
+rigtigt) bestemmer fordelingen, og Kassen flytter pengene til markederne og ejer de samme positioner som strategierne.
+
+| Marked | Botter | Status |
+|---|---|---|
+| Binance spot | Orion, Orion Mid, Staking, DeFi, AI-token | klar |
+| Binance futures | Quasar (gearing højst 2x) | klar; penge flyttes automatisk mellem spot og futures |
+| Saxo Bank | Atlas-botterne, Meridian, Valuta | på vej (kræver en Saxo-udviklerkonto) |
+| Polymarket / Kalshi | Delphi | på vej (kræver en wallet med USDC på Polygon) |
+| Solana / Base | Nova, Nova Classic, Comet | på vej (kræver egne wallets) |
+
+Slå til i `/etc/hub.env`: `HUB_LIVE=dry` (simulering med rigtige kurser) eller `HUB_LIVE=1` (rigtige ordrer) plus
+`BINANCE_API_KEY` og `BINANCE_API_SECRET` (kun *Spot & Margin trading*, *Futures* og *Universal Transfer*; aldrig *Withdrawals*).
+Penge, du sætter ind hos Binance, registreres med `python3 -m hub kasse indskud <kr>`; `python3 -m hub kasse` viser status.
+Stop med det samme: opret `logs/live-stop`.
 
 ## Gebyrer
 

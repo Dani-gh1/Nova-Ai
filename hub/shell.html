@@ -548,28 +548,36 @@ function smartCard(sm) {
   requestAnimationFrame(() => { if (wrap.isConnected) drawChart(wrap, [{ key: "smart", name: "Smart strategi", curve: sm.curve }], { smart: "var(--acc)" }); });
   return box;
 }
-/* Live-kontoen: rigtige penge (eller simulering) hos børsen, styret af Live-Smart */
+/* Kassen: rigtige penge (eller simulering), fordelt på markederne efter live-porteføljen */
 function liveCard(lv) {
   if (!lv) return null;
-  const sim = lv.mode === "dry", usd = (v) => `${nf(v, 2)} USD`;
-  const head = h("div", { class: "head" }, h("h2", {}, sim ? "Live-konto (simulering)" : "Live-konto · rigtige penge"),
-    h("p", {}, `Ejer de samme mønter som strategierne i live-porteføljen, hos ${lv.venue}. Live-porteføljen bruger Smart strategis regler, men vælger kun blandt strategier, der kan handles for rigtigt.`));
+  const sim = lv.mode === "dry", usd = (v) => `${nf(v, 2)} USD`, pf = lv.smart;
+  const head = h("div", { class: "head" }, h("h2", {}, sim ? "Kassen (simulering)" : "Kassen · rigtige penge"),
+    h("p", {}, "Her lægges pengene ind. Live-porteføljen (Smart strategis regler, men kun strategier, der kan handles for rigtigt) bestemmer fordelingen, og Kassen flytter pengene til de markeder, strategierne handles på."));
+  const rows = lv.venues.flatMap((v) => v.holdings.map((x) => ({ ...x, venue: v.name })));
   return h("div", { class: "card" }, head,
     lv.problem ? h("p", { class: "note", style: "color:var(--warn)" }, lv.problem) : null,
     h("div", { class: "grid kpis", style: "margin-bottom:14px" },
-      kpi("På kontoen", `${nf(lv.value_dkk, 0)} kr.`, `${usd(lv.value_usd)} · lagt ind ${nf(lv.budget_dkk, 0)} kr.`, tone(lv.return_pct)),
+      kpi("I Kassen", `${nf(lv.value_dkk, 0)} kr.`, `${usd(lv.value_usd)} · lagt ind ${nf(lv.deposited_dkk, 0)} kr.`, tone(lv.return_pct)),
       kpi("Afkast", pct(lv.return_pct), ["kørt i ", tick(lv.since)], tone(lv.return_pct), `gebyrer betalt: ${usd(lv.fees_usd)}`),
-      kpi("Følger", lv.following || "Kontant", lv.smart ? `live-portefølje på papir: ${pct(lv.smart.return_pct)} · ${lv.smart.qualified} vokser` : "venter på strategier"),
-      kpi("Beholdning", String(lv.holdings.length), `mønter · kontant ${usd(lv.cash_usd)}`)),
-    lv.holdings.length ? h("div", { class: "tw" }, h("table", {},
-      h("thead", {}, h("tr", {}, h("th", {}, "Mønt"), h("th", { class: "n" }, "Antal"), h("th", { class: "n" }, "Værdi"))),
-      h("tbody", {}, lv.holdings.map((x) => h("tr", {}, h("td", { class: "name" }, x.symbol), h("td", { class: "n" }, nf(x.qty, 6)), h("td", { class: "n" }, usd(x.usd))))))) : null,
-    lv.orders.length ? h("div", { class: "tw" }, h("table", {},
-      h("thead", {}, h("tr", {}, h("th", {}, "Ordre"), h("th", {}, "Mønt"), h("th", { class: "n" }, "Beløb"), h("th", { class: "n hide-m" }, "Kurs"))),
-      h("tbody", {}, lv.orders.map((o) => h("tr", {}, h("td", { class: "mute" }, `${when(o.ts)} · ${o.side}`), h("td", { class: "name" }, o.symbol),
-        h("td", { class: "n" }, usd(o.usd)), h("td", { class: "n hide-m" }, nf(o.price, 4))))))) : null,
-    h("p", { class: "note" }, sim ? "Simulering: rigtige kurser og Binances gebyr på 0,10 %, men ingen ordrer sendes. Sæt HUB_LIVE=1 og API-nøglen i /etc/hub.env for rigtige penge."
-      : "Rigtige ordrer. Stop med det samme: opret filen logs/live-stop på serveren (eller sæt HUB_LIVE=0)."));
+      kpi("Følger", lv.following || "Kontant", pf ? `${pf.qualified} strategier vokser · ${nf(pf.invested_pct, 0)} % investeret` : "venter på strategier"),
+      kpi("Markeder", String(lv.venues.length), lv.venues.map((v) => `${v.name}: ${usd(v.value_usd)}`).join(" · "))),
+    h("div", { class: "tw" }, h("table", {},
+      h("thead", {}, h("tr", {}, h("th", {}, "Marked"), h("th", { class: "n" }, "Værdi"), h("th", { class: "n" }, "Kontant"), h("th", { class: "n" }, "Positioner"))),
+      h("tbody", {}, lv.venues.map((v) => h("tr", {}, h("td", { class: "name" }, v.name + (v.problem ? " ⚠" : "")), h("td", { class: "n" }, usd(v.value_usd)),
+        h("td", { class: "n" }, usd(v.cash_usd)), h("td", { class: "n" }, String(v.holdings.length))))))),
+    rows.length ? h("div", { class: "tw" }, h("table", {},
+      h("thead", {}, h("tr", {}, h("th", {}, "Position"), h("th", { class: "hide-m" }, "Marked"), h("th", { class: "n" }, "Værdi"))),
+      h("tbody", {}, rows.map((x) => h("tr", {}, h("td", { class: "name" }, `${x.symbol} · ${x.side}${x.lev > 1 ? " " + x.lev + "x" : ""}`),
+        h("td", { class: "mute hide-m" }, x.venue), h("td", { class: "n" }, usd(x.usd))))))) : null,
+    lv.orders.length || lv.transfers.length ? h("div", { class: "tw" }, h("table", {},
+      h("thead", {}, h("tr", {}, h("th", {}, "Seneste"), h("th", {}, "Hvad"), h("th", { class: "n" }, "Beløb"))),
+      h("tbody", {}, [...lv.orders.map((o) => ({ ts: o.ts, what: `${o.side} ${o.dir} ${o.symbol} (${o.venue})`, usd: o.usd })),
+        ...lv.transfers.map((t) => ({ ts: t.ts, what: `Flyttet fra ${t.from} til ${t.to}`, usd: t.usd }))]
+        .sort((a, b) => b.ts - a.ts).slice(0, 12)
+        .map((x) => h("tr", {}, h("td", { class: "mute" }, when(x.ts)), h("td", { class: "name" }, x.what), h("td", { class: "n" }, usd(x.usd))))))) : null,
+    h("p", { class: "note" }, sim ? "Simulering: rigtige kurser og børsernes gebyrer, men ingen ordrer sendes. Se README for, hvordan rigtige penge slås til."
+      : "Rigtige ordrer. Indskud registreres på serveren med  python3 -m hub kasse indskud <kr>. Stop med det samme: opret filen logs/live-stop."));
 }
 /* Smart-porteføljen: den primære strategi. Op til 5 strategier på én gang, på tværs af markeder, kun dem der vokser stabilt */
 function portfolioCard(pf) {

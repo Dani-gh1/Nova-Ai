@@ -15,7 +15,7 @@ import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 
 from .adapters import normalize
-from .live import LiveAccount, live_bots, targets_for
+from .live import VENUES, Kasse, live_bots, positions_for, venue_of
 from .portfolio import SmartPortfolio
 from .smart import SmartBot
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -271,7 +271,7 @@ class Overview:
         self.smart_bot = smart                 # Smart-botten: følger den bedste strategi på tværs af alle botter
         self.portfolio: SmartPortfolio | None = None   # Smart-porteføljen: den primære strategi (op til 5 strategier på én gang)
         self.live_smart: SmartPortfolio | None = None  # Live-porteføljen: samme regler, men kun strategier, der kan handles for rigtigt
-        self.live: LiveAccount | None = None       # live-kontoen hos børsen
+        self.live: Kasse | None = None             # Kassen: rigtige penge fordelt på markederne
         self.at = 0.0
         self.lock = threading.Lock()
         self.busy = False
@@ -527,33 +527,46 @@ def make_handler(bots: list[dict], throttle: Throttle | None = None, ratelimit: 
     return Handler
 
 
+def live_plan(weights, bots_by_key: dict, total_usd: float, data_of=None) -> tuple[dict, list[str]]:
+    """Live-porteføljens pladser -> {marked: {symbol: (long/short, USD, gearing)}}. Hver plads deles ligeligt på strategiens positioner."""
+    data_of = data_of or (lambda b: bot_data(b))
+    plan: dict[str, dict] = {}
+    names = []
+    for sl, w in weights:
+        bot = bots_by_key.get(sl["bot"])
+        venue = venue_of(bot) if bot else None
+        if venue is None:
+            continue
+        pos = positions_for(sl, data_of(bot), VENUES[venue]["kind"])
+        names.append(f"{sl['name']} ({sl['bot_name']})")
+        for sym, side, lev in pos:
+            cur = plan.setdefault(venue, {}).get(sym)
+            usd = total_usd * w / len(pos) + (cur[1] if cur and cur[0] == side else 0.0)
+            plan[venue][sym] = (side, usd, lev)
+    return plan, names
+
+
 def start_live(ov: "Overview", bots: list[dict]) -> None:
-    """Live-kontoen (rigtige penge), hvis HUB_LIVE er sat: Live-Smart vælger, live-kontoen ejer de samme mønter."""
-    if not os.environ.get("HUB_LIVE", "").strip() or os.environ.get("HUB_LIVE", "").strip() in ("0", "off"):
+    """Rigtige penge, hvis HUB_LIVE er sat: live-porteføljen vælger strategierne, Kassen fordeler pengene til markederne."""
+    if os.environ.get("HUB_LIVE", "").strip() in ("", "0", "off"):
         return
     say = lambda m: print(m, flush=True)
     allow = live_bots(bots)
     by_key = {b["key"]: b for b in bots}
     ov.live_smart = SmartPortfolio(Path(os.environ.get("HUB_LIVE_SMART_FILE") or ROOT / "logs" / "portfolio-live.json"), log=say,
                                    expected=len(allow), allow=allow)
-    ov.live = LiveAccount(log=say)
-    say(f"Live-konto: {('SIMULERING' if ov.live.mode == 'dry' else 'RIGTIGE PENGE')} hos {ov.live.broker.venue}, "
-        f"budget {ov.live.budget:.0f} USD, vælger blandt {len(allow)} botter: {', '.join(sorted(allow))}")
+    ov.live = Kasse(log=say)
+    say(f"Kassen: {('SIMULERING' if ov.live.mode == 'dry' else 'RIGTIGE PENGE')} på {', '.join(v.meta['name'] for v in ov.live.venues.values())}; "
+        f"vælger blandt {len(allow)} botter: {', '.join(sorted(allow))}")
 
     def loop():
         while True:
             try:
                 ov.live_smart.step()
-                want: dict[str, float] = {}
-                names = []
-                for sl, w in ov.live_smart.weights():                  # hver plads: strategiens mønter, delt ligeligt
-                    syms = targets_for(sl, bot_data(by_key[sl["bot"]])) if sl["bot"] in by_key else []
-                    for sym in syms:
-                        want[sym] = want.get(sym, 0.0) + w / len(syms)
-                    names.append(f"{sl['name']} ({sl['bot_name']})")
-                ov.live.sync(want, ", ".join(names) or None)
+                plan, names = live_plan(ov.live_smart.weights(), by_key, ov.live.total())
+                ov.live.run(plan, ", ".join(names) or None)
             except Exception as e:
-                say(f"Live: fejl i runden: {e!r}")
+                say(f"Kasse: fejl i runden: {e!r}")
             time.sleep(60)
     threading.Thread(target=loop, daemon=True, name="live").start()
 
