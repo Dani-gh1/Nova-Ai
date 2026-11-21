@@ -16,3 +16,4 @@ bots/*/runs-*/
 *.db-*
 *.tmp
 bots/*/runs/state.json
+bots/*/state-*.json
