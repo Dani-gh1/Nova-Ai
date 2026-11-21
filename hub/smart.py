@@ -15,6 +15,8 @@ Reglerne (valgt til rigtige penge – hellere lidt for forsigtig end at jagte he
   * Nødudgang: falder kontoen STOP_PCT % fra toppen, siden den gik ind i strategien, eller svarer strategiens bot ikke
     i DEAD_H timer, forlades den med det samme (og den må ikke vælges igen i COOLDOWN_H timer).
   * Har ingen strategi positive point, står pengene kontant og venter.
+  * Et skift skal kunne betale sig: point-forspringet skal være større end prisen for at lukke den gamle strategis
+    åbne positioner og åbne den nyes (en strategi med mange åbne positioner og høje gebyrer er dyr at hoppe ind i).
   * Omkostninger: hver handel i den fulgte strategi koster det samme som i strategien selv (botens Rigtige penge-tal),
     og et skift koster at lukke den gamle strategis åbne positioner og åbne den nyes.
 """
@@ -187,10 +189,19 @@ class SmartBot:
             st["acct"] = max(0.0, st["acct"] * (1 - cost_pct / 100))
             st["costs_paid"] = st.get("costs_paid", 0.0) + (before - st["acct"]) * st["capital"]
 
+    def _cost(self, cid: str | None, allc: dict) -> float:
+        """Pris i procent for at åbne (eller lukke) strategiens åbne positioner."""
+        if cid is None or cid not in allc:
+            return 0.0
+        c = allc[cid][0]
+        return (c.get("open") or 0) * c.get("per", 0.0) / 2
+
     def _decide(self, now: float, scores: dict, allc: dict) -> None:
         st, h = self.state, self.state["held"]
-        best = max(scores, key=scores.get) if scores else None
-        best_sc = scores.get(best) if best else None
+        out = self._cost(h["id"], allc) if h else 0.0                    # prisen for at forlade den nuværende
+        net = {k: v - out - self._cost(k, allc) for k, v in scores.items() if not h or k != h["id"]}   # point efter skiftets pris
+        best = max(net, key=net.get) if net else None
+        best_sc = net.get(best) if best else None
         if h is None:
             if best is not None and best_sc > 0:
                 self._switch(now, best, allc, "bedste strategi" if not st["switches"] else "ny strategi med positive point")
@@ -210,7 +221,7 @@ class SmartBot:
         if cur is None:
             cur = score(allc[h["id"]][0], now) if h["id"] in allc else None
         if best is not None and best != h["id"] and best_sc > 0 and (cur is None or best_sc >= cur + SWITCH_MARGIN):
-            self._switch(now, best, allc, f"{best_sc:+.1f} point mod {cur:+.1f}" if cur is not None else "bedre strategi")
+            self._switch(now, best, allc, f"{best_sc:+.1f} point efter skiftets pris mod {cur:+.1f}" if cur is not None else "bedre strategi")
         elif (cur is None or cur <= 0) and (best_sc is None or best_sc <= 0):
             self._switch(now, None, allc, "ingen strategi med positive point – venter kontant")
 

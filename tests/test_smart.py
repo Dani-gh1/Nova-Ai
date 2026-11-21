@@ -184,6 +184,17 @@ class SmartBotTests(unittest.TestCase):
         self.assertIn("stille", v["recent"][0]["why"])
         self.assertLess(v["recent"][0]["ts"] - (T0 + 24 * H), S.MIN_HOLD_H * H)       # ventede ikke minimumstiden
 
+    def test_does_not_switch_when_the_switch_costs_more_than_the_lead(self):
+        clk = Clock(24)
+        sb = self.bot(clk)
+        a = lambda h: cand("A", [(i, i * 0.30) for i in range(0, 200)], h)
+        # B løber fra A, men har 40 åbne positioner à 0,3 %: at hoppe ind koster 6 %, mere end forspringet
+        b = lambda h: cand("B", [(i, i * 0.30 if i < 30 else 9 + (i - 30) * 1.0) for i in range(0, 200)], h, open_=40, per=0.3)
+        self.run_hours(sb, clk, {"x": [a, b]}, range(24, 37))
+        self.assertEqual(sb.view()["following"], "A")
+        self.run_hours(sb, clk, {"x": [a, b]}, range(37, 60))          # forspringet vokser sig større end prisen: nu skifter den
+        self.assertEqual(sb.view()["following"], "B")
+
     def test_score_prefers_steady_over_wild(self):
         steady = cand("S", [(i, i * 0.2) for i in range(0, 49)], 48)
         wild = cand("W", [(i, (i * 0.2) + (15 if i % 2 else -15)) for i in range(0, 49)], 48)
