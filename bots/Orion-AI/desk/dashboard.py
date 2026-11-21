@@ -45,24 +45,27 @@ class DashboardAPI:
     def _state(self) -> dict:
         return read_state(self.cfg.STATE_FILE) or {}
 
+    EQUITY_TTL = 60.0        # hele equity-tabellen læses højst én gang i minuttet (den vokser kun ved hver scanning)
+
     def _equity(self, strategy: str | None = None) -> dict:
-        args = [self.cfg.EPOCH]
-        sql = "SELECT ts, strategy, return_pct FROM equity WHERE epoch=?"
-        if strategy:
-            sql += " AND strategy=?"
-            args.append(strategy)
-        rows = self.log.query(sql + " ORDER BY ts", args)
-        series: dict = {}
-        for r in rows:
-            series.setdefault(r["strategy"], []).append([r["ts"], round(r["return_pct"], 4)])
-        return series
+        cached = getattr(self, "_eq_cache", None)
+        if cached and time.time() - cached[0] < self.EQUITY_TTL:
+            series = cached[1]
+        else:
+            rows = self.log.query("SELECT ts, strategy, return_pct FROM equity WHERE epoch=? ORDER BY ts", [self.cfg.EPOCH])
+            series = {}
+            for r in rows:
+                series.setdefault(r["strategy"], []).append([r["ts"], round(r["return_pct"], 4)])
+            self._eq_cache = (time.time(), series)
+        return {strategy: series.get(strategy, [])} if strategy else series
 
     def equity(self, strategy: str | None = None) -> dict:
+        everything = self._equity()
         series = {k: downsample(v) for k, v in self._equity(strategy).items()}
         if not strategy:
             # gennemsnit pr. tidsstempel
             buckets: dict = {}
-            for k, v in self._equity().items():
+            for k, v in everything.items():
                 for ts, val in v:
                     buckets.setdefault(round(ts / 60), []).append((ts, val))
             avg = [[max(t for t, _ in vals), sum(x for _, x in vals) / len(vals)]
