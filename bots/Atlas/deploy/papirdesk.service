@@ -1,0 +1,28 @@
+# Papirdesk – papirhandels-bot (KUN fiktive penge)
+# Installation (se README):
+#   sudo cp deploy/papirdesk.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now papirdesk
+[Unit]
+Description=Papirdesk papirhandels-bot (kun fiktive penge) + dashboard på port 8787
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=papirdesk
+WorkingDirectory=/opt/papirdesk
+ExecStart=/usr/bin/python3 -u /opt/papirdesk/bot.py
+Restart=always
+RestartSec=20
+# Botten sover selv uden for åbningstid; systemd genstarter den efter nedbrud/genstart.
+TimeoutStopSec=30
+KillSignal=SIGTERM
+Environment=PYTHONUNBUFFERED=1
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/opt/papirdesk
+
+[Install]
+WantedBy=multi-user.target

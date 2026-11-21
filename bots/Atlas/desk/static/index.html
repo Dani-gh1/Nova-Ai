@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Papirdesk</title>
+<style>
+:root{
+  color-scheme:light;
+  --bg:#f4f3ef; --surface:#fcfcfb; --raised:#ffffff; --line:#e1e0d9;
+  --ink:#0b0b0b; --ink2:#52514e; --muted:#898781;
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a;
+  --good:#006300; --bad:#d03b3b; --accent:#2a78d6;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#111110; --surface:#1a1a19; --raised:#222220; --line:#2c2c2a;
+    --ink:#f0efec; --ink2:#c3c2b7; --muted:#898781;
+    --s1:#3987e5; --s2:#d95926; --s3:#199e70; --good:#0ca30c; --bad:#e66767; --accent:#3987e5;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#111110; --surface:#1a1a19; --raised:#222220; --line:#2c2c2a;
+  --ink:#f0efec; --ink2:#c3c2b7; --muted:#898781;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --good:#0ca30c; --bad:#e66767; --accent:#3987e5;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);
+  font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-text-size-adjust:100%}
+header{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line)}
+.top{display:flex;align-items:center;gap:10px;padding:10px 16px 6px;flex-wrap:wrap}
+.brand{font-weight:700;font-size:17px;letter-spacing:-.01em}
+.paper{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--ink2);
+  border:1px solid var(--line);border-radius:999px;padding:2px 8px}
+.mkt{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:13px;color:var(--ink2)}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--muted)}
+.dot.regular{background:var(--good)} .dot.pre,.dot.post{background:#eda100}
+nav{display:flex;gap:2px;padding:0 10px;overflow-x:auto;scrollbar-width:none}
+nav button{appearance:none;border:0;background:none;color:var(--ink2);font:inherit;font-weight:600;
+  padding:10px 12px;border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap}
+nav button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+main{max-width:1100px;margin:0 auto;padding:16px}
+section[hidden]{display:none}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:14px}
+.card h2{font-size:15px;margin:0 0 10px;font-weight:650}
+.muted{color:var(--muted)} .sub{color:var(--ink2);font-size:13px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.kpi .l{font-size:12px;color:var(--ink2)} .kpi .v{font-size:24px;font-weight:700;letter-spacing:-.02em;margin-top:2px}
+.kpi .s{font-size:12px;color:var(--muted)}
+.up{color:var(--good)} .down{color:var(--bad)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.scard{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.scard .h{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.scard .n{font-weight:650} .scard .r{font-size:20px;font-weight:700;white-space:nowrap}
+.scard .d{font-size:12px;color:var(--ink2);margin:2px 0 6px;min-height:32px}
+.scard .m{display:flex;gap:12px;font-size:12px;color:var(--ink2);flex-wrap:wrap}
+.tablewrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-weight:600;color:var(--ink2);font-size:12px}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--ink2);margin:4px 0 6px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:14px;height:3px;border-radius:2px;display:inline-block}
+.chart{position:relative}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.tip{position:absolute;pointer-events:none;background:var(--raised);border:1px solid var(--line);border-radius:8px;
+  padding:6px 8px;font-size:12px;box-shadow:0 4px 14px rgba(0,0,0,.12);white-space:nowrap;display:none;z-index:2}
+.tip b{font-weight:600}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+select{font:inherit;font-size:13px;padding:4px 6px;border-radius:8px;border:1px solid var(--line);
+  background:var(--raised);color:var(--ink)}
+.ev{font-size:13px;border-bottom:1px solid var(--line);padding:6px 0;display:flex;gap:8px}
+.ev .t{color:var(--muted);font-variant-numeric:tabular-nums;flex:none}
+.ev .a{font-weight:600;flex:none;min-width:62px}
+.ev.error .a{color:var(--bad)}
+.rules dl{display:grid;grid-template-columns:minmax(90px,auto) 1fr;gap:4px 16px;margin:0;font-size:13px}
+.rules dt{color:var(--ink2)} .rules dd{margin:0;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.pill{font-size:11px;border:1px solid var(--line);border-radius:999px;padding:1px 7px;color:var(--ink2)}
+.empty{color:var(--muted);font-size:13px;padding:8px 0}
+@media (max-width:520px){ .kpi .v{font-size:20px} main{padding:12px 16px} }
+</style>
+</head>
+<body>
+<header>
+  <div class="top">
+    <span class="brand">Papirdesk</span><span class="paper">Kun papirhandel</span>
+    <span class="mkt"><span class="dot" id="mdot"></span><span id="mtext">…</span></span>
+  </div>
+  <nav role="tablist">
+    <button role="tab" data-tab="oversigt" aria-selected="true">Oversigt</button>
+    <button role="tab" data-tab="strategier">Strategier</button>
+    <button role="tab" data-tab="handler">Handler</button>
+    <button role="tab" data-tab="regler">Regler</button>
+  </nav>
+</header>
+<main>
+<section id="oversigt">
+  <div class="kpis" id="kpis"></div>
+  <div class="card">
+    <div class="row" style="justify-content:space-between"><h2 style="margin:0">Afkast over tid</h2>
+      <label class="sub">Fremhæv <select id="pick"></select></label></div>
+    <div class="legend" id="legend"></div>
+    <div class="chart" id="chart"></div>
+  </div>
+  <div class="card"><h2>Marked</h2><div id="market"></div></div>
+  <div class="card"><h2>Seneste hændelser</h2><div id="events"></div></div>
+</section>
+<section id="strategier" hidden>
+  <div class="grid" id="cards"></div>
+  <div class="card" style="margin-top:14px"><h2>Historisk backtest</h2><div id="bt"></div></div>
+</section>
+<section id="handler" hidden>
+  <div class="row" style="margin-bottom:10px"><label class="sub">Regelsæt <select id="tfilter"><option value="">Alle</option></select></label></div>
+  <div class="card"><h2>Åbne positioner</h2><div class="tablewrap" id="open"></div></div>
+  <div class="card"><h2>Afsluttede handler</h2><div class="tablewrap" id="closed"></div><div class="sub" id="closednote"></div></div>
+  <div class="card"><h2>Skyggehandler – score mod fremtidigt afkast</h2>
+    <p class="sub" style="margin-top:0">Alle aktier Analysten scorer, "købes" fiktivt. Viser om høj score faktisk giver højere afkast.</p>
+    <div class="tablewrap" id="shadow"></div></div>
+</section>
+<section id="regler" hidden>
+  <div class="grid rules" id="rules"></div>
+  <div class="card" style="margin-top:14px"><h2>Regelsæt</h2><div class="tablewrap" id="srules"></div></div>
+</section>
+</main>
+<script>
+const $=s=>document.querySelector(s);
+const nf=(v,d=2)=>v==null||isNaN(v)?'–':Number(v).toLocaleString('da-DK',{minimumFractionDigits:d,maximumFractionDigits:d});
+const pct=(v,d=2)=>v==null?'–':(v>0?'+':v<0?'−':'')+nf(Math.abs(v),d)+' %';
+const cls=v=>v>0?'up':v<0?'down':'';
+const arrow=v=>v>0?'▲ ':v<0?'▼ ':'';
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+async function j(u){const r=await fetch(u);if(!r.ok)throw new Error(u);return r.json()}
+let tab='oversigt', overview=null, picked=null;
+
+// --- faner ---
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>show(b.dataset.tab));
+function show(t){tab=t;location.hash=t;
+  document.querySelectorAll('nav button').forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===t));
+  document.querySelectorAll('main>section').forEach(s=>s.hidden=s.id!==t);load()}
+
+// --- blød kurve (monoton kubisk, ingen oversving) ---
+function smooth(pts){
+  const n=pts.length; if(n<2) return n?`M${pts[0][0]},${pts[0][1]}`:'';
+  const dx=[],dy=[],m=[],t=[];
+  for(let i=0;i<n-1;i++){dx[i]=pts[i+1][0]-pts[i][0];dy[i]=pts[i+1][1]-pts[i][1];m[i]=dx[i]?dy[i]/dx[i]:0}
+  t[0]=m[0];t[n-1]=m[n-2];
+  for(let i=1;i<n-1;i++){t[i]=m[i-1]*m[i]<=0?0:(m[i-1]+m[i])/2}
+  for(let i=0;i<n-1;i++){ if(m[i]===0){t[i]=0;t[i+1]=0;continue}
+    const a=t[i]/m[i],b=t[i+1]/m[i],h=a*a+b*b; if(h>9){const s=3/Math.sqrt(h);t[i]=s*a*m[i];t[i+1]=s*b*m[i]}}
+  let d=`M${pts[0][0].toFixed(1)},${pts[0][1].toFixed(1)}`;
+  for(let i=0;i<n-1;i++){const h=dx[i]/3;
+    d+=`C${(pts[i][0]+h).toFixed(1)},${(pts[i][1]+t[i]*h).toFixed(1)} ${(pts[i+1][0]-h).toFixed(1)},${(pts[i+1][1]-t[i+1]*h).toFixed(1)} ${pts[i+1][0].toFixed(1)},${pts[i+1][1].toFixed(1)}`}
+  return d}
+
+function lineChart(el,series,{h=260,mini=false}={}){
+  el.innerHTML='';
+  const all=series.flatMap(s=>s.pts); if(!all.length){el.innerHTML='<div class="empty">Ingen data endnu – kurven vises efter første cyklus i åbningstiden.</div>';return}
+  const W=Math.max(el.clientWidth,260), H=mini?56:h, pl=mini?2:44, pr=mini?2:12, pt=mini?4:10, pb=mini?4:24;
+  const xs=all.map(p=>p[0]), ys=all.map(p=>p[1]).concat([0]);
+  let x0=Math.min(...xs),x1=Math.max(...xs); if(x1===x0)x1=x0+1;
+  let y0=Math.min(...ys),y1=Math.max(...ys); const pad=(y1-y0)*.1||0.5; y0-=pad;y1+=pad;
+  const X=x=>pl+(x-x0)/(x1-x0)*(W-pl-pr), Y=y=>pt+(1-(y-y0)/(y1-y0))*(H-pt-pb);
+  let g='';
+  if(!mini){
+    const step=niceStep((y1-y0)/4);
+    for(let v=Math.ceil(y0/step)*step;v<=y1;v+=step){
+      g+=`<line x1="${pl}" x2="${W-pr}" y1="${Y(v)}" y2="${Y(v)}" stroke="${css('--line')}" stroke-width="1"/>`+
+         `<text x="${pl-6}" y="${Y(v)+4}" text-anchor="end" font-size="11" fill="${css('--muted')}">${nf(v,step<1?1:0)} %</text>`}
+    const ticks=4; for(let i=0;i<=ticks;i++){const x=x0+(x1-x0)*i/ticks;
+      g+=`<text x="${X(x)}" y="${H-6}" text-anchor="${i===0?'start':i===ticks?'end':'middle'}" font-size="11" fill="${css('--muted')}">${fmtDate(x,false,x1-x0)}</text>`}
+  }
+  g+=`<line x1="${pl}" x2="${W-pr}" y1="${Y(0)}" y2="${Y(0)}" stroke="${css('--muted')}" stroke-width="1" stroke-dasharray="${mini?'2 3':'0'}" opacity=".7"/>`;
+  for(const s of series){const p=s.pts.map(q=>[X(q[0]),Y(q[1])]);
+    g+=`<path d="${smooth(p)}" fill="none" stroke="${s.color}" stroke-width="${s.w||2}" stroke-linecap="round" stroke-linejoin="round"/>`}
+  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Afkast over tid">${g}<g class="hover"></g></svg>`+(mini?'':'<div class="tip"></div>');
+  if(mini) return;
+  const svg=el.querySelector('svg'), hov=svg.querySelector('.hover'), tip=el.querySelector('.tip');
+  const move=e=>{const r=svg.getBoundingClientRect(); const px=(e.touches?e.touches[0].clientX:e.clientX)-r.left;
+    const x=x0+(px*W/r.width-pl)/(W-pl-pr)*(x1-x0); let html=`<div class="muted">${fmtDate(x,true)}</div>`, marks='';
+    for(const s of series){ if(!s.pts.length)continue; let best=s.pts[0];
+      for(const q of s.pts) if(Math.abs(q[0]-x)<Math.abs(best[0]-x)) best=q;
+      marks+=`<circle cx="${X(best[0])}" cy="${Y(best[1])}" r="4.5" fill="${s.color}" stroke="${css('--surface')}" stroke-width="2"/>`;
+      html+=`<div><i style="display:inline-block;width:10px;height:3px;background:${s.color};vertical-align:middle;margin-right:6px"></i>${esc(s.name)}: <b>${pct(best[1])}</b></div>`}
+    const cx=X(Math.min(Math.max(x,x0),x1));
+    hov.innerHTML=`<line x1="${cx}" x2="${cx}" y1="${pt}" y2="${H-pb}" stroke="${css('--muted')}" stroke-width="1"/>`+marks;
+    tip.innerHTML=html; tip.style.display='block';
+    const tx=cx*r.width/W; tip.style.left=Math.min(Math.max(tx+12,0),r.width-tip.offsetWidth)+'px'; tip.style.top='8px'};
+  svg.addEventListener('pointermove',move); svg.addEventListener('touchmove',move,{passive:true});
+  svg.addEventListener('pointerleave',()=>{hov.innerHTML='';tip.style.display='none'});
+}
+function niceStep(r){const p=Math.pow(10,Math.floor(Math.log10(r||1)));const f=r/p;return (f<1.5?1:f<3.5?2:f<7.5?5:10)*p}
+function fmtDate(ms,full,span){const d=new Date(ms);if(!full&&span>300*864e5)return d.toLocaleDateString('da-DK',{month:'short',year:'numeric'});return full?d.toLocaleString('da-DK',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):d.toLocaleDateString('da-DK',{day:'numeric',month:'short'})}
+const toPts=arr=>(arr||[]).map(([t,v])=>[Date.parse(t.length<=10?t+'T21:00:00Z':t),v]).filter(p=>!isNaN(p[0]));
+
+// --- Oversigt ---
+async function loadOverview(){
+  overview=await j('/api/overview');
+  const names=Object.keys(overview.stats); const st=overview.stats;
+  const rets=names.map(n=>st[n].return_pct);
+  const avg=rets.length?rets.reduce((a,b)=>a+b,0)/rets.length:null;
+  const best=names.slice().sort((a,b)=>st[b].return_pct-st[a].return_pct)[0];
+  const worst=names.slice().sort((a,b)=>st[a].return_pct-st[b].return_pct)[0];
+  const pos=names.reduce((a,n)=>a+st[n].open,0), trades=names.reduce((a,n)=>a+st[n].trades,0);
+  const spy=(overview.series.SPY||[]).slice(-1)[0];
+  $('#kpis').innerHTML=[
+    ['Gns. alle regelsæt',pct(avg),cls(avg),`${names.length} virtuelle konti`],
+    ['Bedste',best?pct(st[best].return_pct):'–',best?cls(st[best].return_pct):'',best?esc(overview.labels[best]):''],
+    ['Svageste',worst?pct(st[worst].return_pct):'–',worst?cls(st[worst].return_pct):'',worst?esc(overview.labels[worst]):''],
+    ['SPY (benchmark)',spy?pct(spy[1]):'–',spy?cls(spy[1]):'','siden epoch-start'],
+    ['Åbne positioner',pos,'',`${trades} afsluttede handler`],
+  ].map(([l,v,c,s])=>`<div class="kpi"><div class="l">${l}</div><div class="v ${c}">${c?arrow(parseFloat(String(v).replace('−','-'))||0):''}${v}</div><div class="s">${s}</div></div>`).join('');
+  const sel=$('#pick'); if(!sel.options.length||sel.options.length!==names.length){
+    sel.innerHTML=names.map(n=>`<option value="${n}">${esc(overview.labels[n]||n)}</option>`).join('');
+    sel.onchange=()=>{picked=sel.value;drawMain()}}
+  picked=picked&&names.includes(picked)?picked:best; sel.value=picked||'';
+  drawMain();
+  $('#events').innerHTML=overview.events.length?overview.events.map(e=>`<div class="ev ${e.level}"><span class="t">${new Date(e.ts).toLocaleTimeString('da-DK',{hour:'2-digit',minute:'2-digit'})}</span><span class="a">${esc(e.agent)}</span><span>${esc(e.message)}</span></div>`).join(''):'<div class="empty">Ingen hændelser endnu. Botten er ikke startet, eller markedet har ikke været åbent.</div>';
+}
+function drawMain(){
+  if(!overview)return; const S=overview.series; const names=Object.keys(overview.stats);
+  // gennemsnit pr. tidsstempel
+  const byT={}; for(const n of names) for(const [t,v] of (S[n]||[])) (byT[t]=byT[t]||[]).push(v);
+  const avg=Object.entries(byT).sort().map(([t,v])=>[t,v.reduce((a,b)=>a+b,0)/v.length]);
+  const series=[{name:'Gns. alle regelsæt',color:css('--s1'),pts:toPts(avg),w:2.5}];
+  if(picked) series.push({name:overview.labels[picked]||picked,color:css('--s2'),pts:toPts(S[picked])});
+  if(S.SPY) series.push({name:'SPY',color:css('--s3'),pts:toPts(S.SPY)});
+  $('#legend').innerHTML=series.map(s=>`<span><i style="background:${s.color}"></i>${esc(s.name)}</span>`).join('');
+  lineChart($('#chart'),series);
+}
+
+async function loadStatus(){
+  try{const s=await j('/api/status');
+    $('#mdot').className='dot '+s.session; $('#mtext').textContent=s.label;
+    const m=s.meta||{}; const hb=m.heartbeat?new Date(m.heartbeat):null;
+    const rows=[['Status',esc(s.label)+(s.early_close?' (halv dag)':'')],
+      [s.session==='regular'?'Lukker':'Næste åbning', s.session==='regular'?`${s.next_close_dk} DK · ${s.next_close_et} NY`:`${s.next_open_dk} DK · ${s.next_open_et} NY`],
+      ['Klokken nu',`${s.now_dk} DK · ${s.now_et} NY`],
+      ['Bot sidst aktiv',hb?hb.toLocaleString('da-DK'):'aldrig (ikke startet)'],
+      ['Sover til',m.sleeping_until?new Date(m.sleeping_until).toLocaleString('da-DK'):'–'],
+      ['Sidste cyklus',m.last_cycle_stats?`${m.last_cycle_stats.symbols} symboler → ${m.last_cycle_stats.candidates} kandidater → ${m.last_cycle_stats.passed} bestået → ${m.last_cycle_stats.scored} scoret · ${m.last_cycle_stats.buys} køb / ${m.last_cycle_stats.sells} salg`:'–'],
+      ['Epoch',s.epoch+(s.epoch!==s.config_epoch?` (config: ${s.config_epoch} – nulstilles ved næste start)`:'')]];
+    $('#market').innerHTML='<div class="rules"><dl>'+rows.map(([a,b])=>`<dt>${a}</dt><dd>${b}</dd>`).join('')+'</dl></div>';
+  }catch(e){$('#mtext').textContent='ingen forbindelse'}
+}
+
+// --- Strategier ---
+async function loadStrategies(){
+  const d=await j('/api/strategies');
+  const el=$('#cards'); el.innerHTML=d.strategies.map((s,i)=>`<div class="scard"><div class="h"><span class="n">${esc(s.label)}</span>
+    <span class="r ${cls(s.return_pct)}">${arrow(s.return_pct||0)}${pct(s.return_pct)}</span></div>
+    <div class="d">${esc(s.description)}</div><div class="chart" id="sp${i}"></div>
+    <div class="m"><span>${s.open??0} åbne</span><span>${s.trades??0} handler</span><span>Hitrate ${s.win_rate==null?'–':nf(s.win_rate,0)+' %'}</span>
+    <span>Maks. fald ${nf(s.max_dd,1)} %</span><span>Investeret ${nf(s.exposure_pct,0)} %</span></div></div>`).join('');
+  d.strategies.forEach((s,i)=>lineChart($('#sp'+i),[{name:s.label,color:css('--s1'),pts:toPts(s.series)}],{mini:true}));
+  const bt=d.backtest;
+  if(!bt){$('#bt').innerHTML='<div class="empty">Ingen backtest endnu. Kør <code>python3 backtest.py</code>.</div>';return}
+  const rows=bt.results.slice().sort((a,b)=>b.total_return_pct-a.total_return_pct);
+  $('#bt').innerHTML=`<p class="sub" style="margin-top:0">${esc(bt.period.start)} – ${esc(bt.period.end)} · ${bt.symbols} symboler · daglig opløsning. SPY: ${pct(bt.benchmark.total_return_pct)} (CAGR ${pct(bt.benchmark.cagr_pct)})</p>
+  <div class="chart" id="btchart"></div>
+  <div class="tablewrap"><table><thead><tr><th>Regelsæt</th><th class="num">Afkast</th><th class="num">CAGR</th><th class="num">Maks. fald</th><th class="num">Sharpe</th><th class="num">Handler</th><th class="num">Hitrate</th><th class="num">Gns. handel</th></tr></thead><tbody>
+  ${rows.map(r=>`<tr><td>${esc(r.label)}</td><td class="num ${cls(r.total_return_pct)}">${pct(r.total_return_pct)}</td><td class="num">${pct(r.cagr_pct)}</td><td class="num">${nf(r.max_dd_pct,1)} %</td><td class="num">${nf(r.sharpe,2)}</td><td class="num">${r.trades}</td><td class="num">${r.win_rate==null?'–':nf(r.win_rate,0)+' %'}</td><td class="num">${pct(r.avg_trade_pct)}</td></tr>`).join('')}
+  </tbody></table></div>`;
+  const top=rows[0];
+  const ser=[{name:'Gns. alle regelsæt',color:css('--s1'),pts:toPts(bt.average_curve),w:2.5},
+             {name:'Bedste: '+top.label,color:css('--s2'),pts:toPts(top.curve)},
+             {name:'SPY',color:css('--s3'),pts:toPts(bt.benchmark.curve)}];
+  const c=$('#btchart'); c.insertAdjacentHTML('beforebegin','<div class="legend">'+ser.map(s=>`<span><i style="background:${s.color}"></i>${esc(s.name)}</span>`).join('')+'</div>');
+  lineChart(c,ser,{h:220});
+}
+
+// --- Handler ---
+let tfilter='';
+async function loadTrades(){
+  const d=await j('/api/trades');
+  const sel=$('#tfilter'); const names=[...new Set([...d.positions,...d.closed].map(x=>x.strategy))].sort();
+  if(sel.options.length!==names.length+1){sel.innerHTML='<option value="">Alle</option>'+names.map(n=>`<option>${esc(n)}</option>`).join('');sel.value=tfilter;
+    sel.onchange=()=>{tfilter=sel.value;loadTrades()}}
+  const keep=x=>!tfilter||x.strategy===tfilter;
+  const allOpen=d.positions.filter(keep), allClosed=d.closed.filter(keep);
+  d.positions=allOpen.slice(0,60); d.closed=allClosed.slice(0,60);
+  $('#open').innerHTML=d.positions.length?`<table><thead><tr><th>Regelsæt</th><th>Aktie</th><th>Købt</th><th class="num">Købskurs</th><th class="num">Kurs</th><th class="num">Urealiseret</th><th class="num">Vægt</th><th class="num">Til stop</th></tr></thead><tbody>
+    ${d.positions.map(p=>`<tr><td>${esc(p.strategy)}</td><td><b>${esc(p.symbol)}</b></td><td>${p.opened}</td><td class="num">${nf(p.entry)}</td><td class="num">${nf(p.last)}</td><td class="num ${cls(p.unreal_pct)}">${pct(p.unreal_pct)}</td><td class="num">${nf(p.weight_pct,1)} %</td><td class="num">${p.stop_dist_pct==null?'–':nf(p.stop_dist_pct,1)+' %'}</td></tr>`).join('')}</tbody></table>`:'<div class="empty">Ingen åbne positioner.</div>';
+  $('#closed').innerHTML=d.closed.length?`<table><thead><tr><th>Tid</th><th>Regelsæt</th><th>Aktie</th><th>Side</th><th class="num">Kurs</th><th class="num">Vægt</th><th class="num">Resultat</th><th>Grund</th></tr></thead><tbody>
+    ${d.closed.map(t=>`<tr><td>${new Date(t.ts).toLocaleString('da-DK',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</td><td>${esc(t.strategy)}</td><td><b>${esc(t.symbol)}</b></td><td>${t.side==='buy'?'Køb':'Salg'}</td><td class="num">${nf(t.price)}</td><td class="num">${t.weight_pct==null?'':nf(t.weight_pct,1)+' %'}</td><td class="num ${cls(t.pnl_pct)}">${t.pnl_pct==null?'':pct(t.pnl_pct)}</td><td class="sub">${esc(t.reason)}</td></tr>`).join('')}</tbody></table>`:'<div class="empty">Ingen handler endnu.</div>';
+  $('#closednote').textContent=allClosed.length>60||allOpen.length>60?`Viser de nyeste 60 – vælg et regelsæt for at indsnævre (${allOpen.length} åbne, ${allClosed.length} handler).`:'';
+  const b=(d.shadow||{}).buckets||[];
+  $('#shadow').innerHTML=b.length?`<table><thead><tr><th>Score</th><th class="num">Antal</th><th class="num">+1 dag</th><th class="num">+5 dage</th><th class="num">+10 dage</th><th class="num">Hitrate (5 d)</th></tr></thead><tbody>
+    ${b.map(r=>`<tr><td>${r.b}–${r.b+9}</td><td class="num">${r.n}</td><td class="num ${cls(r.r1)}">${pct(r.r1)}</td><td class="num ${cls(r.r5)}">${pct(r.r5)}</td><td class="num ${cls(r.r10)}">${pct(r.r10)}</td><td class="num">${r.hit==null?'–':nf(r.hit*100,0)+' %'}</td></tr>`).join('')}</tbody></table>`:'<div class="empty">Ingen skyggehandler endnu.</div>';
+}
+
+// --- Regler ---
+async function loadRules(){
+  const d=await j('/api/rules');
+  const fv=v=>typeof v==='boolean'?(v?'Ja':'Nej'):Array.isArray(v)?v.map(x=>nf(x*100,1)+' %').join(' – '):typeof v==='object'&&v?Object.entries(v).map(([k,x])=>`${k} ${nf(x*100,0)} %`).join('<br>'):typeof v==='number'?(Number.isInteger(v)?nf(v,0):nf(v,4).replace(/0+$/,'').replace(/,$/,'')):esc(v);
+  const fk=(v,k)=>typeof v==='number'&&/_PCT$|TOLERANCE$/.test(k)?nf(v*100,v*100%1?2:0)+' %':fv(v);
+  $('#rules').innerHTML=d.groups.map(g=>`<div class="card" style="margin:0"><h2>${g.title}</h2><dl>${g.items.map(i=>`<dt>${esc(i.label)}<br><span class="muted" style="font-size:11px">${i.key}</span></dt><dd>${fk(i.value,i.key)}</dd>`).join('')}</dl></div>`).join('');
+  $('#srules').innerHTML=`<table><thead><tr><th>Regelsæt</th><th>Signaler</th><th>Indgang</th><th>Udgang</th><th class="num">Min. score</th><th class="num">Pr. handel</th><th class="num">Maks. pos.</th><th class="num">Stop / trail (ATR)</th><th class="num">Maks. dage</th></tr></thead><tbody>
+  ${d.strategies.map(s=>`<tr><td><b>${esc(s.label)}</b>${s.spy_filter?' <span class="pill">SPY-filter</span>':''}${s.universe!=='all'?` <span class="pill">${s.universe==='etf'?'ETF':'aktier'}</span>`:''}</td><td>${s.signals.map(esc).join(', ')}</td><td class="sub">${esc(s.entry)}</td><td class="sub">${esc(s.exit)}${s.take_profit_atr?` · mål ${s.take_profit_atr}×ATR`:''}</td><td class="num">${s.min_score}</td><td class="num">${nf(s.position_pct,0)} %</td><td class="num">${s.max_positions}</td><td class="num">${s.atr_stop} / ${s.atr_trail}</td><td class="num">${s.max_hold_days}</td></tr>`).join('')}</tbody></table>`;
+}
+
+async function load(){try{
+  if(tab==='oversigt') await loadOverview(); else if(tab==='strategier') await loadStrategies();
+  else if(tab==='handler') await loadTrades(); else await loadRules();}catch(e){console.error(e)}}
+addEventListener('resize',()=>{clearTimeout(window._rt);window._rt=setTimeout(()=>tab==='oversigt'?drawMain():tab==='strategier'&&loadStrategies(),200)});
+const tabs=['oversigt','strategier','handler','regler'];
+const fromHash=()=>{const t=(location.hash||'').slice(1);return tabs.includes(t)?t:'oversigt'};
+addEventListener('hashchange',()=>{if(fromHash()!==tab)show(fromHash())});
+show(fromHash()); loadStatus();
+setInterval(loadStatus,30000); setInterval(load,60000);
+</script>
+</body>
+</html>
