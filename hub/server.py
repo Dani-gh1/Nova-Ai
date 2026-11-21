@@ -17,7 +17,6 @@ from concurrent.futures import ThreadPoolExecutor
 from .adapters import normalize
 from .live import VENUES, Kasse, live_bots, positions_for, venue_of
 from .portfolio import SmartPortfolio
-from .smart import SmartBot
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -264,12 +263,11 @@ class Overview:
     gammelt, hentes et nyt i baggrunden. Så venter ingen på den langsomste bot, selv på en lille server med mange botter."""
     FRESH = 15.0
 
-    def __init__(self, bots: list[dict], build=None, now=time.time, smart: SmartBot | None = None):
+    def __init__(self, bots: list[dict], build=None, now=time.time, smart: SmartPortfolio | None = None):
         self.bots, self.now = bots, now
         self.build = build or (lambda: self._build())
         self.rows: list | None = None
-        self.smart_bot = smart                 # Smart-botten: følger den bedste strategi på tværs af alle botter
-        self.portfolio: SmartPortfolio | None = None   # Smart-porteføljen: den primære strategi (op til 5 strategier på én gang)
+        self.portfolio = smart                 # Smart strategi: porteføljen med op til 5 strategier på én gang
         self.live_smart: SmartPortfolio | None = None  # Live-porteføljen: samme regler, men kun strategier, der kan handles for rigtigt
         self.live: Kasse | None = None             # Kassen: rigtige penge fordelt på markederne
         self.at = 0.0
@@ -288,7 +286,7 @@ class Overview:
                     continue                   # botten svarede ikke: Smart-botten beholder dens seneste svar
                 cands = r.pop("_cands") or []
                 fresh = not r.get("idle") and r.get("scan_age") is not None and r["scan_age"] <= STALE_AFTER_S   # lukket marked kan ikke vælges
-                for sb in (self.smart_bot, self.portfolio, self.live_smart):
+                for sb in (self.portfolio, self.live_smart):
                     if sb is not None:
                         sb.feed(r["key"], cands, fresh)
             with self.lock:
@@ -322,8 +320,6 @@ class Overview:
         if start:
             self._refresh()
 
-    def smart(self) -> dict | None:
-        return self.smart_bot.view() if self.smart_bot is not None else None
 
 
 class Throttle:
@@ -490,9 +486,6 @@ def make_handler(bots: list[dict], throttle: Throttle | None = None, ratelimit: 
                     ov = overview
                     out = None if ov.live is None else {**ov.live.view(), "smart": ov.live_smart.view() if ov.live_smart else None}
                     return self._send(200, "application/json", json.dumps(out).encode())
-                if path == "/api/smart":
-                    overview.get()
-                    return self._send(200, "application/json", json.dumps(overview.smart()).encode())
                 m = re.match(r"^/api/bot/([a-z0-9_-]+)$", path)
                 if m and m.group(1) in by_key:
                     try:
@@ -585,12 +578,10 @@ def serve(host: str, port: int, bots: list[dict] | None = None) -> None:
     handler = make_handler(bots)
     ov = handler.overview
     expected = sum(1 for b in bots if not b.get('disabled') and not not_installed(b) and (b.get('repo') or b.get('external')))
-    ov.smart_bot = SmartBot(log=lambda m: print(m, flush=True), expected=expected)
-    # Smart-botten kører hele tiden, også når ingen kigger: henter friske tal fra botterne og tager et skridt hvert minut
-    threading.Thread(target=ov.smart_bot.run, args=(ov.fresh,), daemon=True, name="smart-bot").start()
     ov.portfolio = SmartPortfolio(Path(os.environ.get("HUB_PORTFOLIO_FILE") or ROOT / "logs" / "smart-portfolio.json"),
                                   log=lambda m: print(m, flush=True), expected=expected)
-    threading.Thread(target=ov.portfolio.run, args=(lambda: None,), daemon=True, name="smart-portfolio").start()
+    # Smart strategi kører hele tiden, også når ingen kigger: henter friske tal fra botterne og tager et skridt hvert minut
+    threading.Thread(target=ov.portfolio.run, args=(ov.fresh,), daemon=True, name="smart-portfolio").start()
     start_live(ov, bots)
     httpd = ThreadingHTTPServer((host, port), handler)
     httpd.daemon_threads = True

@@ -47,7 +47,7 @@ Forsidens **Smart strategi** er en portefølje, der kører hele tiden i hubben o
   12 timers historik, højst 10 % fald og et åbent marked, der bevæger sig. Resten står kontant.
 * Sælger en plads, når strategien ikke er i plus over 24 timer, står stille i 3 timer, falder 5 % fra toppen, eller er ude af top 8,
   og en bedre venter (tidligst 4 timer efter køb). Kun den ene plads skiftes.
-* Sammenlignes på forsiden med gennemsnittet af alle strategier og med den gamle Smart (én strategi ad gangen).
+* Sammenlignes på forsiden med gennemsnittet af alle strategier i samme periode.
 
 **Kassen** er stedet, de rigtige penge lægges ind. Live-porteføljen (samme regler, men kun strategier, der kan handles for
 rigtigt) bestemmer fordelingen, og Kassen flytter pengene til markederne og ejer de samme positioner som strategierne.
