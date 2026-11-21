@@ -168,17 +168,18 @@ class Supervisor:
 
     def shutdown(self, wait: float = 150.0) -> None:
         self.stop.set()
-        live = [u for u in self.units if u.proc and u.proc.poll() is None]
+        # egne referencer: supervisor-tråden kan nå at nulstille u.proc, mens vi lukker
+        live = [p for p in (u.proc for u in self.units) if p is not None and p.poll() is None]
         if live:
             self.say("Lukker botterne (kan tage op til to minutter, fordi nogle gør deres scanning færdig) …")
-        for u in live:
-            u.proc.terminate()
+        for p in live:
+            p.terminate()
         end = time.monotonic() + wait
-        for u in live:
+        for p in live:
             try:
-                u.proc.wait(timeout=max(1.0, end - time.monotonic()))
+                p.wait(timeout=max(1.0, end - time.monotonic()))
             except subprocess.TimeoutExpired:
-                u.proc.kill()
+                p.kill()
         for u in self.units:
             u.proc = None
             if u.log_file:
