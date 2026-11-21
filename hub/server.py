@@ -297,7 +297,7 @@ def bot_overview(bot: dict) -> dict:
     out["note_short"] = "Slået fra her" if bot.get("disabled") else ""
     if not_installed(bot):
         out["configured"], out["up"] = False, False
-        out["note"], out["note_short"] = "Ikke hentet til denne maskine. Kør: python3 -m hub fetch", "Ikke hentet her"
+        out["note"], out["note_short"] = "Mangler på denne maskine. Kør: git pull i hubbens mappe", "Ikke hentet her"
     if out["up"]:
         data: dict = {}      # ellers crasher `data.get` nedenfor, hvis bot_data fejler, og hele overblikket (og Smart strategi) går i stå
         try:

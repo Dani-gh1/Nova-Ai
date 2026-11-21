@@ -76,7 +76,7 @@ class HubTests(unittest.TestCase):
         self.assertEqual((off["configured"], off["up"], off["note_short"]), (False, False, "Slået fra her"))
         missing = srv.bot_overview({**base, "repo": "x/findes-ikke-hos-os"})
         self.assertEqual((missing["configured"], missing["up"], missing["note_short"]), (False, False, "Ikke hentet her"))
-        self.assertIn("hub fetch", missing["note"])
+        self.assertIn("git pull", missing["note"])
         self.assertFalse(srv.not_installed({**base, "repo": "x/y", "external": True}))     # en ekstern bot behøver ikke være hentet
 
     def test_a_bot_that_times_out_does_not_break_the_overview(self):

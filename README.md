@@ -3,21 +3,24 @@
 Én app med 22 faner – én pr. papirhandels-bot – og underfaner under hver bot.
 Kun papirhandel med fiktive penge.
 
-| Fane | Repo |
+Al koden ligger i dette ene repo: hubben i `hub/` og alle botter i `bots/` (med hele deres tidligere historik).
+Botternes data (papirkonti, databaser) er ikke i git.
+
+| Fane | Kode |
 |---|---|
-| Atlas AI (aktier) | Dani-gh1/Atlas |
-| Meridian AI (forex) | Dani-gh1/Meridian-AI |
-| Comet AI (nye tokens) | Dani-gh1/Comet-AI |
-| Delphi AI (prognosemarkeder) | Dani-gh1/Delphi-AI |
-| Quasar AI (krypto-futures) | Dani-gh1/Quasar-AI |
-| Orion AI (krypto) | Dani-gh1/Orion-AI |
-| Nova AI (memecoins) | Dani-gh1/Coins |
-| Atlas Global AI (udenlandske aktier og ETF'er) | Dani-gh1/Atlas (egen bog, `bots.json`) |
-| Orion Mid AI (mellemstore og små krypto) | Dani-gh1/Orion-AI (egen bog) |
-| Nova Classic AI (etablerede memecoins) | Dani-gh1/Coins (`variants/nova-classic.toml`) |
-| Bond AI, Metal AI, Energi AI, Tema AI, Small Cap AI, Udbytte AI, Dansk AI, Regnskab AI | Dani-gh1/Atlas (hver sin bog og univers) |
-| Staking AI, DeFi AI, AI-token AI | Dani-gh1/Orion-AI (hver sin bog og liste af mønter) |
-| Valuta AI (valutapar inkl. nye markeder) | Dani-gh1/Meridian-AI (egen bog) |
+| Atlas AI (aktier) | `bots/Atlas` |
+| Meridian AI (forex) | `bots/Meridian-AI` |
+| Comet AI (nye tokens) | `bots/Comet-AI` |
+| Delphi AI (prognosemarkeder) | `bots/Delphi-AI` |
+| Quasar AI (krypto-futures) | `bots/Quasar-AI` |
+| Orion AI (krypto) | `bots/Orion-AI` |
+| Nova AI (memecoins) | `bots/Coins` |
+| Atlas Global AI (udenlandske aktier og ETF'er) | `bots/Atlas` (egen bog, `bots.json`) |
+| Orion Mid AI (mellemstore og små krypto) | `bots/Orion-AI` (egen bog) |
+| Nova Classic AI (etablerede memecoins) | `bots/Coins` (`variants/nova-classic.toml`) |
+| Bond AI, Metal AI, Energi AI, Tema AI, Small Cap AI, Udbytte AI, Dansk AI, Regnskab AI | `bots/Atlas` (hver sin bog og univers) |
+| Staking AI, DeFi AI, AI-token AI | `bots/Orion-AI` (hver sin bog og liste af mønter) |
+| Valuta AI (valutapar inkl. nye markeder) | `bots/Meridian-AI` (egen bog) |
 
 Hver bot har de samme fire sider, så alt ser ens ud:
 
@@ -29,14 +32,10 @@ Hver bot har de samme fire sider, så alt ser ens ud:
 ## Kom i gang
 
 ```bash
-python3 -m hub fetch
-```
-
-```bash
 python3 -m hub run
 ```
 
-Åbn <http://127.0.0.1:8080>. `fetch` henter botterne ind i `bots/`, `run` starter dem (hver på sin egen port, kun lokalt)
+Åbn <http://127.0.0.1:8080>. `run` starter botterne (hver på sin egen port, kun lokalt)
 og hubben. `python3 -m hub status` viser hvad der kører. Kun Python 3.11+ standardbibliotek.
 
 ## Rigtige penge og omkostninger
@@ -108,7 +107,7 @@ så papirbogen ikke blandes. `kind: "script"` gør det samme for en bot, der sta
 
 ## Tilføj en ny bot
 
-Tilføj en post i `bots.json` med `repo`, `port`, `launch`, `adapter` og `hide`, og skriv en adapter i `hub/adapters.py`, hvis botten har en anden datastruktur end de eksisterende (`forex`, `delphi`, `quasar`, `orion`, `comet`, `nova`). Kør derefter `python3 -m hub fetch`.
+Tilføj en post i `bots.json` med `repo`, `port`, `launch`, `adapter` og `hide`, og skriv en adapter i `hub/adapters.py`, hvis botten har en anden datastruktur end de eksisterende (`forex`, `delphi`, `quasar`, `orion`, `comet`, `nova`). Læg botens kode i `bots/<navn>/`.
 
 ## Test
 

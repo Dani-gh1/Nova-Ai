@@ -58,7 +58,13 @@ restart() {
 
 (cd "$HUB_DIR" && as_user env HUB_EXTRA_BACKUP="${HUB_UPDATE_NOVA_DIR:-}" python3 -m hub backup >/dev/null 2>&1) || true     # kopi af alle botters data før noget hentes
 hub_changed=0
+hub_before="$(as_user git -C "$HUB_DIR" rev-parse HEAD 2>/dev/null)"
 update_dir "$HUB_DIR"; [ $? -eq 1 ] && hub_changed=1
+# Nova kører som sin egen tjeneste fra bots/Coins i dette repo: genstart den kun, hvis dens kode er ændret
+if [ "$hub_changed" = 1 ] && [ -n "${HUB_NOVA_SERVICE:-}" ] && \
+   [ -n "$(as_user git -C "$HUB_DIR" diff --name-only "$hub_before" HEAD -- bots/Coins 2>/dev/null)" ]; then
+  restart "$HUB_NOVA_SERVICE"
+fi
 for d in "$HUB_DIR"/bots/*/; do
   [ -L "${d%/}" ] && continue                      # symlinks (fx Nova) opdateres for sig selv nedenfor
   update_dir "$d"; [ $? -eq 1 ] && hub_changed=1

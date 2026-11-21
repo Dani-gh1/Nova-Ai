@@ -1,4 +1,5 @@
-"""Holder botternes kode ajour: git pull (kun fast-forward) i hver hentet bot. Rører aldrig botternes data (de er ikke i git)."""
+"""Holder botternes kode ajour: git pull (kun fast-forward) i hver bot, der har sit eget git. Rører aldrig botternes data.
+Botter, der ligger i Hub-AI-repoet (bots/<navn> uden eget .git), opdateres sammen med hubben og springes over her."""
 from __future__ import annotations
 
 import os
@@ -60,7 +61,7 @@ def update_bots(bots: list[dict], bot_dir, say=print, quiet_same: bool = False, 
         if b.get("disabled") or b.get("external") or not b.get("repo"):
             continue
         d = bot_dir(b)
-        if not d.exists():
+        if not d.exists() or not (d / ".git").exists():      # mangler, eller ligger i Hub-AI-repoet og følger med hubben
             continue
         if d in done:
             out[b["key"]] = done[d][0]

@@ -2,7 +2,7 @@
 
 serve  kun hubben (botterne kører allerede på deres egne porte)
 run    starter alle installerede botter og hubben
-fetch  henter manglende botter fra GitHub ind i bots/
+fetch  tjekker, at alle botter er der (de ligger i Hub-AI-repoet under bots/)
 status viser hvad der er installeret og kører
 report  samler alt til fejlfinding i én udskrift (versioner, datakilder, status, logs)
 doctor tester botternes datakilder og forklarer, hvis noget er spærret eller overvåget på dit netværk
@@ -14,7 +14,6 @@ import copy
 import os
 import shutil
 import signal
-import subprocess
 import sys
 from pathlib import Path
 
@@ -118,10 +117,9 @@ def cmd_fetch(bots) -> None:
         elif not b.get("repo"):
             print(f"- {b['name']}: ingen repo sat i bots.json endnu")
         elif bot_dir(b).exists():
-            pass                                   # opdateres nedenfor
+            pass                                   # botter med eget git opdateres nedenfor
         else:
-            print(f"↓ {b['name']}: henter {b['repo']}")
-            subprocess.run(["git", "clone", "-q", f"https://github.com/{b['repo']}.git", str(bot_dir(b))], check=False)
+            print(f"! {b['name']}: mangler i {bot_dir(b)}. Botterne ligger i Hub-AI-repoet: kør  git pull  i hubbens mappe")
     from .updater import update_bots
     update_bots(bots, bot_dir, backup_root=ROOT)   # hentede botter får også den nyeste kode
 
@@ -148,7 +146,7 @@ def cmd_status(bots) -> None:
             elif why:
                 print(f"             sidste fejl: {why}")
             elif inst == "mangler":
-                print("             ikke hentet til denne maskine: python3 -m hub fetch")
+                print("             mangler på denne maskine: kør  git pull  i hubbens mappe")
             else:
                 print(f"             ingen fejl i loggen. Se: tail -20 {ROOT / 'logs' / (b['key'] + '.log')}")
 
