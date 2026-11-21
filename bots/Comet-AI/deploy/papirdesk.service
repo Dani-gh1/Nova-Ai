@@ -1,0 +1,29 @@
+# Papirdesk - KUN papirhandel (ingen nøgler, ingen transaktioner)
+# Installér:  sudo cp deploy/papirdesk.service /etc/systemd/system/ && sudo systemctl daemon-reload
+#             sudo systemctl enable --now papirdesk
+[Unit]
+Description=Papirdesk - papirhandels-bot for nye tokens (Base/Ethereum/BNB)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=papirdesk
+WorkingDirectory=/opt/papirdesk
+ExecStart=/usr/bin/python3 -m desk run
+Restart=always
+RestartSec=10
+Environment=PYTHONUNBUFFERED=1
+Environment=DESK_DATA_DIR=/opt/papirdesk/data
+# Valgfrit:
+# Environment=DESK_NTFY_TOPIC=mit-hemmelige-emne
+# Environment=DESK_PORT=8787
+# Environment=DESK_HOST=0.0.0.0
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/opt/papirdesk/data
+
+[Install]
+WantedBy=multi-user.target
