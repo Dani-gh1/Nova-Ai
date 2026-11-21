@@ -424,7 +424,7 @@ function vStrategy() {
 /* ---------- HUB-OVERBLIK (alle botter) ---------- */
 /* Kassen: rigtige penge (eller simulering), fordelt på markederne efter Smart strategi */
 function liveCard(lv) {
-  if (!lv) return null;
+  if (!lv || lv.mode !== "1") return null;              // vises først, når der handles med rigtige penge
   const sim = lv.mode === "dry", usd = (v) => `${nf(v, 2)} USD`, pf = lv.smart;
   const head = h("div", { class: "head" }, h("h2", {}, sim ? "Kassen (simulering)" : "Kassen · rigtige penge"),
     h("p", {}, "Her lægges pengene ind. Smart strategi (samme regel, men kun strategier, der kan handles for rigtigt) bestemmer, hvilken strategi pengene følger, og Kassen flytter pengene til det marked, den handles på."));

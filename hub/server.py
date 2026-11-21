@@ -610,7 +610,7 @@ def watch_stalls(ov: "Overview", note: Notifier) -> None:
 
 def start_live(ov: "Overview", bots: list[dict], note: Notifier | None = None) -> None:
     """Rigtige penge, hvis HUB_LIVE er sat: Smart strategi vælger strategien, Kassen fordeler pengene til markederne."""
-    if os.environ.get("HUB_LIVE", "").strip() in ("", "0", "off"):
+    if os.environ.get("HUB_LIVE", "").strip() != "1":          # kun rigtige penge, ingen simulering
         return
     say = lambda m: print(m, flush=True)
     allow = live_bots(bots)
