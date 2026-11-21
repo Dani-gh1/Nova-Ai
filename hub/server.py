@@ -156,9 +156,16 @@ def last_problem(bot: dict) -> str:
             tail = (LOG_DIR / name).read_bytes()[-8000:].decode("utf-8", "replace")
         except OSError:
             continue
+        skip = False
         for line in reversed(tail.splitlines()):
             if re.search(r"BrokenPipe|ConnectionReset|ConnectionAborted", line):
-                continue                     # hubben (eller en browser) lagde på, mens botten svarede: ikke en fejl i botten
+                skip = True                  # hubben (eller en browser) lagde på, mens botten svarede: ikke en fejl i botten
+                continue
+            if skip:                         # spring resten af den fejlbesked over, op til dens "Traceback"-linje
+                skip = not line.startswith("Traceback") and not line.startswith("----")
+                continue
+            if line.startswith("Exception occurred during processing of request"):
+                continue                     # webserverens overskrift til samme fejlbesked
             if re.search(r"Error|Exception|fejlede|svarer ikke|spærret|Traceback", line) and 'File "' not in line:
                 return line.strip()[-170:]
     return ""

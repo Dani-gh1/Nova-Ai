@@ -90,6 +90,21 @@ class HubTests(unittest.TestCase):
         self.assertIsNone(out["best"])
         self.assertNotIn("_cands", out)
 
+    def test_a_client_hanging_up_is_not_shown_as_a_bot_problem(self):
+        import tempfile
+        log = ("ERROR scanning fejlede: HTTP 500\n" + "-" * 40 + "\n"
+               "Exception occurred during processing of request from ('127.0.0.1', 46766)\n"
+               "Traceback (most recent call last):\n  File \"x.py\", line 1, in f\n"
+               "BrokenPipeError: [Errno 32] Broken pipe\n" + "-" * 40 + "\n")
+        with tempfile.TemporaryDirectory() as d:
+            (Path(d) / "z.log").write_text(log)
+            old = srv.LOG_DIR
+            srv.LOG_DIR = Path(d)
+            try:
+                self.assertEqual(srv.last_problem({"key": "z"}), "ERROR scanning fejlede: HTTP 500")
+            finally:
+                srv.LOG_DIR = old
+
     def test_delphi_problems_are_read_from_its_data_and_its_motor_log(self):
         import tempfile
         with tempfile.TemporaryDirectory() as d:
