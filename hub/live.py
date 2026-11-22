@@ -423,6 +423,20 @@ class Kasse:
                 pass
         self.state["read_lines"] = len(lines)
 
+    def sync_cash(self) -> None:
+        """Rigtige penge: kontanterne i hvert marked = det, Binance faktisk har (fri USDT/USDC), så indskud og hævninger
+        tæller med af sig selv, og Nova AI aldrig handler for penge, der ikke er der."""
+        for k, v in self.venues.items():
+            try:
+                if v.meta["kind"] == "futures":
+                    bal = v.broker._req("GET", "/fapi/v2/balance", signed=True)
+                    v.state["cash"] = sum(float(b["availableBalance"]) for b in bal if b.get("asset") in ("USDT", "USDC"))
+                else:
+                    acct = v.broker._req("GET", "/api/v3/account", {"omitZeroBalances": "true"}, signed=True)
+                    v.state["cash"] = sum(float(b["free"]) for b in acct.get("balances", []) if b.get("asset") == "USDT")
+            except Exception as e:
+                v.problem = f"Kan ikke læse saldoen: {e}"[:160]
+
     def ready(self) -> str:
         if not self.mode:
             return "Slået fra (HUB_LIVE er ikke sat)"
@@ -471,6 +485,8 @@ class Kasse:
             self.state["following"] = following
             self.read_deposits()
             self.problem = self.ready()
+            if self.mode == "1" and not self.problem:
+                self.sync_cash()
             try:
                 for k, v in self.venues.items():
                     v.problem = ""

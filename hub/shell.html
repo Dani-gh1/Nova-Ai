@@ -471,8 +471,11 @@ function renderHub(rows, live, sm) {
     h("div", { class: "grid kpis two" },
       kpi("Markeder der scanner", `${ok.length} af ${conf.length}`, bad.length && bad.length < 5 ? null : (bad.length ? `${bad.length} er nede` : "alle kører"),
         bad.length ? "neg" : "pos", bad.length && bad.length < 5 ? h("div", { class: "down" }, bad.map((b) => h("div", {}, why(b)))) : null),
-      (() => { const real = live && live.mode === "1", kr = real ? live.value_dkk - live.deposited_dkk : 0;   // 0 kr., indtil der er rigtige penge
-        return kpi(kr < 0 ? "Tabt" : "Tjent", `${kr > 0 ? "+" : kr < 0 ? "−" : ""}${nf(Math.abs(kr), 0)} kr.`, real ? `af ${nf(live.deposited_dkk, 0)} kr. sat ind` : "ingen penge sat ind endnu", tone(kr)); })(),
+      (() => { const r = live && live.mode === "1" ? live.real : null, usd = r ? r.earned_usd : 0;   // 0, indtil der er rigtige penge; tal direkte fra Binance
+        const sign = (v) => v > 0 ? "+" : v < 0 ? "−" : "";
+        return kpi(usd < 0 ? "Tabt" : "Tjent", `${sign(usd)}${nf(Math.abs(usd), 2)} USD`,
+          r ? `Saldo hos Binance: ${nf(r.balance_usd, 2)} USD` : "ingen penge sat ind endnu", tone(usd),
+          r && r.earned_dkk != null ? `ca. ${sign(r.earned_dkk)}${nf(Math.abs(r.earned_dkk), 0)} kr. · saldo ca. ${nf(r.balance_dkk, 0)} kr. · indsat ${nf(r.deposited_usd, 2)} USD` : null); })(),
       kpi("Nova Bot", sm ? pct(sm.today_pct) : "–", sm ? (sm.following ? `i dag · følger ${sm.following}` : "i dag · venter på, at en strategi stiger") : "starter", sm && tone(sm.today_pct))),
     smartCard(sm),
     calendarCard(sm),

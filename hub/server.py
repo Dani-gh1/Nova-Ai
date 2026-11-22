@@ -525,7 +525,8 @@ def make_handler(bots: list[dict], throttle: Throttle | None = None, ratelimit: 
                     return self._send(200, "application/json", json.dumps(out).encode())
                 if path == "/api/live":
                     ov = overview
-                    out = None if ov.live is None else {**ov.live.view(), "smart": ov.live_smart.view() if ov.live_smart else None}
+                    out = None if ov.live is None else {**ov.live.view(), "smart": ov.live_smart.view() if ov.live_smart else None,
+                                                        "real": getattr(ov, "real", None)}
                     return self._send(200, "application/json", json.dumps(out).encode())
                 m = re.match(r"^/api/bot/([a-z0-9_-]+)$", path)
                 if m and m.group(1) in by_key:
@@ -623,8 +624,17 @@ def start_live(ov: "Overview", bots: list[dict], note: Notifier | None = None) -
     say(f"Kassen: {('SIMULERING' if ov.live.mode == 'dry' else 'RIGTIGE PENGE')} på {', '.join(v.meta['name'] for v in ov.live.venues.values())}; "
         f"vælger blandt {len(allow)} botter: {', '.join(sorted(allow))}")
 
+    from .balance import BinanceBalance
+    from .live import BinanceFutures, BinanceSpot
+    key, secret = os.environ.get("BINANCE_API_KEY", ""), os.environ.get("BINANCE_API_SECRET", "")
+    bal = BinanceBalance(BinanceSpot(key, secret), BinanceFutures(key, secret))
+
     def loop():
         while True:
+            try:
+                ov.real = bal.read()                  # saldo og indskud direkte fra Binance
+            except Exception as e:
+                say(f"Saldo: kan ikke læse Binance: {e!r}")
             try:
                 ov.live_smart.step()
                 plan, names = live_plan(ov.live_smart.weights(), by_key, ov.live.total())
