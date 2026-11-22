@@ -100,6 +100,17 @@ class HubTests(unittest.TestCase):
                 srv.bot_data(bot)
         bg.assert_called_once_with(bot)
 
+    def test_the_overview_hands_every_bots_strategies_to_nova_bot(self):
+        from unittest import mock
+        bot = {"key": "z", "name": "Z", "port": 1, "adapter": "nova", "invests": ""}
+        data = {"strategies": [{"key": "a", "name": "A", "return_pct": 1.0, "trades": 3, "open": 0, "curve": [[1795000000, 0], [1795003600, 1]]}],
+                "trades": {"open": [], "closed": []}, "scan": 1795003600}
+        with mock.patch.object(srv, "port_open", return_value=True), mock.patch.object(srv, "bot_data", return_value=data), \
+                mock.patch.object(srv, "collecting_since", return_value=None):
+            out = srv.bot_overview(bot)
+        self.assertEqual(len(out["_cands"]), 1)                   # gik engang tabt i en kommentar, og Nova Bot fik ingen data
+        self.assertEqual(out["strategies"][0]["key"], "a")
+
     def test_a_client_hanging_up_is_not_shown_as_a_bot_problem(self):
         import tempfile
         log = ("ERROR scanning fejlede: HTTP 500\n" + "-" * 40 + "\n"

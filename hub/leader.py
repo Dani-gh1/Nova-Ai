@@ -51,7 +51,7 @@ class SmartLeader(SmartBot):
             return
         if st.get("day"):
             st.setdefault("days", {})[st["day"]] = round((st["acct"] / st.get("day_acct", 1.0) - 1) * 100, 4)
-            self.log(f"Smart: {st['day']} sluttede på {st['days'][st['day']]:+.2f} %")
+            self.log(f"Nova Bot: {st['day']} sluttede på {st['days'][st['day']]:+.2f} %")
         st["day"], st["day_acct"], st["bases"], st["held"] = day, st["acct"], {}, None
 
     def _gains(self, allc: dict) -> dict[str, float]:
@@ -110,7 +110,7 @@ class SmartLeader(SmartBot):
         why = f"overhalede {h['name']} ({gains[to]:+.2f} % mod {gains.get(h['id'], 0.0):+.2f} %)" if h else f"steg først ({gains[to]:+.2f} %)"
         st["switches"] = (st["switches"] + [{"ts": round(now), "from": h and h["name"], "from_bot": h and h["bot_name"], "to": c["name"],
                                              "to_bot": c["bot_name"], "why": why, "result_pct": None if result is None else round(result, 2), "smart_pct": round((st["acct"] - 1) * 100, 4)}])[-500:]
-        self.log(f"Smart: {(h and h['name']) or 'start'} → {c['name']} ({c['bot_name']}): {why}")
+        self.log(f"Nova Bot: {(h and h['name']) or 'start'} → {c['name']} ({c['bot_name']}): {why}")
         cb = getattr(self, "on_switch", None)
         if cb:
             res = "" if result is None else f" --{result:+.2f}%-->"

@@ -424,9 +424,9 @@ function vStrategy() {
 /* ---------- HUB-OVERBLIK (alle botter) ---------- */
 /* Smart strategi: følger den strategi, der fører i dag; skift vises som "solgt --resultat--> købt" */
 function smartCard(sm) {
-  if (!sm) return h("div", { class: "card" }, h("div", { class: "head" }, h("h2", {}, "Smart strategi")), h("div", { class: "empty" }, "Starter, når markederne har svaret første gang."));
+  if (!sm) return h("div", { class: "card" }, h("div", { class: "head" }, h("h2", {}, "Nova Bot")), h("div", { class: "empty" }, "Starter, når markederne har svaret første gang."));
   const wrap = h("div", { class: "chart", style: "height:200px" });
-  const box = h("div", { class: "card" }, h("div", { class: "head" }, h("h2", {}, "Smart strategi")),
+  const box = h("div", { class: "card" }, h("div", { class: "head" }, h("h2", {}, "Nova Bot")),
     sm.warning ? h("p", { class: "note", style: "color:var(--warn)" }, sm.warning) : null,
     h("div", { class: "grid kpis", style: "margin-bottom:14px" },
       kpi("I dag", pct(sm.today_pct), "starter forfra ved midnat", tone(sm.today_pct)),
@@ -440,7 +440,7 @@ function smartCard(sm) {
         h("td", { class: "swap" }, h("span", { class: "name" }, x.from || "Start"),
           h("span", { class: "arrow " + tone(x.result_pct) }, x.result_pct == null ? "→" : `–${pct(x.result_pct)}→`),
           h("span", { class: "name" }, x.to, h("span", { class: "mute" }, ` (${x.to_bot})`)))))))) : null);
-  requestAnimationFrame(() => { if (wrap.isConnected) drawChart(wrap, [{ key: "smart", name: "Smart strategi", curve: sm.curve }], { smart: "var(--acc)" }); });
+  requestAnimationFrame(() => { if (wrap.isConnected) drawChart(wrap, [{ key: "smart", name: "Nova Bot", curve: sm.curve }], { smart: "var(--acc)" }); });
   return box;
 }
 /* Månedskalender: hvad Smart har tjent hver dag */
@@ -456,7 +456,7 @@ function calendarCard(sm) {
   const nav = (dx) => h("button", { class: "calnav", type: "button", onclick: () => { calShift += dx; load(true); } }, dx < 0 ? "‹" : "›");
   return h("div", { class: "card" }, h("div", { class: "head calhead" }, nav(-1),
       h("h2", {}, first.toLocaleDateString("da-DK", { month: "long", year: "numeric" })), calShift < 0 ? nav(1) : h("span", {}),
-      h("p", {}, `Smart pr. dag · måneden: ${pct((total - 1) * 100)}`)),
+      h("p", {}, `Nova Bot pr. dag · måneden: ${pct((total - 1) * 100)}`)),
     h("div", { class: "cal" }, ...["man", "tir", "ons", "tor", "fre", "lør", "søn"].map((d) => h("div", { class: "dow" }, d)),
       ...cells.map((c) => c ? h("div", { class: "day " + (c.v == null ? "" : tone(c.v)) }, h("span", { class: "d" }, String(c.d)),
         h("b", {}, c.v == null ? "" : pct(c.v))) : h("div", {}))));
@@ -473,7 +473,7 @@ function renderHub(rows, live, sm) {
         bad.length ? "neg" : "pos", bad.length && bad.length < 5 ? h("div", { class: "down" }, bad.map((b) => h("div", {}, why(b)))) : null),
       (() => { const real = live && live.mode === "1", kr = real ? live.value_dkk - live.deposited_dkk : 0;   // 0 kr., indtil der er rigtige penge
         return kpi(kr < 0 ? "Tabt" : "Tjent", `${kr > 0 ? "+" : kr < 0 ? "−" : ""}${nf(Math.abs(kr), 0)} kr.`, real ? `af ${nf(live.deposited_dkk, 0)} kr. sat ind` : "ingen penge sat ind endnu", tone(kr)); })(),
-      kpi("Smart strategi", sm ? pct(sm.today_pct) : "–", sm ? (sm.following ? `i dag · følger ${sm.following}` : "i dag · venter på, at en strategi stiger") : "starter", sm && tone(sm.today_pct))),
+      kpi("Nova Bot", sm ? pct(sm.today_pct) : "–", sm ? (sm.following ? `i dag · følger ${sm.following}` : "i dag · venter på, at en strategi stiger") : "starter", sm && tone(sm.today_pct))),
     smartCard(sm),
     calendarCard(sm),
     allStrategiesCard(rows));
@@ -483,7 +483,7 @@ function renderHub(rows, live, sm) {
 let showAllStrategies = false;
 function allStrategiesCard(rows) {
   const all = rows.flatMap((b) => (b.strategies || []).map((s) => ({ ...s, bot: b })))
-    .filter((s) => typeof s.return_pct === "number" && Math.round(s.return_pct * 100) !== 0)     // 0 % (intet afkast endnu) tæller ikke
+    .filter((s) => typeof s.return_pct === "number")                       // alle strategier, også dem på 0 %
     .sort((x, y) => y.return_pct - x.return_pct);
   const list = showAllStrategies ? all : all.slice(0, 20);
   const more = all.length > 20 ? h("button", { class: "more", type: "button", onclick: () => { showAllStrategies = !showAllStrategies; load(true); } },

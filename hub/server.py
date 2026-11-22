@@ -283,7 +283,8 @@ def bot_overview(bot: dict) -> dict:
             data = bot_data(bot)
             out["best"] = best_of(data["strategies"])
             out["strategies"] = [{"key": x.get("key"), "name": x.get("name"), "return_pct": x.get("return_pct"), "trades": x.get("trades") or 0}
-                                 for x in data["strategies"]]          # til forsidens tabel over alle strategier            out["_cands"] = smart_candidates(data["strategies"], bot)      # bruges kun af Smart-botten
+                                 for x in data["strategies"]]          # til forsidens tabel over alle strategier
+            out["_cands"] = smart_candidates(data["strategies"], bot)      # bruges kun af Smart-botten
             out["trades"] = {"open": sum(x.get("open") or 0 for x in data["strategies"]),
                              "closed": sum(x.get("trades") or 0 for x in data["strategies"])}
             out["scan_age"] = max(0.0, time.time() - data["scan"]) if data.get("scan") else None
@@ -592,7 +593,7 @@ def stalls(ov: "Overview", now: float | None = None) -> list[tuple[str, str]]:
             out.append((f"bot:{b['key']}", f"{b['name']} har ikke scannet i {int(b['scan_age'] // 60)} min."))
     upd = (ov.smart.state.get("updated") if ov.smart else None) or now
     if now - upd > 30 * 60:
-        out.append(("smart", f"Smart strategi har ikke opdateret i {int((now - upd) // 60)} min."))
+        out.append(("smart", f"Nova Bot har ikke opdateret i {int((now - upd) // 60)} min."))
     return out
 
 
@@ -653,7 +654,7 @@ def serve(host: str, port: int, bots: list[dict] | None = None) -> None:
     # Smart strategi kører hele tiden, også når ingen kigger: henter friske tal fra botterne og tager et skridt hvert minut
     threading.Thread(target=ov.smart.run, args=(ov.fresh,), daemon=True, name="smart").start()
     note = Notifier()
-    ov.smart.on_switch = lambda text: note.async_send("Smart skiftede", text)
+    ov.smart.on_switch = lambda text: note.async_send("Nova Bot skiftede", text)
     start_live(ov, bots, note)
     threading.Thread(target=watch_stalls, args=(ov, note), daemon=True, name="watch").start()
     httpd = ThreadingHTTPServer((host, port), handler)

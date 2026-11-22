@@ -38,17 +38,17 @@ python3 -m hub run
 Åbn <http://127.0.0.1:8080>. `run` starter botterne (hver på sin egen port, kun lokalt)
 og hubben. `python3 -m hub status` viser hvad der kører. Kun Python 3.11+ standardbibliotek.
 
-## Smart strategi (den primære)
+## Nova Bot (den primære)
 
-Forsidens **Smart strategi** starter forfra hver dag ved midnat og følger altid den strategi, der er steget mest den dag, og skifter i samme
+Forsidens **Nova Bot** starter forfra hver dag ved midnat og følger altid den strategi, der er steget mest den dag, og skifter i samme
 øjeblik, en anden overhaler den. Den kører hele tiden i hubben og gemmer sin konto i `logs/smart-leader.json`.
 
-Eksempel: strategi 1 stiger til +2 %, så står Smart på +2 %. Strategi 2 stiger til +1,5 %: ingen betydning. Falder strategi 1
-derefter, falder Smart med, og i det øjeblik strategi 1 kommer under strategi 2 (ved +1,5 %), skifter Smart til strategi 2 og
-står på +1,5 %. Springer en strategi forbi en anden i ét hug (fx når en stor handel lukker), følger Smart springet, som en
+Eksempel: strategi 1 stiger til +2 %, så står Nova Bot på +2 %. Strategi 2 stiger til +1,5 %: ingen betydning. Falder strategi 1
+derefter, falder Nova Bot med, og i det øjeblik strategi 1 kommer under strategi 2 (ved +1,5 %), skifter Nova Bot til strategi 2 og
+står på +1,5 %. Springer en strategi forbi en anden i ét hug (fx når en stor handel lukker), følger Nova Bot springet, som en
 rigtig konto ville, og skifter lige bagefter.
 
-**Kassen** er stedet, de rigtige penge lægges ind. Smart strategi (samme regel, men kun strategier, der kan handles for
+**Kassen** er stedet, de rigtige penge lægges ind. Nova Bot (samme regel, men kun strategier, der kan handles for
 rigtigt) bestemmer, hvilken strategi pengene følger, og Kassen flytter pengene til det marked og ejer de samme positioner.
 
 | Marked | Botter | Status |
