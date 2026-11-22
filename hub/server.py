@@ -176,6 +176,23 @@ def last_problem(bot: dict) -> str:
     return ""
 
 
+PERIODS = {"24t": 86400, "7d": 7 * 86400, "1m": 30 * 86400}
+
+
+def period_returns(curve, return_pct=None, now=None) -> dict:
+    """Afkast over 24 timer, 7 dage og 1 måned ud fra strategiens kurve (kumulative procent), og Max = hele vejen."""
+    now = now or time.time()
+    cv = sorted((p for p in curve or [] if isinstance(p, (list, tuple)) and len(p) >= 2 and isinstance(p[1], (int, float))), key=lambda p: p[0])
+    out = {"max": return_pct if isinstance(return_pct, (int, float)) else (cv[-1][1] if cv else None)}
+    for k, sec in PERIODS.items():
+        if len(cv) < 2:
+            out[k] = None
+            continue
+        base = next((p[1] for p in reversed(cv) if p[0] <= now - sec), cv[0][1])     # kortere historik: fra første måling
+        out[k] = round(((100 + cv[-1][1]) / (100 + base) - 1) * 100, 4) if 100 + base > 0 else None
+    return out
+
+
 def fee_rule(bot: dict) -> list:
     """Botens gebyrer som en regel, der vises under hver strategi (de er allerede trukket fra i botens egne tal)."""
     f = bot.get("fees") or {}
@@ -282,7 +299,8 @@ def bot_overview(bot: dict) -> dict:
         try:
             data = bot_data(bot)
             out["best"] = best_of(data["strategies"])
-            out["strategies"] = [{"key": x.get("key"), "name": x.get("name"), "return_pct": x.get("return_pct"), "trades": x.get("trades") or 0}
+            out["strategies"] = [{"key": x.get("key"), "name": x.get("name"), "return_pct": x.get("return_pct"), "trades": x.get("trades") or 0,
+                                  "ret": period_returns(x.get("curve"), x.get("return_pct"))}
                                  for x in data["strategies"]]          # til forsidens tabel over alle strategier
             out["_cands"] = smart_candidates(data["strategies"], bot)      # bruges kun af Smart-botten
             out["trades"] = {"open": sum(x.get("open") or 0 for x in data["strategies"]),

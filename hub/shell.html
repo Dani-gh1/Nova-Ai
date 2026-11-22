@@ -196,6 +196,7 @@ a.back{display:inline-block;margin-bottom:12px;color:var(--ink2);text-decoration
 .cal .day.pos{background:color-mix(in srgb,var(--pos) 12%,transparent)}.cal .day.neg{background:color-mix(in srgb,var(--neg) 12%,transparent)}
 .cal .day.pos b{color:var(--pos)}.cal .day.neg b{color:var(--neg)}
 @media (max-width:640px){.cal .day b{font-size:10px}.cal .day{min-height:44px;padding:4px}}
+.headrow{display:flex;flex-wrap:wrap;align-items:center;gap:10px}.headrow h2{margin-right:auto}.headrow p{flex-basis:100%}.headrow .seg button{padding:5px 11px;font-size:13px}
 </style>
 </head>
 <body>
@@ -262,6 +263,16 @@ function route() {
   DATA = null; lastJson = ""; chartState = null;
   render(); window.scrollTo({ top: 0 });
 }
+/* Periode for ranglister og grafer: 24 timer, 7 dage, 1 måned eller Max (huskes i browseren) */
+const PERIODS = [["24t", "24 t", 86400], ["7d", "7 dage", 7 * 86400], ["1m", "1 måned", 30 * 86400], ["max", "Max", Infinity]];
+let PERIOD = (() => { try { return localStorage.getItem("period") || "24t"; } catch (e) { return "24t"; } })();
+const periodSec = () => (PERIODS.find((p) => p[0] === PERIOD) || PERIODS[0])[2];
+const periodName = () => ({ "24t": "24 timer", "7d": "7 dage", "1m": "1 måned", max: "hele perioden" })[PERIOD];
+function periodSeg() {
+  return h("div", { class: "seg", role: "group", "aria-label": "Periode" }, PERIODS.map(([k, t]) => h("button", { type: "button", "aria-pressed": String(k === PERIOD),
+    onclick: () => { PERIOD = k; try { localStorage.setItem("period", k); } catch (e) {} lastJson = ""; if (curKey === OV) load(true); else render(true); } }, t)));
+}
+const since = (cv) => { const t = Date.now() / 1000 - periodSec(); return PERIOD === "max" ? cv : (cv || []).filter((p) => p[0] >= t); };
 const stratHref = (bot, key) => `#s/${encodeURIComponent(bot)}/${encodeURIComponent(key)}`;
 
 /* ---------- data ---------- */
@@ -393,29 +404,29 @@ function vStrategy() {
   const s = (DATA.strategies || []).find((x) => String(x.key) === curStrat.key || x.name === curStrat.key);
   const back = h("a", { class: "back", href: "#" }, "← Forsiden");
   if (!s) return view(back, h("div", { class: "msg" }, h("h2", {}, "Strategien findes ikke"), h("p", {}, "Den er måske omdøbt eller fjernet.")));
-  const now = Date.now() / 1000, day = now - 86400, cv = s.curve || [];
+  const now = Date.now() / 1000, day = PERIOD === "max" ? 0 : now - periodSec(), cv = s.curve || [];
   const at = (t) => { let v = null; for (const p of cv) { if (p[0] <= t) v = p[1]; else break; } return v; };
   const base = at(day) ?? (cv.length ? cv[0][1] : null), last = cv.length ? cv[cv.length - 1][1] : null;
   const r24 = base != null && last != null && 100 + base > 0 ? ((100 + last) / (100 + base) - 1) * 100 : null;
   const mine = (t) => t.strategy === s.name || t.strategy === String(s.key);
   const open = (DATA.trades.open || []).filter(mine), closed = (DATA.trades.closed || []).filter((t) => mine(t) && t.ts >= day);
   const wrap = h("div", { class: "chart", style: "height:240px" });
-  const recent = { ...s, curve: cv.filter((p) => p[0] >= day - 3600) };
+  const recent = { ...s, curve: PERIOD === "max" ? cv : cv.filter((p) => p[0] >= day - 3600) };
   view(back,
-    h("div", { class: "card" }, h("div", { class: "head" }, h("h2", {}, s.name), h("p", {}, `${b.name}${s.description ? " · " + s.description : ""}`)),
+    h("div", { class: "card" }, h("div", { class: "head headrow" }, h("h2", {}, s.name), periodSeg(), h("p", {}, `${b.name}${s.description ? " · " + s.description : ""}`)),
       h("div", { class: "grid kpis", style: "margin-bottom:14px" },
-        kpi("Seneste 24 timer", pct(r24), "afkast efter gebyrer", tone(r24)),
+        kpi(PERIOD === "max" ? "Hele perioden" : "Seneste " + periodName(), pct(PERIOD === "max" ? s.return_pct : r24), "afkast efter gebyrer", tone(PERIOD === "max" ? s.return_pct : r24)),
         kpi("I alt", pct(s.return_pct), "siden strategien startede", tone(s.return_pct)),
-        kpi("Handler (24 t)", String(closed.length), `${open.length} åbne nu`),
+        kpi(`Handler (${periodName()})`, String(closed.length), `${open.length} åbne nu`),
         kpi("Vundet", s.win_rate == null ? "–" : nf(s.win_rate, 0) + " %", `${s.trades ?? 0} lukkede i alt`)),
       wrap),
-    h("div", { class: "card" }, h("div", { class: "head" }, h("h2", {}, "Handler de seneste 24 timer")),
+    h("div", { class: "card" }, h("div", { class: "head" }, h("h2", {}, PERIOD === "max" ? "Alle handler" : "Handler de seneste " + periodName())),
       open.length + closed.length ? h("div", { class: "tw" }, h("table", {},
         h("thead", {}, h("tr", {}, h("th", {}, "Tid"), h("th", {}, "Hvad"), h("th", { class: "hide-m" }, "Retning"), h("th", { class: "n" }, "Resultat"))),
         h("tbody", {}, [...open.map((t) => ({ ...t, isOpen: true })), ...closed].sort((a, z) => z.ts - a.ts).map((t) => h("tr", {},
           h("td", { class: "mute" }, when(t.ts) + (t.isOpen ? " · åben" : "")), h("td", { class: "name" }, t.symbol), h("td", { class: "hide-m" }, t.side || ""),
           h("td", { class: "n " + tone(t.result_pct) }, t.result_pct == null ? "–" : pct(t.result_pct))))))) :
-        h("div", { class: "empty" }, "Ingen handler de seneste 24 timer.")),
+        h("div", { class: "empty" }, PERIOD === "max" ? "Ingen handler endnu." : "Ingen handler de seneste " + periodName() + ".")),
     (s.rules || []).length ? h("div", { class: "card" }, h("div", { class: "head" }, h("h2", {}, "Regler")),
       h("div", { class: "kvs" }, s.rules.map(([a, z]) => h("div", { class: "kv" }, h("span", {}, a), h("b", {}, z))))) : null);
   requestAnimationFrame(() => { if (wrap.isConnected) drawChart(wrap, [recent], { [s.key]: "var(--acc)" }); });
@@ -426,7 +437,7 @@ function vStrategy() {
 function smartCard(sm) {
   if (!sm) return h("div", { class: "card" }, h("div", { class: "head" }, h("h2", {}, "Nova Bot")), h("div", { class: "empty" }, "Starter, når markederne har svaret første gang."));
   const wrap = h("div", { class: "chart", style: "height:200px" });
-  const box = h("div", { class: "card" }, h("div", { class: "head" }, h("h2", {}, "Nova Bot")),
+  const box = h("div", { class: "card" }, h("div", { class: "head headrow" }, h("h2", {}, "Nova Bot"), periodSeg()),
     sm.warning ? h("p", { class: "note", style: "color:var(--warn)" }, sm.warning) : null,
     h("div", { class: "grid kpis", style: "margin-bottom:14px" },
       kpi("I dag", pct(sm.today_pct), "starter forfra ved midnat", tone(sm.today_pct)),
@@ -440,7 +451,7 @@ function smartCard(sm) {
         h("td", { class: "swap" }, h("span", { class: "name" }, x.from || "Start"),
           h("span", { class: "arrow " + tone(x.result_pct) }, x.result_pct == null ? "→" : `–${pct(x.result_pct)}→`),
           h("span", { class: "name" }, x.to, h("span", { class: "mute" }, ` (${x.to_bot})`)))))))) : null);
-  requestAnimationFrame(() => { if (wrap.isConnected) drawChart(wrap, [{ key: "smart", name: "Nova Bot", curve: sm.curve }], { smart: "var(--acc)" }); });
+  requestAnimationFrame(() => { if (wrap.isConnected) drawChart(wrap, [{ key: "smart", name: "Nova Bot", curve: since(sm.curve) }], { smart: "var(--acc)" }); });
   return box;
 }
 /* Månedskalender: hvad Smart har tjent hver dag */
@@ -487,18 +498,19 @@ function renderHub(rows, live, sm) {
 let showAllStrategies = false;
 function allStrategiesCard(rows) {
   const all = rows.flatMap((b) => (b.strategies || []).map((s) => ({ ...s, bot: b })))
-    .filter((s) => typeof s.return_pct === "number")                       // alle strategier, også dem på 0 %
-    .sort((x, y) => y.return_pct - x.return_pct);
+    .map((s) => ({ ...s, r: s.ret && s.ret[PERIOD] != null ? s.ret[PERIOD] : (PERIOD === "max" ? s.return_pct : null) }))
+    .filter((s) => typeof s.r === "number")                                // alle strategier, også dem på 0 %
+    .sort((x, y) => y.r - x.r);
   const list = showAllStrategies ? all : all.slice(0, 20);
   const more = all.length > 20 ? h("button", { class: "more", type: "button", onclick: () => { showAllStrategies = !showAllStrategies; load(true); } },
     showAllStrategies ? "Vis kun top 20" : `Se alle ${all.length} strategier`) : null;
-  return h("div", { class: "card" }, h("div", { class: "head" }, h("h2", {}, "Bedste strategier"),
-      h("p", {}, "Tryk på en strategi for at se dens handler og afkast de seneste 24 timer.")),
+  return h("div", { class: "card" }, h("div", { class: "head headrow" }, h("h2", {}, "Bedste strategier"), periodSeg(),
+      h("p", {}, "Tryk på en strategi for at se dens handler, afkast og graf.")),
     all.length ? h("div", { class: "tw" }, h("table", {}, h("thead", {}, h("tr", {}, h("th", { class: "hide-m" }, "#"), h("th", {}, "Strategi"), h("th", {}, "Marked"),
-        h("th", { class: "n" }, "Afkast"), h("th", { class: "n" }, h("span", { class: "hide-m" }, "Lukkede handler"), h("span", { class: "under" }, "Handler")))),
+        h("th", { class: "n" }, `Afkast (${({ "24t": "24 t", "7d": "7 d", "1m": "1 md", max: "max" })[PERIOD]})`), h("th", { class: "n" }, h("span", { class: "hide-m" }, "Lukkede handler"), h("span", { class: "under" }, "Handler")))),
       h("tbody", {}, list.map((s, i) => h("tr", {}, h("td", { class: "mute hide-m" }, String(i + 1)), h("td", { class: "name" }, h("a", { href: stratHref(s.bot.key, s.key ?? s.name) }, s.name)),
         h("td", { class: "mute" }, s.bot.name),
-        h("td", { class: "n " + tone(s.return_pct) }, pct(s.return_pct)),
+        h("td", { class: "n " + tone(s.r) }, pct(s.r)),
         h("td", { class: "n" }, String(s.trades), s.trades < 20 ? h("span", { class: "tag hide-m" }, "få") : null)))))) :
       h("div", { class: "empty" }, "Ingen strategier med afkast endnu."),
     more);

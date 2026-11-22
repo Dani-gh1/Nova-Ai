@@ -111,6 +111,16 @@ class HubTests(unittest.TestCase):
         self.assertEqual(len(out["_cands"]), 1)                   # gik engang tabt i en kommentar, og Nova Bot fik ingen data
         self.assertEqual(out["strategies"][0]["key"], "a")
 
+    def test_returns_over_24_hours_7_days_1_month_and_max(self):
+        now = 1_800_000_000
+        cv = [[now - 40 * 86400, 0.0], [now - 8 * 86400, 10.0], [now - 2 * 86400, 21.0], [now - 3600, 32.1]]
+        r = srv.period_returns(cv, 32.1, now=now)
+        self.assertAlmostEqual(r["24t"], (132.1 / 121 - 1) * 100, places=3)      # fra målingen for 2 dage siden
+        self.assertAlmostEqual(r["7d"], (132.1 / 110 - 1) * 100, places=3)
+        self.assertAlmostEqual(r["1m"], (132.1 / 100 - 1) * 100, places=3)
+        self.assertEqual(r["max"], 32.1)
+        self.assertEqual(srv.period_returns([], None, now=now)["24t"], None)
+
     def test_a_client_hanging_up_is_not_shown_as_a_bot_problem(self):
         import tempfile
         log = ("ERROR scanning fejlede: HTTP 500\n" + "-" * 40 + "\n"
