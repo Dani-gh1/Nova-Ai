@@ -525,8 +525,8 @@ def make_handler(bots: list[dict], throttle: Throttle | None = None, ratelimit: 
                     return self._send(200, "application/json", json.dumps(out).encode())
                 if path == "/api/live":
                     ov = overview
-                    out = None if ov.live is None else {**ov.live.view(), "smart": ov.live_smart.view() if ov.live_smart else None,
-                                                        "real": getattr(ov, "real", None)}
+                    out = {**(ov.live.view() if ov.live is not None else {"mode": ""}),
+                           "smart": ov.live_smart.view() if ov.live_smart else None, "real": getattr(ov, "real", None)}
                     return self._send(200, "application/json", json.dumps(out).encode())
                 m = re.match(r"^/api/bot/([a-z0-9_-]+)$", path)
                 if m and m.group(1) in by_key:
@@ -610,6 +610,54 @@ def watch_stalls(ov: "Overview", note: Notifier) -> None:
         time.sleep(300)
 
 
+def read_money(say=print) -> dict | None:
+    """Pengene, som de står lige nu: Binance (saldo og indskud fra Binances historik) + Solana- og Polymarket-wallets.
+    Kun de steder, der er nøgler til, læses. None, hvis der ikke er nogen nøgler."""
+    parts, deposited, errors = {}, None, []
+    if os.environ.get("BINANCE_API_KEY") and os.environ.get("BINANCE_API_SECRET"):
+        try:
+            global _bal
+            if "_bal" not in globals():
+                from .balance import BinanceBalance
+                from .live import BinanceFutures, BinanceSpot
+                k, s = os.environ["BINANCE_API_KEY"], os.environ["BINANCE_API_SECRET"]
+                _bal = BinanceBalance(BinanceSpot(k, s), BinanceFutures(k, s))
+            b = _bal.read()
+            parts["Binance"], deposited = b["balance_usd"], b["deposited_usd"]
+        except Exception as e:
+            errors.append(f"Binance: {e}"[:120])
+    for name, env, mod, cls in (("Solana", "SOLANA_PRIVATE_KEY", ".solana", "SolanaWallet"), ("Polymarket", "POLYMARKET_PRIVATE_KEY", ".polymarket", "PolymarketWallet")):
+        if os.environ.get(env):
+            try:
+                if name not in _wallets:
+                    import importlib
+                    _wallets[name] = getattr(importlib.import_module(mod, "hub"), cls)()
+                parts[name] = _wallets[name].value_usd()["usd"]
+            except Exception as e:
+                errors.append(f"{name}: {e}"[:120])
+    if not parts and not errors:
+        return None
+    total = round(sum(parts.values()), 2)
+    earned = round(total - deposited, 2) if deposited is not None else 0.0      # uden Binance kendes indskuddet ikke
+    if errors:
+        say("Saldo: " + "; ".join(errors))
+    return {"balance_usd": total, "parts": parts, "deposited_usd": deposited, "earned_usd": earned, "errors": errors,
+            "at": round(time.time())}
+
+
+_wallets: dict = {}
+
+
+def watch_money(ov: "Overview") -> None:
+    """Læser pengene hvert minut (kun når der er nøgler), så forsiden viser præcis det, der står hos Binance og i wallets."""
+    while True:
+        try:
+            ov.real = read_money(lambda m: print(m, flush=True))
+        except Exception as e:
+            print(f"Saldo: fejl: {e!r}", flush=True)
+        time.sleep(60)
+
+
 def start_live(ov: "Overview", bots: list[dict], note: Notifier | None = None) -> None:
     """Rigtige penge, hvis HUB_LIVE er sat: Smart strategi vælger strategien, Kassen fordeler pengene til markederne."""
     if os.environ.get("HUB_LIVE", "").strip() != "1":          # kun rigtige penge, ingen simulering
@@ -624,17 +672,8 @@ def start_live(ov: "Overview", bots: list[dict], note: Notifier | None = None) -
     say(f"Kassen: {('SIMULERING' if ov.live.mode == 'dry' else 'RIGTIGE PENGE')} på {', '.join(v.meta['name'] for v in ov.live.venues.values())}; "
         f"vælger blandt {len(allow)} botter: {', '.join(sorted(allow))}")
 
-    from .balance import BinanceBalance
-    from .live import BinanceFutures, BinanceSpot
-    key, secret = os.environ.get("BINANCE_API_KEY", ""), os.environ.get("BINANCE_API_SECRET", "")
-    bal = BinanceBalance(BinanceSpot(key, secret), BinanceFutures(key, secret))
-
     def loop():
         while True:
-            try:
-                ov.real = bal.read()                  # saldo og indskud direkte fra Binance
-            except Exception as e:
-                say(f"Saldo: kan ikke læse Binance: {e!r}")
             try:
                 ov.live_smart.step()
                 plan, names = live_plan(ov.live_smart.weights(), by_key, ov.live.total())
@@ -667,6 +706,7 @@ def serve(host: str, port: int, bots: list[dict] | None = None) -> None:
     ov.smart.on_switch = lambda text: note.async_send("Nova Bot skiftede", text)
     start_live(ov, bots, note)
     threading.Thread(target=watch_stalls, args=(ov, note), daemon=True, name="watch").start()
+    threading.Thread(target=watch_money, args=(ov,), daemon=True, name="money").start()
     httpd = ThreadingHTTPServer((host, port), handler)
     httpd.daemon_threads = True
     print(f"Hub: http://{host}:{port}", flush=True)

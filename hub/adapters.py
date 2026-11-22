@@ -296,7 +296,7 @@ def nova(get):
                          {"title": "Hovedkonto (fiktive 10.000 $)", "rows": [[pretty(k), fmt(v)] for k, v in acc.items() if not isinstance(v, (dict, list))]}]}
     closed = [trade_row("Hovedkonto", t.get("symbol"), "long", t.get("closed_ts"), pct_of(t, "pnl_pct"), t.get("exit_reason", ""))
               for t in s.get("closed_trades", [])]
-    opened = [trade_row("Hovedkonto", t.get("symbol"), "long", t.get("opened_ts"), pct_of(t, "pnl_pct", "live_pct", "unrealized_pct"), "")
+    opened = [{**trade_row("Hovedkonto", t.get("symbol"), "long", t.get("opened_ts"), pct_of(t, "pnl_pct", "live_pct", "unrealized_pct"), ""), "mint": t.get("mint")}
               for t in s.get("open_positions", [])]
     for b in books:
         for t in b.get("recent") or []:
@@ -304,7 +304,8 @@ def nova(get):
                 closed.append(trade_row(b["name"], t.get("symbol"), "long", t.get("closed_ts") or t.get("ts"), pct_of(t, "pnl_pct", "ret_pct"), t.get("exit_reason") or t.get("reason", "")))
         for t in b.get("open") or []:
             if isinstance(t, dict):
-                opened.append(trade_row(b["name"], t.get("symbol"), "long", t.get("opened_ts") or t.get("ts"), pct_of(t, "pnl_pct", "live_pct"), ""))
+                opened.append({**trade_row(b["name"], t.get("symbol"), "long", t.get("opened_ts") or t.get("ts"), pct_of(t, "pnl_pct", "live_pct"), ""),
+                               "mint": t.get("mint")})                    # Solana-handel kræver møntens adresse
     return {"strategies": strategies, "desk": desk, "trades": {"open": opened, "closed": closed},
             "scan": ts((stat.get("last_scan") or {}).get("ts")) or ts(stat.get("last_event_ts"))}
 

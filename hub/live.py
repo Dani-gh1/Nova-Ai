@@ -44,7 +44,10 @@ HOME = "binance-spot"        # her lander indskud, og her står kontanterne
 VENUES = {
     "binance-spot": {"name": "Binance spot", "adapters": {"orion"}, "group": "binance", "kind": "spot", "fee": 0.001},
     "binance-futures": {"name": "Binance futures", "adapters": {"quasar"}, "group": "binance", "kind": "futures", "fee": 0.0005},
+    "solana": {"name": "Solana", "adapters": {"nova"}, "group": "solana", "kind": "spot", "fee": 0.005},
 }
+NEEDS = {"binance-spot": ("BINANCE_API_KEY", "BINANCE_API_SECRET"), "binance-futures": ("BINANCE_API_KEY", "BINANCE_API_SECRET"),
+         "solana": ("SOLANA_PRIVATE_KEY",)}
 
 
 def logs_dir() -> Path:
@@ -56,8 +59,11 @@ def deposits_file() -> Path:
 
 
 def enabled_venues() -> list[str]:
-    raw = os.environ.get("HUB_LIVE_VENUES") or ",".join(VENUES)
-    return [v.strip() for v in raw.split(",") if v.strip() in VENUES]
+    """Markeder, der kan handles for rigtigt: dem, der er nøgler til (eller HUB_LIVE_VENUES, hvis den er sat)."""
+    raw = os.environ.get("HUB_LIVE_VENUES")
+    if raw:
+        return [v.strip() for v in raw.split(",") if v.strip() in VENUES]
+    return [v for v in VENUES if all(os.environ.get(k) for k in NEEDS[v])]
 
 
 def venue_of(bot: dict, venues: list[str] | None = None) -> str | None:
@@ -86,7 +92,7 @@ def positions_for(held: dict | None, data: dict, kind: str = "spot") -> list[tup
         lev = float(m.group(1).replace(",", ".")) if m else 1.0
         if kind == "spot" and side != "long":
             continue
-        out.append((t["symbol"], side, lev))
+        out.append((t.get("mint") or t["symbol"], side, lev))             # Solana handler med møntens adresse
     return out
 
 
@@ -219,6 +225,9 @@ class BinanceFutures(BinanceAPI):
 
 
 def make_broker(venue: str):
+    if venue == "solana":
+        from .solana import SolanaWallet
+        return SolanaWallet()
     key, secret = os.environ.get("BINANCE_API_KEY", ""), os.environ.get("BINANCE_API_SECRET", "")
     return {"binance-spot": BinanceSpot, "binance-futures": BinanceFutures}[venue](key, secret)
 
@@ -428,6 +437,10 @@ class Kasse:
         tæller med af sig selv, og Nova AI aldrig handler for penge, der ikke er der."""
         for k, v in self.venues.items():
             try:
+                if k == "solana":
+                    from .solana import USDC_MINT
+                    v.state["cash"] = v.broker.tokens().get(USDC_MINT, 0.0)
+                    continue
                 if v.meta["kind"] == "futures":
                     bal = v.broker._req("GET", "/fapi/v2/balance", signed=True)
                     v.state["cash"] = sum(float(b["availableBalance"]) for b in bal if b.get("asset") in ("USDT", "USDC"))
@@ -440,8 +453,8 @@ class Kasse:
     def ready(self) -> str:
         if not self.mode:
             return "Slået fra (HUB_LIVE er ikke sat)"
-        if self.mode == "1" and not (os.environ.get("BINANCE_API_KEY") and os.environ.get("BINANCE_API_SECRET")):
-            return "Mangler BINANCE_API_KEY og BINANCE_API_SECRET i /etc/hub.env"
+        if self.mode == "1" and not self.venues:
+            return "Mangler nøgler: sæt Binance- og/eller wallet-nøgler i /etc/nova-ai.env"
         return ""
 
     def total(self) -> float:

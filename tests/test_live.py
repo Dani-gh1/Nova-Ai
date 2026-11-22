@@ -90,8 +90,8 @@ class KasseTests(unittest.TestCase):
         self.assertLess(v["deposits"][0]["usd"], 0)
 
     def test_real_mode_needs_keys(self):
-        k = self.kasse(mode="1")
-        self.assertIn("BINANCE_API_KEY", k.view()["problem"])
+        k = Kasse([], mode="1", log=self.logs.append)
+        self.assertIn("Mangler nøgler", k.view()["problem"])
 
     def test_deposits_from_the_command_line(self):
         k = self.kasse(mode="1")
@@ -129,7 +129,9 @@ class PlanTests(unittest.TestCase):
         slots = [({"id": "orion:momentum", "name": "Momentum", "bot": "orion", "bot_name": "Orion"}, 0.2),
                  ({"id": "quasar:momentum", "name": "Momentum", "bot": "quasar", "bot_name": "Quasar"}, 0.2),
                  ({"id": "atlas:x", "name": "X", "bot": "atlas", "bot_name": "Atlas"}, 0.2)]          # aktier: ikke koblet på endnu
-        plan, names = live_plan(slots, bots, 100.0, data_of=lambda b: data)
+        from unittest import mock
+        with mock.patch.dict(os.environ, {"HUB_LIVE_VENUES": "binance-spot,binance-futures"}):
+            plan, names = live_plan(slots, bots, 100.0, data_of=lambda b: data)
         self.assertEqual(plan["binance-spot"], {"BTCUSDT": ("long", 20.0, 1.0)})
         self.assertEqual(plan["binance-futures"], {"BTCUSDT": ("long", 10.0, 1.0), "ETHUSDT": ("short", 10.0, 3.0)})
         self.assertEqual(len(names), 2)
@@ -137,7 +139,19 @@ class PlanTests(unittest.TestCase):
     def test_only_bots_that_can_trade_for_real(self):
         bots = [{"key": "orion", "adapter": "orion"}, {"key": "atlas", "adapter": "stocks"}, {"key": "quasar", "adapter": "quasar"},
                 {"key": "x", "adapter": "orion", "disabled": True}]
-        self.assertEqual(live_bots(bots), {"orion", "quasar"})
+        self.assertEqual(live_bots(bots, ["binance-spot", "binance-futures"]), {"orion", "quasar"})
+
+    def test_markets_follow_the_keys_that_are_set(self):
+        from unittest import mock
+        with mock.patch.dict(os.environ, {"SOLANA_PRIVATE_KEY": "x"}, clear=False):
+            for k in ("BINANCE_API_KEY", "BINANCE_API_SECRET", "HUB_LIVE_VENUES"):
+                os.environ.pop(k, None)
+            self.assertEqual(L.enabled_venues(), ["solana"])               # Solana kan køre, selv om Binance ikke er klar
+            self.assertEqual(live_bots([{"key": "nova", "adapter": "nova"}, {"key": "orion", "adapter": "orion"}]), {"nova"})
+
+    def test_memecoins_are_traded_by_their_address(self):
+        data = {"trades": {"open": [{"strategy": "Momentum", "symbol": "BONK", "mint": "DezX...B263", "side": "long"}]}}
+        self.assertEqual(positions_for({"id": "nova:momentum", "name": "Momentum"}, data), [("DezX...B263", "long", 1.0)])
 
 
 class BinanceTests(unittest.TestCase):
