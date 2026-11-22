@@ -96,7 +96,7 @@ serve_on() {
   set -e; [ $RC -eq 0 ] || { tailscale_help "$OUT"; exit 1; }
   URL="$(echo "$OUT" | url_of)"; URL="${URL:-$(serve_url)}"
 }
-phone_link() { [ -n "${URL:-}" ] && echo "  Til telefonen (gemmer adressen): https://dani-gh1.github.io/Nova-AI/?server=${URL%/}"; return 0; }
+phone_link() { [ -n "${URL:-}" ] && echo "  Til telefonen (gemmer adressen): https://dani-gh1.github.io/Nova-Ai/?server=${URL%/}"; return 0; }
 
 case "${1:-status}" in
   private)

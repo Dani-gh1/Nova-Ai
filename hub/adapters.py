@@ -189,6 +189,8 @@ def delphi(get):
         res = pct_of(t, "result_pct") if is_open else (round(t["pnl"] / t["cost"] * 100, 2) if t.get("cost") and t.get("pnl") is not None else None)
         row = trade_row(t.get("strategy_name"), t.get("title"), t.get("side"), t.get("opened_ts") if is_open else (t.get("closed_ts") or t.get("opened_ts")),
                         res, t.get("reason") if is_open else t.get("exit_reason"))
+        if is_open:                                   # rigtig handel på Polymarket: marked + side (YES/NO)
+            row = {**row, "market": f"{t.get('market_key')}|{(t.get('side') or '').upper()}", "platform": t.get("platform")}
         (opened if is_open else closed).append(row)
     run = ov.get("last_run") or {}
     problem = last.get("error") or run.get("error") or ""

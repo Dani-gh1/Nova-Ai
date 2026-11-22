@@ -14,6 +14,7 @@ import urllib.request
 RPC = os.environ.get("POLYGON_RPC", "https://polygon-bor-rpc.publicnode.com")
 DATA = "https://data-api.polymarket.com"
 CLOB = "https://clob.polymarket.com"
+GAMMA = "https://gamma-api.polymarket.com"
 USDC_E = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"      # Polymarkets betalingsmønt (tjekket mod py_clob_client og kæden)
 
 
@@ -30,6 +31,20 @@ class PolymarketWallet:
         self.address = self.funder or self.signer
         self.open = opener or (lambda req: urllib.request.urlopen(req, timeout=30))
         self._client = None
+        self._tokens: dict[str, str] = {}
+
+    def token(self, sym: str) -> str:
+        """Delphis "polymarket:<marked-id>|YES" (eller |NO) -> Polymarkets token for den side. Et rent token gives uændret."""
+        if "|" not in sym:
+            return sym
+        if sym not in self._tokens:
+            key, side = sym.rsplit("|", 1)
+            m = self._http(f"{GAMMA}/markets/{key.split(':', 1)[1]}")
+            toks = json.loads(m["clobTokenIds"])
+            if len(toks) != 2:
+                raise RuntimeError(f"Polymarket-marked {key} har ikke to udfald")
+            self._tokens[sym] = toks[0 if side == "YES" else 1]     # som Delphi: første udfald = JA, andet = NEJ (også i sport)
+        return self._tokens[sym]
 
     def _http(self, url: str, body: dict | None = None):
         req = urllib.request.Request(url, data=json.dumps(body).encode() if body is not None else None,
@@ -89,16 +104,16 @@ class PolymarketWallet:
         out = {}
         for t in set(tokens):
             try:
-                out[t] = float(self._http(f"{CLOB}/midpoint?token_id={t}")["mid"])
+                out[t] = float(self._http(f"{CLOB}/midpoint?token_id={self.token(t)}")["mid"])
             except Exception:
                 pass
         return out
 
     def open_pos(self, token: str, side: str, usd: float, lev: float, px: float) -> dict:
-        r = self.market_order(token, "BUY", usd)
+        r = self.market_order(self.token(token), "BUY", usd)
         qty = float(r.get("takingAmount") or 0) or usd / px
         return {"qty": qty, "usd": float(r.get("makingAmount") or usd), "id": r.get("orderID")}
 
     def close_pos(self, token: str, pos: dict, px: float) -> dict:
-        r = self.market_order(token, "SELL", pos["qty"])
+        r = self.market_order(self.token(token), "SELL", pos["qty"])
         return {"qty": pos["qty"], "usd": float(r.get("takingAmount") or pos["qty"] * px), "id": r.get("orderID")}

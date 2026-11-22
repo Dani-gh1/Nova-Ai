@@ -45,9 +45,10 @@ VENUES = {
     "binance-spot": {"name": "Binance spot", "adapters": {"orion"}, "group": "binance", "kind": "spot", "fee": 0.001},
     "binance-futures": {"name": "Binance futures", "adapters": {"quasar"}, "group": "binance", "kind": "futures", "fee": 0.0005},
     "solana": {"name": "Solana", "adapters": {"nova"}, "group": "solana", "kind": "spot", "fee": 0.005},
+    "polymarket": {"name": "Polymarket", "adapters": {"delphi"}, "group": "polygon", "kind": "spot", "fee": 0.0},
 }
 NEEDS = {"binance-spot": ("BINANCE_API_KEY", "BINANCE_API_SECRET"), "binance-futures": ("BINANCE_API_KEY", "BINANCE_API_SECRET"),
-         "solana": ("SOLANA_PRIVATE_KEY",)}
+         "solana": ("SOLANA_PRIVATE_KEY",), "polymarket": ("POLYMARKET_PRIVATE_KEY",)}
 
 
 def logs_dir() -> Path:
@@ -84,7 +85,7 @@ def positions_for(held: dict | None, data: dict, kind: str = "spot") -> list[tup
     names = {held["name"], held["id"].split(":", 1)[1]}
     out = []
     for t in data.get("trades", {}).get("open", []):
-        if t.get("strategy") not in names:
+        if t.get("strategy") not in names or t.get("platform") == "kalshi":   # Kalshi er ikke koblet på endnu
             continue
         txt = (t.get("side") or "long").lower()
         side = "short" if txt.startswith(("short", "sell", "sælg")) else "long"
@@ -92,7 +93,9 @@ def positions_for(held: dict | None, data: dict, kind: str = "spot") -> list[tup
         lev = float(m.group(1).replace(",", ".")) if m else 1.0
         if kind == "spot" and side != "long":
             continue
-        out.append((t.get("mint") or t["symbol"], side, lev))             # Solana handler med møntens adresse
+        if t.get("market"):                                               # Polymarket: køb den side (YES/NO), strategien har
+            side = "long"
+        out.append((t.get("mint") or t.get("market") or t["symbol"], side, lev))   # Solana: møntens adresse
     return out
 
 
@@ -228,6 +231,9 @@ def make_broker(venue: str):
     if venue == "solana":
         from .solana import SolanaWallet
         return SolanaWallet()
+    if venue == "polymarket":
+        from .polymarket import PolymarketWallet
+        return PolymarketWallet()
     key, secret = os.environ.get("BINANCE_API_KEY", ""), os.environ.get("BINANCE_API_SECRET", "")
     return {"binance-spot": BinanceSpot, "binance-futures": BinanceFutures}[venue](key, secret)
 
@@ -440,6 +446,9 @@ class Kasse:
                 if k == "solana":
                     from .solana import USDC_MINT
                     v.state["cash"] = v.broker.tokens().get(USDC_MINT, 0.0)
+                    continue
+                if k == "polymarket":
+                    v.state["cash"] = v.broker.usdc()
                     continue
                 if v.meta["kind"] == "futures":
                     bal = v.broker._req("GET", "/fapi/v2/balance", signed=True)

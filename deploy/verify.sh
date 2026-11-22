@@ -106,5 +106,5 @@ echo "  1. Dashboardet kører 24/7:                 $(yn $R1)"
 echo "  2. Alle botter kører uden problem:         $(yn $R2)"
 echo "  3. Uafhængigt af dine enheder:             $(yn $R3)"
 echo "  4. Alle kan komme ind, hvor de end er:     $(yn $R4)"
-if [ -n "$URL" ]; then echo; echo "  Adresse:        $URL"; echo "  Til telefonen:  https://dani-gh1.github.io/Nova-AI/?server=$URL"; fi
+if [ -n "$URL" ]; then echo; echo "  Adresse:        $URL"; echo "  Til telefonen:  https://dani-gh1.github.io/Nova-Ai/?server=$URL"; fi
 [ "$R1$R2$R3$R4" = jajajaja ]

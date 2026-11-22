@@ -86,9 +86,9 @@ Første fane er **Overblik** for alle botter: en tabel over, om de kører, og en
 
 ## Hjemmeside, hjemmeskærm og download
 
-* **Indgang:** `index.html`, `download/` og `assets/` i roden er en lille hjemmeside (GitHub Pages, ligesom Flower) på <https://dani-gh1.github.io/Nova-AI/>. Skriv serverens
+* **Indgang:** `index.html`, `download/` og `assets/` i roden er en lille hjemmeside (GitHub Pages, ligesom Flower) på <https://dani-gh1.github.io/Nova-Ai/>. Skriv serverens
   adresse én gang, så åbner den dit dashboard med ét tryk (adressen gemmes kun i din egen browser). Et delbart link:
-  `…/Nova-AI/?server=<adresse>`. Siden `…/Nova-AI/download/` har installation, zip og trin til hjemmeskærmen.
+  `…/Nova-Ai/?server=<adresse>`. Siden `…/Nova-Ai/download/` har installation, zip og trin til hjemmeskærmen.
 * **Som app på telefonen:** åbn dashboardet, og vælg *Føj til hjemmeskærm* (iPhone: Del-knappen i Safari, Android: menuen ⋮).
   Dashboardet har eget ikon (`hub/static/`), manifest, plads til notch og hjemmebjælke og en menu i bunden på telefon.
 * **Logo og ikoner:** kilderne er `hub/static/*.svg`. `node tools/icons.js` og `node tools/og.js` tegner PNG-filerne igen
@@ -101,7 +101,7 @@ Hubben skal køre på en maskine, der altid er tændt, fx en Linux-server hos Or
 Log ind på serveren med SSH og installér én gang:
 
 ```bash
-git clone https://github.com/Dani-gh1/Nova-AI.git && cd Nova-AI && ./deploy/install.sh
+git clone https://github.com/Dani-gh1/Nova-Ai.git && cd Nova-Ai && ./deploy/install.sh
 ```
 
 Scriptet sætter alt op og skriver adressen og en adgangskode ud til sidst. På en **Mac** virker den samme kommando
@@ -194,7 +194,7 @@ Kræver Tailscale administratorrettigheder ("Access denied"), kører scriptet ko
 `sudo tailscale set --operator=$USER`.
 
 `./deploy/public.sh off` slår det hele fra, og `status` viser tilstand og adresse. Første gang skal du tillade HTTPS (og til `on`/`open` også Funnel) i
-din Tailscale-konto; scriptet siger hvordan. Brug Pages-linket `…/Nova-AI/?server=https://<adresse>` til at gemme adressen i telefonen.
+din Tailscale-konto; scriptet siger hvordan. Brug Pages-linket `…/Nova-Ai/?server=https://<adresse>` til at gemme adressen i telefonen.
 
 ## Tjek og ret alt på serveren: `verify.sh`
 

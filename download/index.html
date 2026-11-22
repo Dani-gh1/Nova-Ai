@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#f6f7fb" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0b0e14" media="(prefers-color-scheme: dark)">
 <meta name="color-scheme" content="light dark">
-<meta property="og:title" content="Download Nova AI"><meta property="og:image" content="https://dani-gh1.github.io/Nova-AI/assets/og-image.png">
+<meta property="og:title" content="Download Nova AI"><meta property="og:image" content="https://dani-gh1.github.io/Nova-Ai/assets/og-image.png">
 <link rel="manifest" href="../manifest.webmanifest">
 <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml"><link rel="icon" href="../assets/favicon-32.png" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
@@ -32,7 +32,7 @@
     <ol class="steps">
       <li><div><b>Log ind på din server</b><span>Med SSH, som du plejer. Det kræver Linux (Ubuntu), Python 3.11 eller nyere og git.</span></div></li>
       <li><div><b>Kør installationen</b><span>Én kommando. Scriptet sætter alt op og skriver adressen og en adgangskode ud til sidst.</span>
-        <div class="code"><code id="c1">git clone https://github.com/Dani-gh1/Nova-AI.git &amp;&amp; cd Nova-AI &amp;&amp; ./deploy/install.sh</code><button type="button" data-copy="c1">Kopiér</button></div></div></li>
+        <div class="code"><code id="c1">git clone https://github.com/Dani-gh1/Nova-Ai.git &amp;&amp; cd Nova-Ai &amp;&amp; ./deploy/install.sh</code><button type="button" data-copy="c1">Kopiér</button></div></div></li>
       <li><div><b>Åbn dashboardet</b><span>Gå til <a href="../">forsiden</a>, skriv serverens adresse, og du er inde.</span></div></li>
     </ol>
     <p class="hint">Glemt adgangskoden? Den står i filen <code>/etc/nova-ai.env</code> på serveren.</p>
@@ -43,12 +43,12 @@
   <p class="sub">Til at prøve den på en Mac eller Linux-computer. Computeren skal være tændt, for at botterne kører.</p>
   <div class="two">
     <div class="card">
-      <div class="dl"><a class="btn" href="https://github.com/Dani-gh1/Nova-AI/archive/refs/heads/main.zip" download>⬇ Download .zip</a>
-        <span class="meta">Hele programmet, ca. 1 MB.<br><a href="https://github.com/Dani-gh1/Nova-AI">Se på GitHub</a></span></div>
+      <div class="dl"><a class="btn" href="https://github.com/Dani-gh1/Nova-Ai/archive/refs/heads/main.zip" download>⬇ Download .zip</a>
+        <span class="meta">Hele programmet, ca. 1 MB.<br><a href="https://github.com/Dani-gh1/Nova-Ai">Se på GitHub</a></span></div>
     </div>
     <div class="card">
       <b>Så kører du den</b>
-      <div class="code"><code id="c2">cd Nova-AI
+      <div class="code"><code id="c2">cd Nova-Ai
 python3 -m hub fetch
 python3 -m hub run</code><button type="button" data-copy="c2">Kopiér</button></div>
       <p class="hint" style="margin-top:0">Åbn derefter <code>http://127.0.0.1:8080</code>.</p>
@@ -85,14 +85,14 @@ python3 -m hub run</code><button type="button" data-copy="c2">Kopiér</button></
   <div class="card">
     <ol class="steps">
       <li><div><b>Kør på serveren</b><span>Kun dine egne enheder (med Tailscale-appen) kan åbne den. Ingen adgangskode nødvendig.
-        <div class="code"><code id="c3">cd Nova-AI &amp;&amp; ./deploy/public.sh private</code><button type="button" data-copy="c3">Kopiér</button></div></span></div></li>
+        <div class="code"><code id="c3">cd Nova-Ai &amp;&amp; ./deploy/public.sh private</code><button type="button" data-copy="c3">Kopiér</button></div></span></div></li>
       <li><div><b>Tillad HTTPS én gang</b><span>Første gang beder Tailscale dig slå <i>HTTPS Certificates</i> til i din konto. Scriptet viser, hvor.</span></div></li>
       <li><div><b>Åbn adressen</b><span>Du får en fast adresse, der ender på <code>.ts.net</code>. Gem den på <a href="../">forsiden</a>, og læg den på hjemmeskærmen.</span></div></li>
     </ol>
     <p class="hint">Vil du åbne den fra en computer uden Tailscale, så brug <code>./deploy/public.sh on</code> (med adgangskode). Slå alt fra igen med <code>./deploy/public.sh off</code>.</p>
   </div>
 
-  <footer>Nova AI · Kun papirhandel med fiktive penge · <a href="../">Åbn dashboard</a> · <a href="https://github.com/Dani-gh1/Nova-AI">GitHub</a></footer>
+  <footer>Nova AI · Kun papirhandel med fiktive penge · <a href="../">Åbn dashboard</a> · <a href="https://github.com/Dani-gh1/Nova-Ai">GitHub</a></footer>
 </div>
 <script>
 "use strict";
