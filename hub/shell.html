@@ -465,16 +465,16 @@ function vStrategy() {
 }
 
 /* ---------- HUB-OVERBLIK (alle botter) ---------- */
-/* Smart strategi: følger den strategi, der fører i dag; skift vises som "solgt --resultat--> købt" */
+/* Smart strategi: følger den strategi, der er steget mest de seneste 24 timer; skift vises som "solgt --resultat--> købt" */
 function smartCard(sm) {
   if (!sm) return h("div", { class: "card" }, h("div", { class: "head" }, h("h2", {}, "Nova Bot")), h("div", { class: "empty" }, "Starter, når markederne har svaret første gang."));
   const wrap = h("div", { class: "chart", style: "height:200px" });
   const box = h("div", { class: "card" }, h("div", { class: "head" }, h("h2", {}, "Nova Bot")),
     sm.warning ? h("p", { class: "note", style: "color:var(--warn)" }, sm.warning) : null,
     h("div", { class: "grid kpis", style: "margin-bottom:14px" },
-      kpi("I dag", pct(sm.today_pct), "starter forfra ved midnat", tone(sm.today_pct)),
+      kpi("I dag", pct(sm.today_pct), "siden midnat", tone(sm.today_pct)),
       kpi("I alt", pct(sm.return_pct), `${nf(sm.value, 0)} ${sm.currency} af ${nf(sm.capital, 0)}`, tone(sm.return_pct)),
-      kpi("Følger nu", sm.following || "Venter", sm.following ? `${sm.following_bot} · ${pct(sm.following_gain)} i dag` : "på at en strategi stiger i dag"),
+      kpi("Følger nu", sm.following || "Venter", sm.following ? `${sm.following_bot} · ${pct(sm.following_gain)} 24 t` : "på at en strategi stiger"),
       kpi("Skift", String(sm.switches), sm.costs_pct != null ? `kostede ${nf(sm.costs_pct)} % i gebyr og prisforskel` : "i alt", null,
         "alle tal er efter omkostninger")),
     h("div", { class: "graphbar" }, periodSeg()),
@@ -538,14 +538,14 @@ function renderHub(rows, live, sm) {
     allStrategiesCard(rows));
 }
 
-/* Kapløbet: de 5 strategier, der er steget mest i dag. Nova Bot følger altid nr. 1 */
+/* Kapløbet: de 5 strategier, der er steget mest i dag. Nova Bot følger altid nr. 1 (målt over de seneste 24 timer) */
 function raceCard(sm) {
   const L = (sm && sm.leaders) || [], top = Math.max(...L.map((x) => Math.abs(x.gain)), 0.01);
-  return h("div", { class: "card race" }, h("div", { class: "head" }, h("h2", {}, "Kapløbet i dag"), h("p", {}, "Nova Bot følger den førende")),
+  return h("div", { class: "card race" }, h("div", { class: "head" }, h("h2", {}, "Kapløbet, seneste 24 timer"), h("p", {}, "Nova Bot følger den førende")),
     L.length ? L.map((x, i) => h("div", { class: "rr" + (x.held ? " held" : "") }, h("span", { class: "rk" }, String(i + 1)),
       h("div", { style: "min-width:0" }, h("div", { style: "overflow:hidden;text-overflow:ellipsis;white-space:nowrap" }, x.name, h("span", { class: "mute" }, ` · ${x.bot_name}`), x.held ? h("span", { class: "tag" }, "følges") : null),
         h("div", { class: "bar2" }, h("i", { style: `width:${Math.max(3, Math.abs(x.gain) / top * 100)}%` }))),
-      h("b", { class: "num " + tone(x.gain) }, pct(x.gain)))) : h("div", { class: "empty" }, "Ingen strategi er steget endnu i dag."));
+      h("b", { class: "num " + tone(x.gain) }, pct(x.gain)))) : h("div", { class: "empty" }, "Ingen strategi er steget de seneste 24 timer."));
 }
 /* Markeder: status for hvert marked på ét blik */
 function marketsCard(conf, ok) {

@@ -21,6 +21,7 @@ from .smart import MAX_POINTS, WARMUP_S, SmartBot
 
 VERSION = 2                              # 2: omkostninger ved skift trækkes fra (version 1 regnes om ved indlæsning)
 EPS = 1e-9
+WINDOW_S = 24 * 3600                     # Nova Bot vælger den strategi, der er steget mest de seneste 24 timer (rullende)
 
 # Omkostning pr. side ved et skift (andel af kontoen): gebyr + prisforskel (spread/slip/prisvirkning), forsigtigt skønnet.
 # Botternes egne tal har allerede deres gebyrer med. Det her er det, der kommer oveni, når Nova Bot sælger alt i én
@@ -120,19 +121,35 @@ class SmartLeader(SmartBot):
         if st.get("day"):
             st.setdefault("days", {})[st["day"]] = round((st["acct"] / st.get("day_acct", 1.0) - 1) * 100, 4)
             self.log(f"Nova Bot: {st['day']} sluttede på {st['days'][st['day']]:+.2f} %")
-        st["day"], st["day_acct"], st["bases"], st["held"] = day, st["acct"], {}, None
+        st["day"], st["day_acct"] = day, st["acct"]          # kun dagsresultatet nulstilles; valget går på de seneste 24 timer
 
-    def _gains(self, allc: dict) -> dict[str, float]:
-        """Hver strategis stigning i procent, siden Smart første gang så den."""
+    @staticmethod
+    def _value_at(curve, t: float, default: float) -> float:
+        """Kurvens værdi på tidspunktet t (sidste punkt til og med t, ellers det første punkt)."""
+        pts = sorted((p for p in curve or [] if isinstance(p, (list, tuple)) and len(p) >= 2 and isinstance(p[0], (int, float))), key=lambda p: p[0])
+        if not pts:
+            return default
+        v = pts[0][1]
+        for p in pts:
+            if p[0] > t:
+                break
+            v = p[1]
+        return v
+
+    def _gains(self, allc: dict, now: float) -> dict[str, float]:
+        """Hver strategis stigning i procent de seneste 24 timer. Er Smart først begyndt at se strategien senere, måles fra da."""
         bases, out = self.state["bases"], {}
         for cid, (c, _s) in allc.items():
             v, tr = c["raw_now"], c.get("trades") or 0
             b = bases.get(cid)
             if b is None or tr < b["trades"]:                  # ny strategi, eller den er startet forfra: mål fra nu
-                b = bases[cid] = {"v": v, "trades": tr}
+                b = bases[cid] = {"v": v, "trades": tr, "t": now}
             b["trades"] = max(b["trades"], tr)
-            if 100 + b["v"] > 0:
-                out[cid] = ((100 + v) / (100 + b["v"]) - 1) * 100
+            base = b["v"]
+            if b.get("t", 0) < now - WINDOW_S:                 # set for over 24 timer siden: mål fra værdien for præcis 24 timer siden
+                base = self._value_at(c.get("curve"), now - WINDOW_S, b["v"])
+            if 100 + base > 0:
+                out[cid] = ((100 + v) / (100 + base) - 1) * 100
         return out
 
     def step(self) -> None:
@@ -150,7 +167,7 @@ class SmartLeader(SmartBot):
                     h.update(v=v, trades=c.get("trades") or 0, seen=s["at"])
             self._new_day(now)
             h = st["held"]
-            gains = self._gains(allc)
+            gains = self._gains(allc, now)
             if gains and (len(self.snap) >= self.expected or now - self.started >= WARMUP_S):
                 lead = max(gains, key=gains.get)
                 held_gain = gains.get(h["id"]) if h else None
