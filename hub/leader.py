@@ -19,38 +19,13 @@ from zoneinfo import ZoneInfo
 
 from .smart import MAX_POINTS, WARMUP_S, SmartBot
 
-VERSION = 2                              # 2: omkostninger ved skift trækkes fra (version 1 regnes om ved indlæsning)
+VERSION = 1
 EPS = 1e-9
 WINDOW_S = 24 * 3600                     # Nova Bot vælger den strategi, der er steget mest de seneste 24 timer (rullende)
-
-# Omkostning pr. side ved et skift (andel af kontoen): gebyr + prisforskel (spread/slip/prisvirkning), forsigtigt skønnet.
-# Botternes egne tal har allerede deres gebyrer med. Det her er det, der kommer oveni, når Nova Bot sælger alt i én
-# strategi og køber ind i en anden. Et skift koster derfor salg i den gamle + køb i den nye.
-SIDE_COST = {
-    "atlas": .0015, "atlasglobal": .002, "bondai": .001, "metalai": .0015, "energiai": .0015, "temaai": .0015,
-    "smallcapai": .003, "udbytteai": .0015, "danskai": .002, "regnskabai": .0015,       # aktier: kurtage + slip + halv spread
-    "meridian": .0003, "valutaai": .0003,                                                 # forex: halv spread
-    "orion": .0015, "orionmid": .0025, "stakingai": .0015, "defiai": .0025, "aitokenai": .0025,   # Binance spot: 0,10 % + slip
-    "quasar": .003,                                     # futures: 0,05 % af den gearede størrelse (op til 5x) + slip
-    "delphi": .015,                                     # prognosemarkeder: køb til udbud, salg til bud (bred spread)
-    "comet": .013,                                      # nye tokens: 0,3 % DEX-gebyr + gas + prisvirkning i små puljer
-    "nova": .015, "novaclassic": .012,                  # memecoins: puljegebyr + prisvirkning + slip + netværksgebyr
-}
-DEFAULT_SIDE_COST = .005                 # ukendt marked: hellere for meget end for lidt
-
-
-def side_cost(bot_key: str | None, table: dict | None = None) -> float:
-    t = SIDE_COST if table is None else table
-    return t.get(bot_key, DEFAULT_SIDE_COST if table is None else 0.0)
 TZ = ZoneInfo("Europe/Copenhagen")       # en ny dag starter ved midnat dansk tid
 
 
 class SmartLeader(SmartBot):
-    costs: dict | None = None              # None: SIDE_COST. Tests kan give {} (ingen omkostninger)
-
-    def _cost(self, bot_key) -> float:
-        return side_cost(bot_key, self.costs)
-
     def _new(self) -> dict:
         t = round(self.now(), 1)
         return {"version": VERSION, "kind": "leader", "since": t, "capital": 10000.0, "currency": "kr.", "acct": 1.0,
@@ -60,54 +35,11 @@ class SmartLeader(SmartBot):
     def _load(self) -> dict:
         try:
             d = json.loads(self.path.read_text(encoding="utf-8"))
-            if isinstance(d, dict) and d.get("kind") == "leader" and d.get("version") == 1:
-                d = self._migrate(d)
             if isinstance(d, dict) and d.get("kind") == "leader" and d.get("version") == VERSION:
                 return d
         except (OSError, ValueError):
             pass
         return self._new()
-
-    def _migrate(self, d: dict) -> dict:
-        """Version 1 talte skift som gratis. Regn hele historikken om med omkostningerne: kurve, dage, konto og hvert skift."""
-        sw = sorted(d.get("switches") or [], key=lambda x: x["ts"])
-        steps = []                                           # (tid, faktor) for hvert skift
-        for x in sw:
-            f = (1 - self._cost(x.get("from_key")) if x.get("from") else 1.0) * (1 - self._cost(x.get("to_key")))
-            x["cost_pct"] = round((1 - f) * 100, 4)
-            steps.append((x["ts"], f))
-
-        def factor(t):                                       # samlet omkostning til og med tid t
-            out = 1.0
-            for ts, f in steps:
-                if ts <= t:
-                    out *= f
-            return out
-        for p in d.get("curve") or []:
-            p[1] = round(((1 + p[1] / 100) * factor(p[0]) - 1) * 100, 4)
-        for x in sw:
-            if x.get("smart_pct") is not None:
-                x["smart_pct"] = round(((1 + x["smart_pct"] / 100) * factor(x["ts"]) - 1) * 100, 4)
-        for day, v in list((d.get("days") or {}).items()):  # dagens skift trækkes fra dagens resultat
-            f = 1.0
-            for x, (ts, g) in zip(sw, steps):
-                if self._day(ts) == day:
-                    f *= g
-            d["days"][day] = round(((1 + v / 100) * f - 1) * 100, 4)
-        today = 1.0
-        for x, (ts, g) in zip(sw, steps):
-            if self._day(ts) == d.get("day"):
-                today *= g
-        total = factor(float("inf"))
-        d["acct"] = d.get("acct", 1.0) * total
-        d["day_acct"] = d.get("day_acct", 1.0) * total / today
-        if d.get("held") and d["held"].get("entry_acct"):
-            # skiftet ind i den nuværende: salget af den gamle tæller før indgangen, købet af den nye efter
-            d["held"]["entry_acct"] *= factor(d["held"].get("entered", 0)) / (1 - self._cost(d["held"].get("bot")))
-        d["costs_pct"] = round((1 - total) * 100, 4)
-        d["version"] = VERSION
-        self.log(f"Nova Bot: historikken er regnet om med omkostninger ved skift ({len(sw)} skift, i alt −{d['costs_pct']:.2f} % af kontoen)")
-        return d
 
     @staticmethod
     def _day(t: float) -> str:
@@ -186,22 +118,15 @@ class SmartLeader(SmartBot):
     def _switch(self, now: float, to: str, allc: dict, gains: dict) -> None:
         st, h = self.state, self.state["held"]
         c, s = allc[to]
-        entry = st["acct"]                 # før købet: købsomkostningen hører til den nye strategis resultat
+        entry = st["acct"]
         if h is None:                      # første valg: alle stod lige fra start, så Smart har været med i den førende hele vejen
             st["acct"] *= 1 + gains[to] / 100
-        before = st["acct"]
-        if h is not None:                  # sælg alt i den gamle strategi: gebyr + prisforskel
-            st["acct"] *= 1 - self._cost(h["bot"])
-            entry = st["acct"]
-        result = (st["acct"] / h["entry_acct"] - 1) * 100 if h and h.get("entry_acct") else None    # inkl. køb og salg
-        st["acct"] *= 1 - self._cost(c["bot"])
-        cost = (1 - st["acct"] / before) * 100
-        st["costs_pct"] = round((1 - (1 - st.get("costs_pct", 0.0) / 100) * (1 - cost / 100)) * 100, 4)
+        result = (st["acct"] / h["entry_acct"] - 1) * 100 if h and h.get("entry_acct") else None
         st["held"] = {"id": to, "name": c["name"], "bot": c["bot"], "bot_name": c["bot_name"], "v": c["raw_now"],
                       "trades": c.get("trades") or 0, "seen": s["at"], "entered": round(now), "entry_acct": entry}
         why = f"overhalede {h['name']} ({gains[to]:+.2f} % mod {gains.get(h['id'], 0.0):+.2f} %)" if h else f"steg først ({gains[to]:+.2f} %)"
         st["switches"] = (st["switches"] + [{"ts": round(now), "from": h and h["name"], "from_bot": h and h["bot_name"], "from_key": h and h["bot"], "to": c["name"],
-                                             "to_bot": c["bot_name"], "to_key": c["bot"], "why": why, "result_pct": None if result is None else round(result, 2), "cost_pct": round(cost, 4), "smart_pct": round((st["acct"] - 1) * 100, 4)}])[-500:]
+                                             "to_bot": c["bot_name"], "to_key": c["bot"], "why": why, "result_pct": None if result is None else round(result, 2), "smart_pct": round((st["acct"] - 1) * 100, 4)}])[-500:]
         self.log(f"Nova Bot: {(h and h['name']) or 'start'} → {c['name']} ({c['bot_name']}): {why}")
         cb = getattr(self, "on_switch", None)
         if cb:
@@ -236,7 +161,6 @@ class SmartLeader(SmartBot):
                     "leaders": [{"name": names.get(k, (k, ""))[0], "bot_name": names.get(k, ("", ""))[1], "gain": round(gains[k], 2),
                                  "held": bool(h and k == h["id"])} for k in top],
                     "count": st.get("count", 0), "bots": st.get("bots", 0), "switches": len(st["switches"]),
-                    "costs_pct": round(st.get("costs_pct", 0.0), 2),     # omkostninger ved skift i alt (allerede trukket fra)
                     "recent": st["switches"][-8:][::-1],
                     "warning": f"Starter op: {len(self.snap)} af {self.expected} botter har svaret – vælger, når alle er med" if warm else None,
                     "curve": [[t, round(v, 3)] for t, v in curve]}
