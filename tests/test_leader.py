@@ -140,13 +140,27 @@ class CostTests(unittest.TestCase):
             sm.step()
             return sm.view()
         tick(0, 0)
-        v = tick(1, 0)                                   # køb ind i A: +1 %, minus 1 % købsomkostning
-        self.assertAlmostEqual(v["return_pct"], (1.01 * 0.99 - 1) * 100, places=2)
-        v = tick(1, 2)                                   # skift til B: salg af A (1 %) + køb af B (2 %)
-        self.assertAlmostEqual(v["return_pct"], (1.01 * 0.99 * 0.99 * 0.98 - 1) * 100, places=2)
+        v = tick(2, 0)                                   # køb ind i A: +2 %, minus 1 % købsomkostning
+        self.assertAlmostEqual(v["return_pct"], (1.02 * 0.99 - 1) * 100, places=2)
+        v = tick(2, 6)                                   # skift til B: salg af A (1 %) + køb af B (2 %)
+        self.assertAlmostEqual(v["return_pct"], (1.02 * 0.99 * 0.99 * 0.98 - 1) * 100, places=2)
         self.assertAlmostEqual(v["recent"][0]["cost_pct"], (1 - 0.99 * 0.98) * 100, places=3)
-        self.assertAlmostEqual(v["recent"][0]["result_pct"], (1.01 * 0.99 * 0.99 - 1) * 100, places=2)
+        self.assertAlmostEqual(v["recent"][0]["result_pct"], (1.02 * 0.99 * 0.99 - 1) * 100, places=2)
         self.assertAlmostEqual(v["costs_pct"], (1 - 0.99 * 0.99 * 0.98) * 100, places=2)
+
+    def test_only_switches_when_the_lead_beats_the_cost(self):
+        sm = SmartLeader(Path(self.dir.name) / "m.json", now=self.clk, log=lambda m: None)
+        def tick(a, b):
+            self.clk.t += 60
+            sm.feed("x", [cand("A", a, bot="a"), cand("B", b, bot="b")])
+            sm.step()
+            return sm.view()
+        tick(0, 0)
+        self.assertIsNone(tick(0.5, 0)["following"])        # +0,5 % dækker ikke 1 % købsomkostning
+        self.assertEqual(tick(1.5, 0)["following"], "A")
+        self.assertEqual(tick(1.5, 4)["following"], "A")    # fører med 2,5 point, skiftet koster ~2,98 %
+        self.assertEqual(tick(1.5, 5)["following"], "B")    # fører med 3,5 point: nu kan det betale sig
+        self.assertEqual(tick(1.5, 5)["switches"], 2)
 
     def test_old_history_is_recalculated_with_costs(self):
         import json
