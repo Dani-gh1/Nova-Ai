@@ -26,9 +26,11 @@ class LeaderTests(unittest.TestCase):
         self.dir = tempfile.TemporaryDirectory()
         self.path = Path(self.dir.name) / "smart.json"
         self.clk = Clock()
+        SmartLeader.costs = {}                       # reglen selv testes uden omkostninger; se CostTests
         self.sm = SmartLeader(self.path, now=self.clk, log=lambda m: None)
 
     def tearDown(self):
+        SmartLeader.costs = None
         self.dir.cleanup()
 
     def tick(self, s1, s2):
@@ -116,6 +118,51 @@ class LeaderTests(unittest.TestCase):
         sm.step()
         self.assertIsNone(sm.view()["following"])
         self.assertIn("Starter op", sm.view()["warning"])
+
+
+class CostTests(unittest.TestCase):
+    """Et skift koster salg i den gamle strategi + køb i den nye (gebyr + prisforskel)."""
+
+    def setUp(self):
+        self.dir = tempfile.TemporaryDirectory()
+        self.clk = Clock()
+        SmartLeader.costs = {"a": 0.01, "b": 0.02}
+
+    def tearDown(self):
+        SmartLeader.costs = None
+        self.dir.cleanup()
+
+    def test_a_switch_pays_both_sides(self):
+        sm = SmartLeader(Path(self.dir.name) / "c.json", now=self.clk, log=lambda m: None)
+        def tick(a, b):
+            self.clk.t += 60
+            sm.feed("x", [cand("A", a, bot="a"), cand("B", b, bot="b")])
+            sm.step()
+            return sm.view()
+        tick(0, 0)
+        v = tick(1, 0)                                   # køb ind i A: +1 %, minus 1 % købsomkostning
+        self.assertAlmostEqual(v["return_pct"], (1.01 * 0.99 - 1) * 100, places=2)
+        v = tick(1, 2)                                   # skift til B: salg af A (1 %) + køb af B (2 %)
+        self.assertAlmostEqual(v["return_pct"], (1.01 * 0.99 * 0.99 * 0.98 - 1) * 100, places=2)
+        self.assertAlmostEqual(v["recent"][0]["cost_pct"], (1 - 0.99 * 0.98) * 100, places=3)
+        self.assertAlmostEqual(v["recent"][0]["result_pct"], (1.01 * 0.99 * 0.99 - 1) * 100, places=2)
+        self.assertAlmostEqual(v["costs_pct"], (1 - 0.99 * 0.99 * 0.98) * 100, places=2)
+
+    def test_old_history_is_recalculated_with_costs(self):
+        import json
+        p = Path(self.dir.name) / "old.json"
+        p.write_text(json.dumps({"version": 1, "kind": "leader", "since": T0, "capital": 10000.0, "currency": "kr.", "acct": 1.1,
+                                 "held": {"id": "b:B", "name": "B", "bot": "b", "bot_name": "B", "v": 0, "trades": 0, "seen": 0,
+                                          "entered": T0 + 100, "entry_acct": 1.0},
+                                 "bases": {}, "curve": [[T0, 0.0], [T0 + 200, 10.0]], "updated": T0, "day": None, "day_acct": 1.0, "days": {},
+                                 "switches": [{"ts": T0 + 50, "from": None, "to": "A", "to_key": "a", "smart_pct": 0.0},
+                                              {"ts": T0 + 100, "from": "A", "from_key": "a", "to": "B", "to_key": "b", "smart_pct": 0.0}]}))
+        sm = SmartLeader(p, now=self.clk, log=lambda m: None)
+        f = 0.99 * 0.99 * 0.98
+        self.assertAlmostEqual(sm.state["acct"], 1.1 * f)
+        self.assertAlmostEqual(sm.state["curve"][-1][1], (1.1 * f - 1) * 100, places=3)
+        self.assertAlmostEqual(sm.state["held"]["entry_acct"], 0.99 * 0.99)     # efter salget af A, før købet af B
+        self.assertEqual(sm.state["version"], 2)
 
 
 if __name__ == "__main__":

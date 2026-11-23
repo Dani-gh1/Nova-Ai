@@ -475,15 +475,17 @@ function smartCard(sm) {
       kpi("I dag", pct(sm.today_pct), "starter forfra ved midnat", tone(sm.today_pct)),
       kpi("I alt", pct(sm.return_pct), `${nf(sm.value, 0)} ${sm.currency} af ${nf(sm.capital, 0)}`, tone(sm.return_pct)),
       kpi("Følger nu", sm.following || "Venter", sm.following ? `${sm.following_bot} · ${pct(sm.following_gain)} i dag` : "på at en strategi stiger i dag"),
-      kpi("Skift", String(sm.switches), "i alt")),
+      kpi("Skift", String(sm.switches), sm.costs_pct != null ? `kostede ${nf(sm.costs_pct)} % i gebyr og prisforskel` : "i alt", null,
+        "alle tal er efter omkostninger")),
     h("div", { class: "graphbar" }, periodSeg()),
     wrap,
     sm.recent.length ? h("div", { class: "tw" }, h("table", {},
-      h("thead", {}, h("tr", {}, h("th", {}, "Tid"), h("th", {}, "Skift"))),
+      h("thead", {}, h("tr", {}, h("th", {}, "Tid"), h("th", {}, "Skift"), h("th", { class: "n" }, "Omkostning"))),
       h("tbody", {}, sm.recent.map((x) => h("tr", {}, h("td", { class: "mute" }, when(x.ts)),
         h("td", { class: "swap" }, x.from ? stratLink(x.from, x.from_key, x.from_bot) : h("span", { class: "mute" }, "Start"),
           h("span", { class: "arrow " + tone(x.result_pct) }, h("small", {}, x.result_pct == null ? "" : pct(x.result_pct)), h("span", { class: "line" }, "⟶")),
-          stratLink(x.to, x.to_key, x.to_bot))))))) : null);
+          stratLink(x.to, x.to_key, x.to_bot)),
+        h("td", { class: "n neg" }, x.cost_pct == null ? "–" : "−" + nf(x.cost_pct) + " %")))))) : null);
   requestAnimationFrame(() => { if (wrap.isConnected) drawChart(wrap, [{ key: "smart", name: "Nova Bot", curve: since(sm.curve) }], { smart: "var(--acc)" }); });
   return box;
 }
