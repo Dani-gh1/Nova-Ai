@@ -1,5 +1,5 @@
-"""Smart strategi: følger altid den strategi, der er steget mest, siden Smart startede, og skifter, når en anden fører med
-mere, end skiftet koster i gebyr og prisforskel (se SIDE_COST).
+"""Smart strategi: følger altid den strategi, der er steget mest, siden Smart startede, og skifter i samme øjeblik,
+en anden overhaler den.
 
 Eksempel med to strategier, der begge starter på 0 %:
   * Strategi 1 stiger til +2 %  -> Smart følger den og står på +2 %.
@@ -171,10 +171,7 @@ class SmartLeader(SmartBot):
             if gains and (len(self.snap) >= self.expected or now - self.started >= WARMUP_S):
                 lead = max(gains, key=gains.get)
                 held_gain = gains.get(h["id"]) if h else None
-                # Skift kun, når føringen er større end det, skiftet koster (salg af den gamle + køb af den nye)
-                c_lead = allc[lead][0]["bot"]
-                need = (1 - (1 - self._cost(h["bot"]) if h else 1.0) * (1 - self._cost(c_lead))) * 100
-                if gains[lead] > need + EPS and (h is None or (lead != h["id"] and (held_gain is None or gains[lead] > held_gain + need + EPS))):
+                if gains[lead] > EPS and (h is None or (lead != h["id"] and (held_gain is None or gains[lead] > held_gain + EPS))):
                     self._switch(now, lead, allc, gains)
             st["gains"] = {k: round(v, 4) for k, v in gains.items()}
             st["count"], st["bots"] = len(allc), len({c["bot"] for c, _ in allc.values()})
