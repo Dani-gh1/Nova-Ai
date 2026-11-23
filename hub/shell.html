@@ -17,15 +17,17 @@
 <title>Nova AI</title>
 <style>
 :root{
-  --bg:#f6f7fb;--surface:#fff;--ink:#0f172a;--ink2:#475569;--mute:#94a3b8;--line:#e8ebf2;--soft:#f1f4f9;
-  --acc:#5b5bf0;--pos:#0f9d6a;--neg:#e5484d;--warn:#b7791f;
-  --shadow:0 1px 2px rgba(15,23,42,.04),0 8px 24px -12px rgba(15,23,42,.10);
-  --r:16px;--grey:#c3cad8;
+  --bg:#f4f5fa;--surface:#fff;--ink:#0d1220;--ink2:#4a5468;--mute:#8a94a8;--line:#e6e9f2;--soft:#eff2f8;
+  --acc:#6d5cff;--acc2:#ec4899;--pos:#0e9f6e;--neg:#e5484d;--warn:#c27c0e;
+  --shadow:0 1px 2px rgba(13,18,32,.04),0 10px 30px -14px rgba(13,18,32,.14);
+  --r:20px;--grey:#c3cad8;
 }
 @media (prefers-color-scheme:dark){:root{
-  --bg:#0b0e14;--surface:#141821;--ink:#eef1f7;--ink2:#a7b0c0;--mute:#667085;--line:#222836;--soft:#1a1f2b;
-  --acc:#8b8bff;--pos:#3ddc97;--neg:#ff6b70;--warn:#e5b45a;
-  --shadow:0 1px 2px rgba(0,0,0,.3),0 12px 28px -14px rgba(0,0,0,.6);--grey:#3a4254}}
+  --bg:#07090f;--surface:#10141d;--ink:#f1f3f9;--ink2:#a9b2c4;--mute:#667085;--line:#1f2533;--soft:#171c28;
+  --acc:#8f82ff;--acc2:#f472b6;--pos:#34d399;--neg:#ff6b70;--warn:#f0b357;
+  --shadow:0 1px 2px rgba(0,0,0,.35),0 16px 36px -18px rgba(0,0,0,.7);--grey:#343c4e}}
+body{background-image:radial-gradient(1200px 500px at 85% -10%,color-mix(in srgb,var(--acc) 10%,transparent),transparent 70%),
+  radial-gradient(900px 400px at -10% 0%,color-mix(in srgb,var(--acc2) 7%,transparent),transparent 70%);background-repeat:no-repeat}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
@@ -199,6 +201,21 @@ a.back{display:inline-block;margin-bottom:12px;color:var(--ink2);text-decoration
 .cal .day.pos{background:color-mix(in srgb,var(--pos) 12%,transparent)}.cal .day.neg{background:color-mix(in srgb,var(--neg) 12%,transparent)}
 .cal .day.pos b{color:var(--pos)}.cal .day.neg b{color:var(--neg)}
 @media (max-width:640px){.cal .day b{font-size:10px}.cal .day{min-height:44px;padding:4px}}
+/* ---------- nyt design: hero, markeder og kapløbet ---------- */
+.hero{position:relative;overflow:hidden;display:block;margin:4px 0 16px;padding:22px 22px 20px;border-radius:24px;color:#fff;
+  background:linear-gradient(135deg,#4f46e5 0%,#7c3aed 55%,#db2777 120%);box-shadow:0 18px 40px -20px #6d28d9}
+.hero::after{content:"";position:absolute;right:-60px;top:-80px;width:260px;height:260px;border-radius:50%;background:rgba(255,255,255,.10)}
+.hero .top{display:flex;align-items:center;gap:12px;position:relative}.hero img{width:40px;height:40px;filter:none}
+.hero h1{margin:0;font-size:22px;color:#fff;background:none}.hero .live{margin-left:auto;font-size:12px;background:rgba(255,255,255,.16);border-radius:99px;padding:4px 10px}
+.hero .big{position:relative;margin-top:16px;font-size:13px;opacity:.85}.hero .big b{display:block;font-size:34px;letter-spacing:-.03em;opacity:1;line-height:1.15}
+.hero .row{position:relative;display:flex;gap:22px;flex-wrap:wrap;margin-top:14px;font-size:13px}.hero .row div{opacity:.9}.hero .row b{display:block;font-size:16px}
+.mk{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}
+.mk .m{border:1px solid var(--line);border-radius:14px;padding:11px 13px;background:var(--soft);min-width:0}
+.mk .m .n{display:flex;align-items:center;gap:8px;font-weight:600;font-size:14px}.mk .m .s{font-size:12px;color:var(--mute);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.race .rr{display:grid;grid-template-columns:22px 1fr auto;gap:10px;align-items:center;padding:9px 0;border-top:1px solid var(--line)}.race .rr:first-child{border-top:0}
+.race .bar2{height:6px;border-radius:6px;background:var(--soft);margin-top:5px;overflow:hidden}.race .bar2 i{display:block;height:100%;border-radius:6px;background:linear-gradient(90deg,var(--acc),var(--acc2))}
+.race .rk{font-weight:700;color:var(--mute);text-align:center}.race .held .rk{color:var(--acc)}
+.duo{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}.duo>.card{margin:0}@media (max-width:820px){.duo{grid-template-columns:1fr}}
 .headrow{display:flex;flex-wrap:wrap;align-items:center;gap:10px}.headrow h2{margin-right:auto}.headrow p{flex-basis:100%}.headrow .seg button{padding:5px 11px;font-size:13px}
 </style>
 </head>
@@ -493,8 +510,16 @@ function renderHub(rows, live, sm) {
   const ok = conf.filter((b) => b.up && (b.idle || (b.scan_age != null && b.scan_age <= STALE)));
   const bad = conf.filter((b) => !ok.includes(b));
   const why = (b) => `${b.name}: ${!b.up ? "kører ikke" : "scanner ikke"}${b.issue ? " – " + b.issue : ""}`;
+  const real = live && live.real;
   view(
-    h("div", { class: "hero" }, h("img", { src: "/static/logo.svg", alt: "" }), h("h1", {}, "Nova AI")),
+    h("div", { class: "hero" },
+      h("div", { class: "top" }, h("img", { src: "/static/logo.svg", alt: "" }), h("h1", {}, "Nova AI"),
+        h("span", { class: "live" }, live && live.mode === "dry" ? "Simulering" : live && live.mode ? "Rigtige penge" : "Overvåger")),
+      h("div", { class: "big" }, "Nova Bot i dag", h("b", { class: "num" }, sm ? pct(sm.today_pct) : "–")),
+      h("div", { class: "row" },
+        h("div", {}, "Saldo", h("b", { class: "num" }, real ? nf(real.balance_usd, 2) + " USD" : "–")),
+        h("div", {}, "Markeder", h("b", { class: "num" }, `${ok.length}/${conf.length} kører`)),
+        h("div", {}, "Strategier", h("b", { class: "num" }, String(rows.reduce((a, b) => a + (b.strategies || []).length, 0)))))),
     h("div", { class: "grid kpis two" },
       kpi("Markeder der scanner", `${ok.length} af ${conf.length}`, bad.length && bad.length < 5 ? null : (bad.length ? `${bad.length} er nede` : "alle kører"),
         bad.length ? "neg" : "pos", bad.length && bad.length < 5 ? h("div", { class: "down" }, bad.map((b) => h("div", {}, why(b)))) : null),
@@ -506,10 +531,27 @@ function renderHub(rows, live, sm) {
           r ? parts + (r.errors.length ? " · ⚠ " + r.errors.join("; ") : "") : null); })(),
       kpi("Nova Bot", sm ? pct(sm.today_pct) : "–", sm ? (sm.following ? `i dag · følger ${sm.following}` : "i dag · venter på, at en strategi stiger") : "starter", sm && tone(sm.today_pct))),
     smartCard(sm),
+    h("div", { class: "duo" }, raceCard(sm), marketsCard(conf, ok)),
     calendarCard(sm),
     allStrategiesCard(rows));
 }
 
+/* Kapløbet: de 5 strategier, der er steget mest i dag. Nova Bot følger altid nr. 1 */
+function raceCard(sm) {
+  const L = (sm && sm.leaders) || [], top = Math.max(...L.map((x) => Math.abs(x.gain)), 0.01);
+  return h("div", { class: "card race" }, h("div", { class: "head" }, h("h2", {}, "Kapløbet i dag"), h("p", {}, "Nova Bot følger den førende")),
+    L.length ? L.map((x, i) => h("div", { class: "rr" + (x.held ? " held" : "") }, h("span", { class: "rk" }, String(i + 1)),
+      h("div", { style: "min-width:0" }, h("div", { style: "overflow:hidden;text-overflow:ellipsis;white-space:nowrap" }, x.name, h("span", { class: "mute" }, ` · ${x.bot_name}`), x.held ? h("span", { class: "tag" }, "følges") : null),
+        h("div", { class: "bar2" }, h("i", { style: `width:${Math.max(3, Math.abs(x.gain) / top * 100)}%` }))),
+      h("b", { class: "num " + tone(x.gain) }, pct(x.gain)))) : h("div", { class: "empty" }, "Ingen strategi er steget endnu i dag."));
+}
+/* Markeder: status for hvert marked på ét blik */
+function marketsCard(conf, ok) {
+  return h("div", { class: "card" }, h("div", { class: "head" }, h("h2", {}, "Markeder"), h("p", {}, `${ok.length} af ${conf.length} kører`)),
+    h("div", { class: "mk" }, conf.map((b) => { const good = ok.includes(b);
+      return h("div", { class: "m", title: b.issue || "" }, h("div", { class: "n" }, h("span", { class: "dot " + (good ? "up" : b.up ? "warn" : "down") }), b.name),
+        h("div", { class: "s" }, !b.up ? "kører ikke" + (b.issue ? " · " + b.issue : "") : b.idle ? b.idle : b.scan_age == null ? "venter på første scanning" : `scannede ${ago(b.scan_age)}`)); })));
+}
 /* Alle strategier i alle botter, bedste først. Top 20 vises; "Se alle" viser resten (huskes ved opdatering hvert 15. sekund). */
 let showAllStrategies = false;
 function allStrategiesCard(rows) {

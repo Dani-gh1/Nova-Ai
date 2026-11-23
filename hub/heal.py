@@ -42,7 +42,7 @@ def restore_latest_backup(key: str, d: Path, root: Path) -> str | None:
         for n in names:                                  # gamle WAL-/SHM-filer passer ikke til den gendannede database
             for suf in ("-wal", "-shm"):
                 (d / (n + suf)).unlink(missing_ok=True)
-        tar.extractall(d, members=[m for m in tar.getmembers() if m.name in names])
+        tar.extractall(d, members=[m for m in tar.getmembers() if m.name in names], filter="data")   # ingen links, enheder eller rettigheder udefra
     return runs[0].name
 
 

@@ -24,6 +24,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 SHELL = Path(__file__).with_name("shell.html")
 STATIC = Path(__file__).with_name("static")
+# Forsiden må kun tale med hubben selv: et indsprøjtet script kan hverken hente kode udefra eller sende data væk
+SHELL_CSP = ("default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; "
+             "connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'; object-src 'none'")
 STATIC_TYPES = {".svg": "image/svg+xml", ".png": "image/png", ".webmanifest": "application/manifest+json", ".ico": "image/x-icon"}
 
 
@@ -471,7 +474,8 @@ def make_handler(bots: list[dict], throttle: Throttle | None = None, ratelimit: 
             self.send_header("Content-Type", ctype)
             self.send_header("Content-Length", str(len(body)))
             headers = {"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff", "Referrer-Policy": "no-referrer",
-                       "X-Frame-Options": "SAMEORIGIN", **(extra or {})}
+                       "X-Frame-Options": "SAMEORIGIN", "Cross-Origin-Opener-Policy": "same-origin",
+                       "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=()", **(extra or {})}
             if self.headers.get("X-Forwarded-Proto") == "https":
                 headers["Strict-Transport-Security"] = "max-age=31536000"
             for k, v in headers.items():
@@ -527,7 +531,7 @@ def make_handler(bots: list[dict], throttle: Throttle | None = None, ratelimit: 
                 return
             try:
                 if path in ("/", "/index.html"):
-                    return self._send(200, "text/html; charset=utf-8", SHELL.read_bytes())
+                    return self._send(200, "text/html; charset=utf-8", SHELL.read_bytes(), {"Content-Security-Policy": SHELL_CSP})
                 if path == "/api/bots":
                     out = [{"key": b["key"], "name": b["name"], "desc": b.get("desc", ""),
                             "configured": bool(b.get("repo")) and not b.get("disabled"), "note": b.get("note", ""), "note_short": "Slået fra her" if b.get("disabled") else "",
@@ -550,8 +554,8 @@ def make_handler(bots: list[dict], throttle: Throttle | None = None, ratelimit: 
                 if m and m.group(1) in by_key:
                     try:
                         return self._send(200, "application/json", json.dumps(bot_data(by_key[m.group(1)])).encode())
-                    except (OSError, ValueError, KeyError, TypeError) as e:
-                        return self._send(502, "application/json", json.dumps({"error": "Botten svarer ikke som forventet", "detail": str(e)[:200]}).encode())
+                    except (OSError, ValueError, KeyError, TypeError):      # ingen fejldetaljer udadtil (adresser, stier)
+                        return self._send(502, "application/json", json.dumps({"error": "Botten svarer ikke som forventet"}).encode())
                 m = re.match(r"^/b/([a-z0-9_-]+)(/.*)?$", path)
                 if m and m.group(1) in by_key:
                     if m.group(2) is None:
