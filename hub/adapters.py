@@ -275,7 +275,8 @@ def comet(get):
                                  t.get("opened_at") if o else (t.get("closed_at") or t.get("opened_at")),
                                  pct_of(t, "live_pct") if o else pct_of(t, "pnl_pct"), t.get("exit_reason") or "")
     return {"strategies": strategies, "desk": desk,
-            "trades": {"open": [row(t, True) for t in tr.get("open", [])], "closed": [row(t, False) for t in tr.get("closed", [])]},
+            "trades": {"open": [{**row(t, True), "token": t.get("token"), "chain": t.get("chain")} for t in tr.get("open", [])],
+                       "closed": [row(t, False) for t in tr.get("closed", [])]},
             "scan": ts(stt.get("last_price_tick")) or ts(stt.get("updated_at"))}
 
 

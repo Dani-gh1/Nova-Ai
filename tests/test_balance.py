@@ -9,6 +9,8 @@ class FakeAPI:
 
     def _req(self, method, path, params=None, signed=False):
         self.calls.append(path)
+        if path.startswith("/sapi/v1/capital/") and self.calls.count(path) > 1:
+            return []                                        # historikken hentes i perioder; kun den første har noget
         return self.answers[path]
 
 

@@ -639,12 +639,13 @@ def read_money(say=print) -> dict | None:
                 from .balance import BinanceBalance
                 from .live import BinanceFutures, BinanceSpot
                 k, s = os.environ["BINANCE_API_KEY"], os.environ["BINANCE_API_SECRET"]
-                _bal = BinanceBalance(BinanceSpot(k, s), BinanceFutures(k, s))
+                _bal = BinanceBalance(BinanceSpot(k, s), BinanceFutures(k, s) if os.environ.get("BINANCE_FUTURES") == "1" else None)
             b = _bal.read()
             parts["Binance"], deposited = b["balance_usd"], b["deposited_usd"]
         except Exception as e:
             errors.append(f"Binance: {e}"[:120])
-    for name, env, mod, cls in (("Solana", "SOLANA_PRIVATE_KEY", ".solana", "SolanaWallet"), ("Polymarket", "POLYMARKET_PRIVATE_KEY", ".polymarket", "PolymarketWallet")):
+    for name, env, mod, cls in (("Solana", "SOLANA_PRIVATE_KEY", ".solana", "SolanaWallet"), ("Polymarket", "POLYMARKET_PRIVATE_KEY", ".polymarket", "PolymarketWallet"),
+                                ("Base", "BASE_PRIVATE_KEY", ".base", "BaseWallet")):
         if os.environ.get(env):
             try:
                 if name not in _wallets:

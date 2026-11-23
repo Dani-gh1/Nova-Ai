@@ -117,6 +117,45 @@ class KasseTests(unittest.TestCase):
         self.assertNotIn("BTCUSDT", [x["symbol"] for x in h])            # 3 USD er under børsens minimum
 
 
+class WalletFundingTests(unittest.TestCase):
+    def setUp(self):
+        self.dir = tempfile.TemporaryDirectory()
+        os.environ["HUB_LIVE_DIR"] = self.dir.name
+
+    def tearDown(self):
+        del os.environ["HUB_LIVE_DIR"]
+        self.dir.cleanup()
+
+    def test_binance_sends_usdc_and_gas_to_the_wallet_once(self):
+        from hub.solana import SOL_MINT
+        sent = []
+
+        class Home(FakeBroker):
+            def open_pos(self, sym, side, usd, lev, px):
+                return {"qty": usd if sym == "USDCUSDT" else 0.05, "usd": usd, "id": "x"}
+
+            def withdraw(self, coin, network, address, amount):
+                sent.append((coin, network, address, round(amount, 4)))
+
+        class Wallet(FakeBroker):
+            address = "9tBe...71Vx"
+
+            def tokens(self):
+                return {SOL_MINT: 0.0}
+
+        k = Kasse(["binance-spot", "solana"], mode="1", brokers={"binance-spot": Home({}), "solana": Wallet({})}, log=lambda m: None)
+        k.home().state["cash"] = 200.0
+        spare = {"binance-spot": 200.0}
+        k._fund_wallet("solana", k.venues["solana"], 50.0, k.home(), spare)
+        self.assertEqual(sent[0][:3], ("SOL", "SOL", "9tBe...71Vx"))           # først lidt SOL til gebyrer
+        self.assertEqual(sent[1], ("USDC", "SOL", "9tBe...71Vx", 51.0))        # så USDC (behov + 1 til gebyret)
+        k._fund_wallet("solana", k.venues["solana"], 50.0, k.home(), spare)     # på vej: ingen ny overførsel
+        self.assertEqual(len(sent), 2)
+        k.venues["solana"].state["cash"] = 50.7                                  # pengene er fremme
+        k._fund_wallet("solana", k.venues["solana"], 0.0, k.home(), spare)
+        self.assertNotIn("solana", k.state["pending"])
+
+
 class PlanTests(unittest.TestCase):
     def test_positions_and_plan_follow_the_portfolio_slots(self):
         data = {"trades": {"open": [{"strategy": "Momentum", "symbol": "BTCUSDT", "side": "long"},

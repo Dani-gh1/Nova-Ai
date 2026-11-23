@@ -40,15 +40,23 @@ MAX_LEVERAGE = 2.0           # loft over gearing med rigtige penge, uanset hvad 
 MIN_TRANSFER_USD = 5.0
 USD_DKK = 6.9                # kun til visning og indskud i kroner
 HOME = "binance-spot"        # her lander indskud, og her står kontanterne
+# Automatisk flytning fra Binance til wallets (netværksnavne og minimum fra Binance selv). Polymarket er IKKE med:
+# Binance sender ny USDC på Polygon, mens Polymarket bruger USDC.e, så den sættes ind via polymarket.com.
+WALLET_TRANSFER = {"solana": {"network": "SOL", "gas": ("SOL", 0.02, 10.0)},      # (mønt, fyld op under, køb for USD)
+                   "base": {"network": "BASE", "gas": ("ETH", 0.0006, 10.0)}}
+TRANSFER_MIN_USD = 10.0
+TRANSFER_WAIT_S = 2 * 3600
 
 VENUES = {
     "binance-spot": {"name": "Binance spot", "adapters": {"orion"}, "group": "binance", "kind": "spot", "fee": 0.001},
     "binance-futures": {"name": "Binance futures", "adapters": {"quasar"}, "group": "binance", "kind": "futures", "fee": 0.0005},
     "solana": {"name": "Solana", "adapters": {"nova"}, "group": "solana", "kind": "spot", "fee": 0.005},
     "polymarket": {"name": "Polymarket", "adapters": {"delphi"}, "group": "polygon", "kind": "spot", "fee": 0.0},
+    "base": {"name": "Base", "adapters": {"comet"}, "group": "base", "kind": "spot", "fee": 0.003},
 }
-NEEDS = {"binance-spot": ("BINANCE_API_KEY", "BINANCE_API_SECRET"), "binance-futures": ("BINANCE_API_KEY", "BINANCE_API_SECRET"),
-         "solana": ("SOLANA_PRIVATE_KEY",), "polymarket": ("POLYMARKET_PRIVATE_KEY",)}
+NEEDS = {"binance-spot": ("BINANCE_API_KEY", "BINANCE_API_SECRET"),
+         "binance-futures": ("BINANCE_API_KEY", "BINANCE_API_SECRET", "BINANCE_FUTURES"),   # futures kun, hvis nøglen må (BINANCE_FUTURES=1)
+         "solana": ("SOLANA_PRIVATE_KEY",), "polymarket": ("POLYMARKET_PRIVATE_KEY",), "base": ("BASE_PRIVATE_KEY",)}
 
 
 def logs_dir() -> Path:
@@ -87,6 +95,8 @@ def positions_for(held: dict | None, data: dict, kind: str = "spot") -> list[tup
     for t in data.get("trades", {}).get("open", []):
         if t.get("strategy") not in names or t.get("platform") == "kalshi":   # Kalshi er ikke koblet på endnu
             continue
+        if t.get("chain") and t["chain"] != "base":                       # nye tokens: kun Base (ikke Ethereum/BNB Chain)
+            continue
         txt = (t.get("side") or "long").lower()
         side = "short" if txt.startswith(("short", "sell", "sælg")) else "long"
         m = re.search(r"(\d+(?:[.,]\d+)?)\s*x", txt)
@@ -95,7 +105,7 @@ def positions_for(held: dict | None, data: dict, kind: str = "spot") -> list[tup
             continue
         if t.get("market"):                                               # Polymarket: køb den side (YES/NO), strategien har
             side = "long"
-        out.append((t.get("mint") or t.get("market") or t["symbol"], side, lev))   # Solana: møntens adresse
+        out.append((t.get("mint") or t.get("market") or t.get("token") or t["symbol"], side, lev))   # Solana/Base: møntens adresse
     return out
 
 
@@ -141,6 +151,11 @@ class BinanceAPI:
         q = math.floor(qty / step + 1e-9) * step
         dec = max(0, -int(math.floor(math.log10(step)))) if step < 1 else 0
         return f"{q:.{dec}f}"
+
+    def withdraw(self, coin: str, network: str, address: str, amount: float) -> dict:
+        """Send mønter fra Binance til en af Nova AI's egne wallets (adressen skal være på Binance-whitelisten)."""
+        return self._req("POST", "/sapi/v1/capital/withdraw/apply", {"coin": coin, "network": network, "address": address,
+                                                                      "amount": f"{amount:.6f}".rstrip("0").rstrip(".")}, signed=True, base="https://api.binance.com")
 
     def transfer(self, amount: float, kind: str) -> dict:
         """Intern overførsel af USDT mellem spot og futures (MAIN_UMFUTURE / UMFUTURE_MAIN). Kræver ikke ret til at hæve."""
@@ -234,6 +249,9 @@ def make_broker(venue: str):
     if venue == "polymarket":
         from .polymarket import PolymarketWallet
         return PolymarketWallet()
+    if venue == "base":
+        from .base import BaseWallet
+        return BaseWallet()
     key, secret = os.environ.get("BINANCE_API_KEY", ""), os.environ.get("BINANCE_API_SECRET", "")
     return {"binance-spot": BinanceSpot, "binance-futures": BinanceFutures}[venue](key, secret)
 
@@ -450,6 +468,10 @@ class Kasse:
                 if k == "polymarket":
                     v.state["cash"] = v.broker.usdc()
                     continue
+                if k == "base":
+                    from .base import USDC
+                    v.state["cash"] = v.broker.balance(USDC)
+                    continue
                 if v.meta["kind"] == "futures":
                     bal = v.broker._req("GET", "/fapi/v2/balance", signed=True)
                     v.state["cash"] = sum(float(b["availableBalance"]) for b in bal if b.get("asset") in ("USDT", "USDC"))
@@ -500,6 +522,51 @@ class Kasse:
                 continue
             if v.state["cash"] >= MIN_TRANSFER_USD:
                 self._move(v, home, v.state["cash"])
+        if self.mode == "1" and home.venue == HOME:
+            for k, dst in self.venues.items():                # wallets: send USDC (og lidt gas) fra Binance, når der mangler
+                if k in WALLET_TRANSFER:
+                    self._fund_wallet(k, dst, dst.wants(plan.get(k, {})) - dst.state["cash"], home, spare)
+
+    def _fund_wallet(self, k: str, dst: "VenueAccount", short: float, home: "VenueAccount", spare: dict) -> None:
+        pend = self.state.setdefault("pending", {})
+        p = pend.get(k)
+        if p:                                              # en overførsel er på vej: vent, til den er fremme
+            if dst.state["cash"] >= p["before"] + 0.8 * p["usd"] or self.now() - p["ts"] > TRANSFER_WAIT_S:
+                if self.now() - p["ts"] > TRANSFER_WAIT_S and dst.state["cash"] < p["before"] + 0.8 * p["usd"]:
+                    self.problem = f"Overførslen til {dst.meta['name']} er ikke kommet frem efter 2 timer"
+                pend.pop(k)
+            return
+        if short < TRANSFER_MIN_USD:
+            return
+        cfg, b = WALLET_TRANSFER[k], home.broker
+        try:
+            coin, low, buy_usd = cfg["gas"]                # først lidt SOL/ETH til netværksgebyrer, hvis walleten mangler
+            if k == "solana":
+                from .solana import SOL_MINT
+                gas = dst.broker.tokens().get(SOL_MINT, 0.0)
+            else:
+                from .base import ETH
+                gas = dst.broker.balance(ETH)
+            if gas < low and home.state["cash"] >= buy_usd + TRANSFER_MIN_USD:
+                r = b.open_pos(f"{coin}USDT", "long", buy_usd, 1, 0)
+                home.state["cash"] -= r["usd"]
+                b.withdraw(coin, cfg["network"], dst.broker.address, r["qty"])
+                self.log(f"Kasse: sender {r['qty']:.5f} {coin} til {dst.meta['name']} til netværksgebyrer")
+            amt = min(short + 1.0, max(0.0, min(spare.get(home.venue, 0.0), home.state["cash"])))
+            if amt < TRANSFER_MIN_USD:
+                return
+            r = b.open_pos("USDCUSDT", "long", amt, 1, 0)   # USDT -> USDC (wallets bruger USDC)
+            home.state["cash"] -= r["usd"]
+            b.withdraw("USDC", cfg["network"], dst.broker.address, r["qty"])
+            pend[k] = {"usd": r["qty"], "ts": round(self.now()), "before": dst.state["cash"]}
+            t = {"ts": round(self.now()), "from": home.meta["name"], "to": dst.meta["name"], "usd": round(r["qty"], 2), "sim": False}
+            self.state["transfers"] = (self.state["transfers"] + [t])[-100:]
+            self.log(f"Kasse: sender {r['qty']:.2f} USDC fra Binance til {dst.meta['name']} ({dst.broker.address[:6]}…)")
+            if self.notify:
+                self.notify(f"Kasse: sender {r['qty']:.2f} USDC fra Binance til {dst.meta['name']}")
+        except Exception as e:
+            self.problem = f"Kunne ikke flytte penge til {dst.meta['name']}: {e}"[:200]
+            self.log("Kasse: " + self.problem)
 
     def run(self, plan: dict, following: str | None) -> None:
         """plan: {marked: {symbol: (long/short, beløb i USD, gearing)}}. Luk, flyt penge, åbn."""

@@ -48,7 +48,7 @@ class BinanceBalance:
         return sum(self.usd(b["asset"], float(b["free"]) + float(b["locked"]), px) for b in acct.get("balances", []))
 
     def _futures_usd(self, px: dict) -> float:
-        if self.fut is None:
+        if self.fut is None:                              # futures kun, hvis nøglen må (BINANCE_FUTURES=1)
             return 0.0
         acct = self.fut._req("GET", "/fapi/v2/account", signed=True)
         return sum(self.usd(a["asset"], float(a["marginBalance"]), px) for a in acct.get("assets", []) if float(a.get("marginBalance") or 0))
@@ -56,13 +56,15 @@ class BinanceBalance:
     # ---------- indsat ----------
     def _deposited_usd(self, px: dict) -> float:
         start = int((self.now() - YEAR_S) * 1000)
-        total = 0.0
-        for d in self.api._req("GET", "/sapi/v1/capital/deposit/hisrec", {"startTime": start}, signed=True) or []:
-            if int(d.get("status", 0)) == 1:                      # 1 = gennemført
-                total += self.usd(d["coin"], float(d["amount"]), px)
-        for w in self.api._req("GET", "/sapi/v1/capital/withdraw/history", {"startTime": start}, signed=True) or []:
-            if int(w.get("status", 0)) == 6:                      # 6 = gennemført
-                total -= self.usd(w["coin"], float(w["amount"]) + float(w.get("transactionFee") or 0), px)
+        total, step, now_ms = 0.0, 89 * 86400 * 1000, int(self.now() * 1000)
+        windows = [(t, min(t + step, now_ms)) for t in range(start, now_ms, step)]    # Binance giver højst 90 dage ad gangen
+        for a, z in windows:
+            for d in self.api._req("GET", "/sapi/v1/capital/deposit/hisrec", {"startTime": a, "endTime": z}, signed=True) or []:
+                if int(d.get("status", 0)) == 1:                  # 1 = gennemført
+                    total += self.usd(d["coin"], float(d["amount"]), px)
+            for w in self.api._req("GET", "/sapi/v1/capital/withdraw/history", {"startTime": a, "endTime": z}, signed=True) or []:
+                if int(w.get("status", 0)) == 6:                  # 6 = gennemført
+                    total -= self.usd(w["coin"], float(w["amount"]) + float(w.get("transactionFee") or 0), px)
         for kind, sign in (("0", 1), ("1", -1)):                  # bankoverførsler ind (0) og ud (1)
             res = self.api._req("GET", "/sapi/v1/fiat/orders", {"transactionType": kind, "beginTime": start}, signed=True) or {}
             for o in res.get("data") or []:
