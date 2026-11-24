@@ -155,6 +155,75 @@ class WalletFundingTests(unittest.TestCase):
         k._fund_wallet("solana", k.venues["solana"], 0.0, k.home(), spare)
         self.assertNotIn("solana", k.state["pending"])
 
+    def test_polymarket_gets_pol_and_usdc_on_polygon_at_the_signer_address(self):
+        sent = []
+
+        class Home(FakeBroker):
+            def open_pos(self, sym, side, usd, lev, px):
+                return {"qty": usd if sym == "USDCUSDT" else 8.0, "usd": usd, "id": "x"}
+
+            def withdraw(self, coin, network, address, amount):
+                sent.append((coin, network, address, round(amount, 4)))
+
+        class Wallet(FakeBroker):
+            address = "0xPROXY"                 # her ligger pengene (proxy-walleten)
+            deposit_address = "0xSIGNER"        # hertil sender Binance, så nøglen kan veksle USDC -> USDC.e
+
+            def pol(self):
+                return 0.0
+
+        k = Kasse(["binance-spot", "polymarket"], mode="1", brokers={"binance-spot": Home({}), "polymarket": Wallet({})}, log=lambda m: None)
+        k.home().state["cash"] = 100.0
+        k._fund_wallet("polymarket", k.venues["polymarket"], 30.0, k.home(), {"binance-spot": 100.0})
+        self.assertEqual(sent[0][:3], ("POL", "MATIC", "0xSIGNER"))
+        self.assertEqual(sent[1], ("USDC", "MATIC", "0xSIGNER", 31.0))
+
+    def test_polymarket_swaps_binance_usdc_to_usdce_and_forwards_it_to_the_proxy(self):
+        from hub.polymarket import POL, USDC_E, USDC_NATIVE, PolymarketWallet
+
+        class Chain:
+            def __init__(self, bal):
+                self.bal, self.calls = dict(bal), []
+
+            def balance(self, token):
+                return self.bal.get(token, 0.0)
+
+            def swap(self, a, b, amt):
+                self.calls.append(("swap", a, b, amt))
+                self.bal[a] -= amt
+                self.bal[b] = self.bal.get(b, 0.0) + amt * 0.999
+                return {"id": "s"}
+
+            def transfer(self, token, to, amt):
+                self.calls.append(("transfer", token, to, amt))
+                self.bal[token] -= amt
+                return "t"
+
+        w = PolymarketWallet(key="0x" + "11" * 32, funder="0x" + "ab" * 20)
+        w._signer_wallet = Chain({USDC_NATIVE: 20.0, POL: 3.0})
+        r = w.sweep()
+        self.assertEqual([c[0] for c in w._signer_wallet.calls], ["swap", "transfer"])
+        self.assertEqual(w._signer_wallet.calls[0][1:3], (USDC_NATIVE, USDC_E))
+        self.assertEqual(w._signer_wallet.calls[1][1:3], (USDC_E, "0x" + "ab" * 20))
+        self.assertIn("forward", r)
+        self.assertIsNone(w.sweep())                                    # intet mere at gøre
+        w._signer_wallet = Chain({USDC_NATIVE: 20.0, POL: 0.0})          # ingen POL: ingen handel, men en tydelig fejl
+        with self.assertRaises(RuntimeError):
+            w.sweep()
+        self.assertEqual(w._signer_wallet.calls, [])
+
+    def test_a_failing_sweep_does_not_stop_the_other_markets(self):
+        class Bad(FakeBroker):
+            def sweep(self):
+                raise RuntimeError("mangler POL")
+
+        logs = []
+        k = Kasse(["binance-spot", "polymarket"], mode="1", brokers={"binance-spot": FakeBroker({}), "polymarket": Bad({})}, log=logs.append)
+        k.sweep_wallets()
+        k.sweep_wallets()                                                # samme fejl logges kun én gang
+        self.assertEqual(len([m for m in logs if "mangler POL" in m]), 1)
+        self.assertEqual(k.problem, "")
+
 
 class PlanTests(unittest.TestCase):
     def test_positions_and_plan_follow_the_portfolio_slots(self):

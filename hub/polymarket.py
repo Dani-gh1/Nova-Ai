@@ -18,6 +18,27 @@ GAMMA = "https://gamma-api.polymarket.com"
 USDC_E = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"      # Polymarkets betalingsmønt (tjekket mod py_clob_client og kæden)
 
 
+USDC_NATIVE = "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359"   # USDC på Polygon, som Binance sender (Polymarket bruger USDC.e, se ovenfor)
+POL = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE"            # KyberSwaps betegnelse for POL (Polygons gas)
+MIN_POL = 0.2                                                 # så meget POL skal der mindst være til en veksling (koster ca. 0,05)
+MIN_SWEEP_USD = 1.0
+SWAP_SLIPPAGE_BPS = 50                                        # to dollar-mønter: højst 0,5 % slip
+
+
+class PolygonSigner:
+    """Veksler USDC -> USDC.e på Polygon med samme nøgle som Polymarket-walleten (genbruger Base-walletens kode)."""
+
+    def __new__(cls, key: str, opener=None):
+        from .base import BaseWallet
+
+        class W(BaseWallet):
+            venue = "Polygon"
+            rpc_url, kyber, chain_id, slippage_bps = RPC, "https://aggregator-api.kyberswap.com/polygon/api/v1", 137, SWAP_SLIPPAGE_BPS
+        w = W(key, opener)
+        w._dec.update({USDC_NATIVE.lower(): 6, USDC_E.lower(): 6, POL.lower(): 18})
+        return w
+
+
 class PolymarketWallet:
     venue = "Polymarket"
 
@@ -60,6 +81,37 @@ class PolymarketWallet:
         if "error" in res:
             raise RuntimeError(f"Polygon: {res['error'].get('message')}")
         return int(res["result"], 16) / 1e6
+
+    # ---------- indbetaling fra Binance ----------
+    @property
+    def deposit_address(self) -> str:
+        """Hvor Binance sender til: nøgle-adressen (den, der kan veksle), ikke proxy-adressen."""
+        return self.signer
+
+    def signer_wallet(self):
+        if getattr(self, "_signer_wallet", None) is None:
+            self._signer_wallet = PolygonSigner(self.key)
+        return self._signer_wallet
+
+    def pol(self) -> float:
+        return self.signer_wallet().balance(POL)
+
+    def sweep(self) -> dict | None:
+        """Binance sender USDC (Polygon). Polymarket bruger USDC.e: veksl USDC -> USDC.e, og send det videre til proxy-walleten
+        (POLYMARKET_FUNDER), hvis den er sat. Gør ingenting, hvis der intet ligger. Kaster en fejl, hvis der mangler POL."""
+        w, out = self.signer_wallet(), {}
+        usdc = w.balance(USDC_NATIVE)
+        if usdc >= MIN_SWEEP_USD:
+            if w.balance(POL) < MIN_POL:
+                raise RuntimeError("Polymarket-walleten mangler POL til netværksgebyr (Kassen køber det ved næste overførsel)")
+            out["swap"] = w.swap(USDC_NATIVE, USDC_E, usdc)
+        if self.funder and self.funder.lower() != self.signer.lower():
+            e = w.balance(USDC_E)
+            if e >= MIN_SWEEP_USD:
+                if w.balance(POL) < MIN_POL:
+                    raise RuntimeError("Polymarket-walleten mangler POL til netværksgebyr")
+                out["forward"] = {"usd": e, "id": w.transfer(USDC_E, self.funder, e)}
+        return out or None
 
     def positions(self) -> list[dict]:
         res = self._http(f"{DATA}/v2/positions?user={self.address}") or {}        # v1 er lukket (410)

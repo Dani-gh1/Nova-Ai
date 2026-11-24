@@ -26,6 +26,7 @@ def _word(hexaddr: str) -> str:
 
 class BaseWallet:
     venue = "Base"
+    rpc_url, kyber, chain_id, slippage_bps = RPC, KYBER, CHAIN_ID, SLIPPAGE_BPS      # underklasser kan bruge et andet netværk (Polygon)
 
     def __init__(self, key: str | None = None, opener=None):
         from eth_account import Account
@@ -45,7 +46,7 @@ class BaseWallet:
             return json.loads(r.read().decode())
 
     def rpc(self, method: str, params: list):
-        res = self._http(RPC, {"jsonrpc": "2.0", "id": 1, "method": method, "params": params})
+        res = self._http(self.rpc_url, {"jsonrpc": "2.0", "id": 1, "method": method, "params": params})
         if res.get("error"):
             raise RuntimeError(f"Base {method}: {res['error'].get('message')}")
         return res["result"]
@@ -88,7 +89,7 @@ class BaseWallet:
         base_fee = int(self.rpc("eth_getBlockByNumber", ["latest", False])["baseFeePerGas"], 16)
         tip = int(self.rpc("eth_maxPriorityFeePerGas", []), 16)
         signed = self.Account.sign_transaction({
-            "chainId": CHAIN_ID, "nonce": int(self.rpc("eth_getTransactionCount", [self.address, "pending"]), 16),
+            "chainId": self.chain_id, "nonce": int(self.rpc("eth_getTransactionCount", [self.address, "pending"]), 16),
             "to": to, "value": value, "data": data, "gas": gas, "maxPriorityFeePerGas": tip, "maxFeePerGas": base_fee * 2 + tip,
             "type": 2}, self.key)
         raw = getattr(signed, "raw_transaction", None) or signed.rawTransaction
@@ -107,13 +108,18 @@ class BaseWallet:
         if allowed < raw:                                    # giv routeren lov til præcis det beløb, der skal handles
             self._send(token, "0x095ea7b3" + _word(spender) + hex(raw)[2:].rjust(64, "0"))
 
+    def transfer(self, token: str, to: str, amount: float) -> str:
+        """Send `amount` af et ERC-20-token til en anden adresse (bruges til at flytte USDC.e til Polymarkets proxy-wallet)."""
+        raw = int(amount * 10 ** self.decimals(token))
+        return self._send(token, "0xa9059cbb" + _word(to) + hex(raw)[2:].rjust(64, "0"))
+
     def swap(self, token_in: str, token_out: str, amount: float) -> dict:
         raw = int(amount * 10 ** self.decimals(token_in))
-        r = self._http(f"{KYBER}/routes?tokenIn={token_in}&tokenOut={token_out}&amountIn={raw}").get("data")
+        r = self._http(f"{self.kyber}/routes?tokenIn={token_in}&tokenOut={token_out}&amountIn={raw}").get("data")
         if not r:
             raise RuntimeError("KyberSwap: ingen pris")
-        b = self._http(f"{KYBER}/route/build", {"routeSummary": r["routeSummary"], "sender": self.address, "recipient": self.address,
-                                               "slippageTolerance": SLIPPAGE_BPS}).get("data")
+        b = self._http(f"{self.kyber}/route/build", {"routeSummary": r["routeSummary"], "sender": self.address, "recipient": self.address,
+                                               "slippageTolerance": self.slippage_bps}).get("data")
         if not b:
             raise RuntimeError("KyberSwap: kunne ikke bygge handlen")
         if token_in.lower() != ETH.lower():

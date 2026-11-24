@@ -41,9 +41,11 @@ MIN_TRANSFER_USD = 5.0
 USD_DKK = 6.9                # kun til visning og indskud i kroner
 HOME = "binance-spot"        # her lander indskud, og her står kontanterne
 # Automatisk flytning fra Binance til wallets (netværksnavne og minimum fra Binance selv). Polymarket er IKKE med:
-# Binance sender ny USDC på Polygon, mens Polymarket bruger USDC.e, så den sættes ind via polymarket.com.
+# Binance sender USDC på Polygon, men Polymarket bruger USDC.e: walleten veksler det selv (PolymarketWallet.sweep), og
+# Kassen sender lidt POL til netværksgebyret. Binances navn for Polygon er MATIC.
 WALLET_TRANSFER = {"solana": {"network": "SOL", "gas": ("SOL", 0.02, 10.0)},      # (mønt, fyld op under, køb for USD)
-                   "base": {"network": "BASE", "gas": ("ETH", 0.0006, 10.0)}}
+                   "base": {"network": "BASE", "gas": ("ETH", 0.0006, 10.0)},
+                   "polymarket": {"network": "MATIC", "gas": ("POL", 0.5, 6.0)}}
 TRANSFER_MIN_USD = 10.0
 TRANSFER_WAIT_S = 2 * 3600
 
@@ -456,6 +458,26 @@ class Kasse:
                 pass
         self.state["read_lines"] = len(lines)
 
+    def sweep_wallets(self) -> None:
+        """Wallets, der selv skal veksle indbetalinger (Polymarket: USDC -> USDC.e). Fejl melder kun et problem; pengene bliver liggende."""
+        for k, v in self.venues.items():
+            sweep = getattr(v.broker, "sweep", None)
+            if sweep is None:
+                continue
+            try:
+                r = sweep()
+                if r:
+                    self.log(f"Kasse: {v.meta['name']}: veksler indbetaling ({', '.join(r)})")
+                    if self.notify:
+                        self.notify(f"Kasse: {v.meta['name']}: indbetaling klar til handel")
+            except Exception as e:                            # må ikke stoppe de andre markeder; log kun, når beskeden er ny
+                msg = f"{v.meta['name']}: kunne ikke veksle indbetalingen: {e}"[:200]
+                if self.state.get("sweep_error", {}).get(k) != msg:
+                    self.state.setdefault("sweep_error", {})[k] = msg
+                    self.log("Kasse: " + msg)
+            else:
+                self.state.get("sweep_error", {}).pop(k, None)
+
     def sync_cash(self) -> None:
         """Rigtige penge: kontanterne i hvert marked = det, Binance faktisk har (fri USDT/USDC), så indskud og hævninger
         tæller med af sig selv, og Nova AI aldrig handler for penge, der ikke er der."""
@@ -541,23 +563,26 @@ class Kasse:
         cfg, b = WALLET_TRANSFER[k], home.broker
         try:
             coin, low, buy_usd = cfg["gas"]                # først lidt SOL/ETH til netværksgebyrer, hvis walleten mangler
+            to = getattr(dst.broker, "deposit_address", None) or dst.broker.address     # Polymarket: nøgle-adressen, ikke proxy
             if k == "solana":
                 from .solana import SOL_MINT
                 gas = dst.broker.tokens().get(SOL_MINT, 0.0)
+            elif k == "polymarket":
+                gas = dst.broker.pol()
             else:
                 from .base import ETH
                 gas = dst.broker.balance(ETH)
             if gas < low and home.state["cash"] >= buy_usd + TRANSFER_MIN_USD:
                 r = b.open_pos(f"{coin}USDT", "long", buy_usd, 1, 0)
                 home.state["cash"] -= r["usd"]
-                b.withdraw(coin, cfg["network"], dst.broker.address, r["qty"])
+                b.withdraw(coin, cfg["network"], to, r["qty"])
                 self.log(f"Kasse: sender {r['qty']:.5f} {coin} til {dst.meta['name']} til netværksgebyrer")
             amt = min(short + 1.0, max(0.0, min(spare.get(home.venue, 0.0), home.state["cash"])))
             if amt < TRANSFER_MIN_USD:
                 return
             r = b.open_pos("USDCUSDT", "long", amt, 1, 0)   # USDT -> USDC (wallets bruger USDC)
             home.state["cash"] -= r["usd"]
-            b.withdraw("USDC", cfg["network"], dst.broker.address, r["qty"])
+            b.withdraw("USDC", cfg["network"], to, r["qty"])
             pend[k] = {"usd": r["qty"], "ts": round(self.now()), "before": dst.state["cash"]}
             t = {"ts": round(self.now()), "from": home.meta["name"], "to": dst.meta["name"], "usd": round(r["qty"], 2), "sim": False}
             self.state["transfers"] = (self.state["transfers"] + [t])[-100:]
@@ -575,6 +600,7 @@ class Kasse:
             self.read_deposits()
             self.problem = self.ready()
             if self.mode == "1" and not self.problem:
+                self.sweep_wallets()
                 self.sync_cash()
             try:
                 for k, v in self.venues.items():
