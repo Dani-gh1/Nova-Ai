@@ -38,6 +38,8 @@ class BalanceTests(unittest.TestCase):
         self.assertEqual(r["deposited_usd"], round(1000 - 91 + 108, 2))                       # ind - ud (inkl. gebyr) + kortkøb
         self.assertEqual(r["earned_usd"], round(r["balance_usd"] - r["deposited_usd"], 2))
         self.assertAlmostEqual(r["balance_dkk"], r["balance_usd"] / 1.08 * 7.46, places=1)
+        self.assertEqual({e["kind"] for e in r["events"]}, {"ind", "ud"})                        # til appens historik
+        self.assertAlmostEqual(r["usd_dkk"], 7.46 / 1.08, places=3)
 
     def test_read_at_most_once_a_minute(self):
         t = [1_800_000_000]

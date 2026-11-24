@@ -179,7 +179,7 @@ def last_problem(bot: dict) -> str:
     return ""
 
 
-PERIODS = {"24t": 86400, "7d": 7 * 86400, "1m": 30 * 86400}
+PERIODS = {"24t": 86400, "7d": 7 * 86400, "1m": 30 * 86400, "3m": 90 * 86400, "1y": 365 * 86400}
 
 
 def period_returns(curve, return_pct=None, now=None) -> dict:
@@ -548,7 +548,8 @@ def make_handler(bots: list[dict], throttle: Throttle | None = None, ratelimit: 
                 if path == "/api/live":
                     ov = overview
                     out = {**(ov.live.view() if ov.live is not None else {"mode": ""}),
-                           "smart": ov.live_smart.view() if ov.live_smart else None, "real": getattr(ov, "real", None)}
+                           "smart": ov.live_smart.view() if ov.live_smart else None, "real": getattr(ov, "real", None),
+                           "history": thin_points(getattr(ov, "money_hist", None) or []), **app_info(public, bool(password))}
                     return self._send(200, "application/json", json.dumps(out).encode())
                 m = re.match(r"^/api/bot/([a-z0-9_-]+)$", path)
                 if m and m.group(1) in by_key:
@@ -635,7 +636,7 @@ def watch_stalls(ov: "Overview", note: Notifier) -> None:
 def read_money(say=print) -> dict | None:
     """Pengene, som de står lige nu: Binance (saldo og indskud fra Binances historik) + Solana- og Polymarket-wallets.
     Kun de steder, der er nøgler til, læses. None, hvis der ikke er nogen nøgler."""
-    parts, deposited, errors = {}, None, []
+    parts, deposited, errors, usd_dkk, events = {}, None, [], None, []
     if os.environ.get("BINANCE_API_KEY") and os.environ.get("BINANCE_API_SECRET"):
         try:
             global _bal
@@ -646,6 +647,7 @@ def read_money(say=print) -> dict | None:
                 _bal = BinanceBalance(BinanceSpot(k, s), BinanceFutures(k, s) if os.environ.get("BINANCE_FUTURES") == "1" else None)
             b = _bal.read()
             parts["Binance"], deposited = b["balance_usd"], b["deposited_usd"]
+            usd_dkk, events = b.get("usd_dkk"), b.get("events") or []
         except Exception as e:
             errors.append(f"Binance: {e}"[:120])
     for name, env, mod, cls in (("Solana", "SOLANA_PRIVATE_KEY", ".solana", "SolanaWallet"), ("Polymarket", "POLYMARKET_PRIVATE_KEY", ".polymarket", "PolymarketWallet"),
@@ -665,20 +667,74 @@ def read_money(say=print) -> dict | None:
     if errors:
         say("Saldo: " + "; ".join(errors))
     return {"balance_usd": total, "parts": parts, "deposited_usd": deposited, "earned_usd": earned, "errors": errors,
-            "at": round(time.time())}
+            "usd_dkk": usd_dkk, "events": events, "at": round(time.time())}
 
 
 _wallets: dict = {}
 
 
+MONEY_EVERY_S = 600              # et punkt i saldo-historikken hvert 10. minut (oftere, hvis saldoen flytter sig over 1 %)
+MONEY_MAX_POINTS = 4000
+
+
+def money_file() -> Path:
+    return Path(os.environ.get("HUB_MONEY_FILE") or ROOT / "logs" / "money-history.json")
+
+
+def record_money(hist: list, real: dict | None, now: float) -> bool:
+    """Læg den rigtige saldo i historikken: [tid, saldo USD, indsat USD]. Returnerer True, hvis der kom et nyt punkt."""
+    if not real or not isinstance(real.get("balance_usd"), (int, float)):
+        return False
+    b, d = round(real["balance_usd"], 2), real.get("deposited_usd")
+    d = round(d, 2) if isinstance(d, (int, float)) else None
+    if hist:
+        t0, b0, d0 = hist[-1]
+        if now - t0 < MONEY_EVERY_S and abs(b - b0) <= max(0.01, abs(b0) * 0.01) and d == d0:
+            return False
+    hist.append([round(now), b, d])
+    if len(hist) > MONEY_MAX_POINTS:
+        hist[:] = hist[:1] + hist[1:-1:2] + hist[-1:]
+    return True
+
+
+def load_money_history() -> list:
+    try:
+        h = json.loads(money_file().read_text(encoding="utf-8"))
+        return [p for p in h if isinstance(p, list) and len(p) == 3] if isinstance(h, list) else []
+    except (OSError, ValueError):
+        return []
+
+
 def watch_money(ov: "Overview") -> None:
     """Læser pengene hvert minut (kun når der er nøgler), så forsiden viser præcis det, der står hos Binance og i wallets."""
+    ov.money_hist = load_money_history()
     while True:
         try:
             ov.real = read_money(lambda m: print(m, flush=True))
+            if record_money(ov.money_hist, ov.real, time.time()):
+                f = money_file()
+                f.parent.mkdir(parents=True, exist_ok=True)
+                tmp = f.with_suffix(".tmp")
+                tmp.write_text(json.dumps(ov.money_hist), encoding="utf-8")
+                tmp.replace(f)
         except Exception as e:
             print(f"Saldo: fejl: {e!r}", flush=True)
         time.sleep(60)
+
+
+def thin_points(pts: list, n: int = 400) -> list:
+    if len(pts) <= n:
+        return pts
+    k = len(pts) / n
+    return [pts[int(i * k)] for i in range(n)] + [pts[-1]]
+
+
+def app_info(public: bool, password: bool) -> dict:
+    """Grænser og sikkerhed til appens indstillinger (kun læsning)."""
+    from . import live
+    return {"limits": {"max_leverage": live.MAX_LEVERAGE, "max_positions": live.MAX_POSITIONS, "min_order_usd": live.MIN_ORDER_USD,
+                       "venues": [live.VENUES[v]["name"] for v in live.enabled_venues()]},
+            "security": {"public": public, "password": password, "notify": bool(os.environ.get("NTFY_TOPIC"))}}
 
 
 def start_live(ov: "Overview", bots: list[dict], note: Notifier | None = None) -> None:

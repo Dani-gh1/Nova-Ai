@@ -121,6 +121,32 @@ class HubTests(unittest.TestCase):
         self.assertEqual(r["max"], 32.1)
         self.assertEqual(srv.period_returns([], None, now=now)["24t"], None)
 
+    def test_periods_for_the_app_include_3_months_and_a_year(self):
+        now = 1_800_000_000
+        cv = [[now - 400 * 86400, 0.0], [now - 100 * 86400, 10.0], [now - 3600, 21.0]]
+        r = srv.period_returns(cv, 21.0, now=now)
+        self.assertAlmostEqual(r["3m"], (121 / 110 - 1) * 100, places=3)
+        self.assertAlmostEqual(r["1y"], 21.0, places=3)
+
+    def test_the_real_balance_is_kept_every_ten_minutes_or_when_it_moves(self):
+        hist, t = [], 1_800_000_000
+        self.assertFalse(srv.record_money(hist, None, t))                     # ingen nøgler: intet at gemme
+        self.assertTrue(srv.record_money(hist, {"balance_usd": 100.0, "deposited_usd": 100.0}, t))
+        self.assertFalse(srv.record_money(hist, {"balance_usd": 100.4, "deposited_usd": 100.0}, t + 60))   # under 1 %: vent
+        self.assertTrue(srv.record_money(hist, {"balance_usd": 102.0, "deposited_usd": 100.0}, t + 120))   # flyttede sig
+        self.assertTrue(srv.record_money(hist, {"balance_usd": 102.0, "deposited_usd": 150.0}, t + 180))   # nyt indskud
+        self.assertTrue(srv.record_money(hist, {"balance_usd": 102.0, "deposited_usd": 150.0}, t + 900))   # 10 minutter
+        self.assertEqual(hist[-1], [t + 900, 102.0, 150.0])
+
+    def test_the_app_gets_history_limits_and_security_from_api_live(self):
+        hub = start(make_handler([]))
+        hub.RequestHandlerClass.overview.money_hist = [[1, 2.0, 3.0]]
+        d = json.load(urllib.request.urlopen(f"http://127.0.0.1:{hub.server_port}/api/live"))
+        self.assertEqual(d["history"], [[1, 2.0, 3.0]])
+        self.assertEqual(d["limits"]["max_leverage"], 2.0)
+        self.assertEqual(set(d["security"]), {"public", "password", "notify"})
+        hub.shutdown()
+
     def test_a_client_hanging_up_is_not_shown_as_a_bot_problem(self):
         import tempfile
         log = ("ERROR scanning fejlede: HTTP 500\n" + "-" * 40 + "\n"

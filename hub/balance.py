@@ -23,6 +23,7 @@ class BinanceBalance:
         self.lock = threading.Lock()
         self._cache: tuple[float, dict] | None = None
         self._kl: dict[tuple, float] = {}          # (mønt, minut) -> pris dengang
+        self._events: list[dict] = []              # indbetalinger og hævninger til appens historik
 
     # ---------- kurser ----------
     def _prices(self) -> dict[str, float]:
@@ -87,24 +88,38 @@ class BinanceBalance:
     # ---------- indsat ----------
     def _deposited_usd(self, px: dict) -> float:
         start = int((self.now() - YEAR_S) * 1000)
+        ev = self._events = []
+        note = lambda ts, kind, what, usd: ev.append({"ts": round(ts / 1000), "kind": kind, "what": what, "usd": round(usd, 2)})
         total, step, now_ms = 0.0, 89 * 86400 * 1000, int(self.now() * 1000)
         windows = [(t, min(t + step, now_ms)) for t in range(start, now_ms, step)]    # Binance giver højst 90 dage ad gangen
         for a, z in windows:
             for d in self.api._req("GET", "/sapi/v1/capital/deposit/hisrec", {"startTime": a, "endTime": z}, signed=True) or []:
                 if int(d.get("status", 0)) in (1, 6):             # 1 = gennemført, 6 = krediteret (kan endnu ikke hæves)
-                    total += self._usd_at(d["coin"], float(d["amount"]), self._ms(d.get("insertTime"), now_ms), px)
+                    ts = self._ms(d.get("insertTime"), now_ms)
+                    v = self._usd_at(d["coin"], float(d["amount"]), ts, px)
+                    total += v
+                    note(ts, "ind", f"{float(d['amount']):g} {d['coin']}", v)
             for w in self.api._req("GET", "/sapi/v1/capital/withdraw/history", {"startTime": a, "endTime": z}, signed=True) or []:
                 if int(w.get("status", 0)) == 6:                  # 6 = gennemført
-                    total -= self._usd_at(w["coin"], float(w["amount"]) + float(w.get("transactionFee") or 0), self._ms(w.get("applyTime"), now_ms), px)
+                    ts = self._ms(w.get("applyTime"), now_ms)
+                    v = self._usd_at(w["coin"], float(w["amount"]) + float(w.get("transactionFee") or 0), ts, px)
+                    total -= v
+                    note(ts, "ud", f"{float(w['amount']):g} {w['coin']}", v)
         for kind, sign in (("0", 1), ("1", -1)):                  # bankoverførsler ind (0) og ud (1)
             res = self.api._req("GET", "/sapi/v1/fiat/orders", {"transactionType": kind, "beginTime": start}, signed=True) or {}
             for o in res.get("data") or []:
                 if o.get("status") in ("Successful", "Finished", "Completed"):
-                    total += sign * self._usd_at(o["fiatCurrency"], float(o["amount"]) - float(o.get("totalFee") or 0), self._ms(o.get("createTime"), now_ms), px)
+                    ts = self._ms(o.get("createTime"), now_ms)
+                    v = self._usd_at(o["fiatCurrency"], float(o["amount"]) - float(o.get("totalFee") or 0), ts, px)
+                    total += sign * v
+                    note(ts, "ind" if sign > 0 else "ud", f"{float(o['amount']):g} {o['fiatCurrency']} (bank)", v)
         res = self.api._req("GET", "/sapi/v1/fiat/payments", {"transactionType": "0", "beginTime": start}, signed=True) or {}
         for p in res.get("data") or []:                          # kortkøb af krypto
             if p.get("status") in ("Completed", "Successful"):
-                total += self._usd_at(p["fiatCurrency"], float(p["sourceAmount"]), self._ms(p.get("createTime"), now_ms), px)
+                ts = self._ms(p.get("createTime"), now_ms)
+                v = self._usd_at(p["fiatCurrency"], float(p["sourceAmount"]), ts, px)
+                total += v
+                note(ts, "ind", f"{float(p['sourceAmount']):g} {p['fiatCurrency']} (kort)", v)
         return total
 
     def read(self) -> dict:
@@ -118,6 +133,8 @@ class BinanceBalance:
             eur = px.get("EURUSDT") or 0
             dkk = (lambda v: round(v / eur * DKK_PER_EUR, 2)) if eur else (lambda v: None)
             out = {"balance_usd": round(bal, 2), "deposited_usd": round(dep, 2), "earned_usd": round(bal - dep, 2),
-                   "balance_dkk": dkk(bal), "earned_dkk": dkk(bal - dep), "deposited_dkk": dkk(dep), "at": round(self.now())}
+                   "balance_dkk": dkk(bal), "earned_dkk": dkk(bal - dep), "deposited_dkk": dkk(dep), "at": round(self.now()),
+                   "usd_dkk": round(DKK_PER_EUR / eur, 4) if eur else None,
+                   "events": sorted(self._events, key=lambda e: -e["ts"])[:50]}
             self._cache = (self.now(), out)
             return out
