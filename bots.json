@@ -107,30 +107,6 @@
    }
   },
   {
-   "key": "quasar",
-   "name": "Krypto-futures",
-   "repo": "Dani-gh1/Quasar-AI",
-   "port": 8805,
-   "desc": "Krypto-perpetuals",
-   "launch": {
-    "kind": "patch",
-    "config": "desk.config",
-    "args": [
-     "run"
-    ]
-   },
-   "hide": "header nav, body > nav, nav",
-   "invests": "Krypto-futures med gearing (Binance/Bybit)",
-   "adapter": "quasar",
-   "hosts": [
-    "fapi.binance.com",
-    "api.bybit.com"
-   ],
-   "fees": {
-    "text": "0,05 % taker / 0,02 % maker pr. side af den gearede størrelse (Binance futures) + funding hver 8. time"
-   }
-  },
-  {
    "key": "orion",
    "name": "Krypto",
    "repo": "Dani-gh1/Orion-AI",

@@ -12,7 +12,6 @@ Botternes data (papirkonti, databaser) er ikke i git.
 | Forex og råvarer | `bots/Meridian-AI` |
 | Nye tokens | `bots/Comet-AI` |
 | Prognosemarkeder (Polymarket og Kalshi) | `bots/Delphi-AI` |
-| Krypto-futures | `bots/Quasar-AI` |
 | Krypto (store kryptovalutaer) | `bots/Orion-AI` |
 | Memecoins (nye Solana-memecoins) | `bots/Coins` (kører som sin egen tjeneste, `nova.service`) |
 | Globale aktier | `bots/Atlas` (egen bog, `bots.json`) |
@@ -54,7 +53,6 @@ rigtigt) bestemmer, hvilken strategi pengene følger, og Kassen flytter pengene 
 | Marked | Botter | Status |
 |---|---|---|
 | Binance spot | Orion, Orion Mid, Staking, DeFi, AI-token | klar |
-| Binance futures | Quasar (gearing højst 2x) | klar; penge flyttes automatisk mellem spot og futures |
 | Saxo Bank | Atlas-botterne, Meridian, Valuta | på vej (kræver en Saxo-udviklerkonto) |
 | Polymarket / Kalshi | Delphi | på vej (kræver en wallet med USDC på Polygon) |
 | Solana / Base | Nova, Nova Classic, Comet | på vej (kræver egne wallets) |
@@ -72,7 +70,6 @@ Alle botter regner selv realistiske gebyrer og slip ind i deres papirhandel, så
 |---|---|
 | Atlas og aktie-botterne | Kurtage som hos Interactive Brokers ($0,005 pr. aktie, min. $1, maks. 1 %) + 0,05 % slip + halv spread |
 | Orion og krypto-botterne | 0,10 % pr. side (Binance spot) + slip fra den rigtige ordrebog |
-| Quasar | 0,05 % taker / 0,02 % maker (Binance futures) + funding |
 | Meridian og Valuta | Spread som hos en forex-broker + swap over natten |
 | Comet | DEX-gebyr 0,25–0,3 % + gas + prisvirkning |
 | Nova og Nova Classic | Jupiter-pris med puljegebyr og prisvirkning + $0,05 pr. swap |
@@ -233,7 +230,5 @@ Alle botter kan scanne markedet uden nøgler eller opsætning:
   dansk tid på hverdage) og sover ellers. Det er ikke en fejl, og oversigten viser "Venter på børsen" med næste åbning.
 * **Meridian** (forex og råvarer) bruger Yahoo Finance, hvis ingen nøgle er sat. Sæt `OANDA_TOKEN` i
   `/etc/nova-ai.env` (Mac: `~/Library/Application Support/Nova AI/nova-ai.env`) for rigtig bid/ask fra OANDA. Så skifter den selv.
-* **Quasar** (krypto-futures) prøver Binance og skifter selv til Bybit, hvis Binance er spærret i dit land eller hos din
-  server-udbyder.
 * Overblikket viser for hver bot, hvornår den **sidst scannede**. Står en bot stille i 20 minutter, vises "Scanner ikke",
   og efter 45 minutter genstarter vagthunden den.

@@ -31,8 +31,8 @@ def start(handler, port=0):
 class HubTests(unittest.TestCase):
     def test_bots_json_has_unique_bots(self):
         bots = load_bots()
-        self.assertEqual(len(bots), 22)
-        self.assertEqual(len({b["key"] for b in bots}), 22)
+        self.assertEqual(len(bots), 21)
+        self.assertEqual(len({b["key"] for b in bots}), 21)
         self.assertEqual(len({b["port"] for b in bots}), 22)
         for b in bots:
             if b.get("repo"):
