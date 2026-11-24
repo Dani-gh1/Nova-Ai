@@ -23,10 +23,69 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 SHELL = Path(__file__).with_name("shell.html")
+LOGIN = Path(__file__).with_name("login.html")
 STATIC = Path(__file__).with_name("static")
 # Forsiden må kun tale med hubben selv: et indsprøjtet script kan hverken hente kode udefra eller sende data væk
 SHELL_CSP = ("default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; "
              "connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'; object-src 'none'")
+# Login-siden må sende sin formular til hubben selv (ellers samme regler som forsiden)
+LOGIN_CSP = ("default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; "
+             "connect-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'; object-src 'none'")
+SESSION_COOKIE = "nova_session"
+SESSION_DAYS = 30
+
+
+def session_file() -> Path:
+    return Path(os.environ.get("HUB_SESSION_FILE") or ROOT / "logs" / "session.key")
+
+
+def session_secret() -> bytes:
+    """En tilfældig nøgle, der kun findes på serveren. Så kan en stjålet cookie ikke bruges til at gætte adgangskoden."""
+    f = session_file()
+    try:
+        k = f.read_bytes()
+        if len(k) >= 32:
+            return k
+    except OSError:
+        pass
+    k = os.urandom(32)
+    try:
+        f.parent.mkdir(parents=True, exist_ok=True)
+        fd = os.open(f, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, "wb") as fh:
+            fh.write(k)
+    except OSError:
+        pass
+    return k
+
+
+def _session_sig(secret: bytes, password: str, exp: int) -> str:
+    key = hmac.new(secret, password.encode("utf-8"), "sha256").digest()       # ny adgangskode = alle gamle logins ugyldige
+    return hmac.new(key, str(exp).encode(), "sha256").hexdigest()
+
+
+def make_session(secret: bytes, password: str, now: float) -> str:
+    exp = int(now + SESSION_DAYS * 86400)
+    return f"{exp}.{_session_sig(secret, password, exp)}"
+
+
+def check_session(token: str, secret: bytes, password: str, now: float) -> bool:
+    try:
+        exp_s, sig = token.split(".", 1)
+        exp = int(exp_s)
+    except (ValueError, AttributeError):
+        return False
+    return now < exp <= now + SESSION_DAYS * 86400 + 60 and hmac.compare_digest(sig, _session_sig(secret, password, exp))
+
+
+def cookie_value(header: str | None, name: str) -> str:
+    for part in (header or "").split(";"):
+        k, _, v = part.strip().partition("=")
+        if k == name:
+            return v
+    return ""
+
+
 STATIC_TYPES = {".svg": "image/svg+xml", ".png": "image/png", ".webmanifest": "application/manifest+json", ".ico": "image/x-icon"}
 
 
@@ -196,6 +255,31 @@ def period_returns(curve, return_pct=None, now=None) -> dict:
     return out
 
 
+def curve_drawdown(curve) -> float | None:
+    """Største fald fra en top i strategiens kurve (procent af kontoen)."""
+    eq = [100 + p[1] for p in sorted(p for p in curve or [] if isinstance(p, (list, tuple)) and len(p) >= 2 and isinstance(p[1], (int, float)))]
+    if len(eq) < 2:
+        return None
+    peak, dd = eq[0], 0.0
+    for v in eq:
+        peak = max(peak, v)
+        if peak > 0:
+            dd = max(dd, (peak - v) / peak * 100)
+    return round(dd, 2)
+
+
+RISK_LEVELS = ((5.0, "Lav"), (15.0, "Mellem"))        # største fald under 5 % = lav, under 15 % = mellem, ellers høj
+
+
+def risk_of(st: dict) -> dict:
+    """Risikoniveau ud fra strategiens største fald (botternes eget tal, ellers regnet ud af kurven)."""
+    dd = st.get("max_dd")
+    dd = abs(dd) if isinstance(dd, (int, float)) else curve_drawdown(st.get("curve"))
+    if dd is None:
+        return {"max_dd": None, "risk": None}
+    return {"max_dd": round(dd, 2), "risk": next((name for lim, name in RISK_LEVELS if dd < lim), "Høj")}
+
+
 def fee_rule(bot: dict) -> list:
     """Botens gebyrer som en regel, der vises under hver strategi (de er allerede trukket fra i botens egne tal)."""
     f = bot.get("fees") or {}
@@ -303,8 +387,9 @@ def bot_overview(bot: dict) -> dict:
             data = bot_data(bot)
             out["best"] = best_of(data["strategies"])
             out["strategies"] = [{"key": x.get("key"), "name": x.get("name"), "return_pct": x.get("return_pct"), "trades": x.get("trades") or 0,
-                                  "ret": period_returns(x.get("curve"), x.get("return_pct"))}
-                                 for x in data["strategies"]]          # til forsidens tabel over alle strategier
+                                  "ret": period_returns(x.get("curve"), x.get("return_pct")), "win_rate": x.get("win_rate"),
+                                  **risk_of(x)}
+                                 for x in data["strategies"]]          # til appens liste over alle strategier
             out["_cands"] = smart_candidates(data["strategies"], bot)      # bruges kun af Smart-botten
             out["trades"] = {"open": sum(x.get("open") or 0 for x in data["strategies"]),
                              "closed": sum(x.get("trades") or 0 for x in data["strategies"])}
@@ -467,6 +552,7 @@ def make_handler(bots: list[dict], throttle: Throttle | None = None, ratelimit: 
     public = os.environ.get("HUB_PUBLIC") == "1"
     ratelimit = ratelimit or (RateLimit() if public else None)
     overview = Overview(bots)
+    secret = session_secret() if password else b""
 
     class Handler(BaseHTTPRequestHandler):
         def _send(self, code: int, ctype: str, body: bytes, extra: dict | None = None):
@@ -486,6 +572,8 @@ def make_handler(bots: list[dict], throttle: Throttle | None = None, ratelimit: 
         def _authorized(self) -> bool:
             if not password:
                 return True
+            if check_session(cookie_value(self.headers.get("Cookie"), SESSION_COOKIE), secret, password, time.time()):
+                return True                                       # logget ind via login-siden
             h = self.headers.get("Authorization", "")
             if not h.startswith("Basic "):
                 return False
@@ -511,7 +599,10 @@ def make_handler(bots: list[dict], throttle: Throttle | None = None, ratelimit: 
             if not self._authorized():
                 if self.headers.get("Authorization"):          # et forsøg med forkert kode tæller; første kald uden kode gør ikke
                     throttle.failed(ip)
-                self._send(401, "text/plain", b"login", {"WWW-Authenticate": 'Basic realm="hub"'})
+                if self.path.partition("?")[0] in ("/", "/index.html"):     # forsiden: vis login-siden (ingen grå browser-boks)
+                    self._send(401, "text/html; charset=utf-8", LOGIN.read_bytes(), {"Content-Security-Policy": LOGIN_CSP})
+                else:
+                    self._send(401, "text/plain", b"login")
                 return False
             if password and self.headers.get("Authorization"):
                 throttle.ok(ip)
@@ -527,6 +618,12 @@ def make_handler(bots: list[dict], throttle: Throttle | None = None, ratelimit: 
                 if re.fullmatch(r"[A-Za-z0-9._-]+", name) and f.suffix in STATIC_TYPES and f.is_file():
                     return self._send(200, STATIC_TYPES[f.suffix], f.read_bytes(), {"Cache-Control": "public, max-age=86400"})
                 return self._send(404, "text/plain; charset=utf-8", b"findes ikke")
+            if path == "/login":
+                if not password or self._authorized():
+                    return self._send(303, "text/plain", b"", {"Location": "/"})
+                return self._send(200, "text/html; charset=utf-8", LOGIN.read_bytes(), {"Content-Security-Policy": LOGIN_CSP})
+            if path == "/logout":
+                return self._send(303, "text/plain", b"", {"Location": "/", "Set-Cookie": self._cookie("", 0)})
             if not self._gate():
                 return
             try:
@@ -541,6 +638,13 @@ def make_handler(bots: list[dict], throttle: Throttle | None = None, ratelimit: 
                     return self._send(200, "application/json", json.dumps(out).encode())
                 if path == "/api/overview":
                     return self._send(200, "application/json", json.dumps(overview.get()).encode())
+                if path == "/api/positions":
+                    overview.get()
+                    return self._send(200, "application/json", json.dumps(nova_positions(overview, by_key)).encode())
+                if path == "/api/day":
+                    overview.get()
+                    d = (urllib.parse.parse_qs(query).get("d") or [""])[0]
+                    return self._send(200, "application/json", json.dumps(day_detail(overview, by_key, d)).encode())
                 if path == "/api/smart":
                     overview.get()
                     out = overview.smart.view() if overview.smart is not None else None
@@ -568,6 +672,35 @@ def make_handler(bots: list[dict], throttle: Throttle | None = None, ratelimit: 
             except Exception:
                 self._send(500, "application/json", b'{"error": "internal error"}')
 
+        def _cookie(self, value: str, max_age: int) -> str:
+            secure = "; Secure" if self.headers.get("X-Forwarded-Proto") == "https" else ""
+            return f"{SESSION_COOKIE}={value}; Max-Age={max_age}; Path=/; HttpOnly; SameSite=Lax{secure}"
+
+        def do_POST(self):  # noqa: N802
+            """Kun login: adgangskoden fra login-siden. Samme spærring som ellers efter for mange forkerte forsøg."""
+            if self.path.partition("?")[0] != "/login" or not password:
+                return self._send(404, "text/plain; charset=utf-8", b"findes ikke")
+            ip = client_ip(self.client_address[0], self.headers.get("X-Forwarded-For"))
+            if ratelimit is not None and ratelimit.allow(ip):
+                return self._send(429, "text/plain; charset=utf-8", "For mange forespørgsler. Vent lidt.".encode())
+            try:
+                n = int(self.headers.get("Content-Length") or 0)
+            except ValueError:
+                n = -1
+            if not 0 < n <= 4096:
+                return self._send(400, "text/plain; charset=utf-8", b"ugyldig")
+            body = self.rfile.read(n).decode("utf-8", "replace")
+            given = (urllib.parse.parse_qs(body).get("password") or [""])[0]
+            wait = throttle.locked(ip)
+            if wait:
+                return self._send(303, "text/plain", b"", {"Location": f"/login?vent={int(wait) + 1}"})
+            if not hmac.compare_digest(given.encode("utf-8"), password.encode("utf-8")):
+                throttle.failed(ip)
+                wait = throttle.locked(ip)
+                return self._send(303, "text/plain", b"", {"Location": f"/login?vent={int(wait) + 1}" if wait else "/login?fejl=1"})
+            throttle.ok(ip)
+            return self._send(303, "text/plain", b"", {"Location": "/", "Set-Cookie": self._cookie(make_session(secret, password, time.time()), SESSION_DAYS * 86400)})
+
         def _proxy(self, bot: dict, sub: str, query: str):
             try:
                 code, ctype, body = upstream(bot, sub, query)
@@ -583,6 +716,85 @@ def make_handler(bots: list[dict], throttle: Throttle | None = None, ratelimit: 
 
     Handler.overview = overview
     return Handler
+
+
+def strategy_matches(t: dict, names: set) -> bool:
+    return str(t.get("strategy")) in names
+
+
+def names_for(sid: str | None, name: str | None, data: dict) -> set:
+    """Navn og nøgle for en strategi (handlerne bruger det ene eller det andet)."""
+    out = {x for x in (name, sid.split(":", 1)[1] if sid and ":" in sid else None) if x}
+    for st in data.get("strategies") or []:
+        if st.get("name") in out or str(st.get("key")) in out:
+            out |= {str(st.get("key")), st.get("name")}
+    return {str(x) for x in out if x}
+
+
+def nova_positions(ov: "Overview", by_key: dict, data_of=None) -> dict:
+    """Det, Nova Bot investerer i lige nu: den fulgte strategis åbne positioner, med Nova Bots konto fordelt ligeligt på dem."""
+    data_of = data_of or (lambda b: bot_data(b))
+    sm = ov.smart
+    held = sm.state.get("held") if sm is not None else None
+    if not held or held.get("bot") not in by_key:
+        return {"following": None, "positions": []}
+    data = data_of(by_key[held["bot"]])
+    names = names_for(held.get("id"), held.get("name"), data)
+    rows = [t for t in (data.get("trades") or {}).get("open") or [] if strategy_matches(t, names)]
+    value = round(sm.state["capital"] * sm.state["acct"], 2)
+    share = value / len(rows) if rows else 0.0
+    out = []
+    for t in sorted(rows, key=lambda t: -(t.get("ts") or 0)):
+        p = t.get("result_pct")
+        out.append({"symbol": t.get("symbol"), "side": t.get("side") or "long", "ts": t.get("ts"), "pnl_pct": p, "detail": t.get("detail") or "",
+                    "entry": t.get("entry"), "price": t.get("price"), "value_kr": round(share, 2),
+                    "pnl_kr": round(share * p / (100 + p), 2) if isinstance(p, (int, float)) and p > -100 else None})
+    gains = sm.state.get("gains") or {}
+    return {"following": held.get("name"), "bot": held.get("bot_name"), "bot_key": held.get("bot"), "id": held.get("id"),
+            "since": held.get("entered"), "gain_today": gains.get(held.get("id")), "value_kr": value, "positions": out}
+
+
+def day_detail(ov: "Overview", by_key: dict, day: str, data_of=None, now: float | None = None) -> dict:
+    """Én dag i kalenderen: Nova Bots resultat, hvilke strategier den fulgte, og deres handler i de timer, den fulgte dem."""
+    from datetime import datetime
+    from .leader import TZ
+    data_of = data_of or (lambda b: bot_data(b))
+    now = now or time.time()
+    sm = ov.smart
+    if sm is None or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", day or ""):
+        return {"day": day, "result_pct": None, "segments": [], "trades": [], "orders": []}
+    start = datetime.strptime(day, "%Y-%m-%d").replace(tzinfo=TZ).timestamp()
+    end = min(start + 86400, now)
+    st = sm.state
+    result = (st.get("days") or {}).get(day)
+    if day == st.get("day"):
+        result = round((st["acct"] / st.get("day_acct", 1.0) - 1) * 100, 4)
+    sw = [x for x in st.get("switches") or [] if start <= x["ts"] < start + 86400]
+    segs = [{"name": x["to"], "bot": x.get("to_bot"), "bot_key": x.get("to_key"), "id": x.get("to_id"), "from": x["ts"],
+             "to": sw[i + 1]["ts"] if i + 1 < len(sw) else end, "result_pct": sw[i + 1].get("result_pct") if i + 1 < len(sw) else None}
+            for i, x in enumerate(sw)]
+    trades, cache = [], {}
+    for sg in segs:
+        bot = by_key.get(sg["bot_key"])
+        if bot is None:
+            continue
+        try:
+            data = cache[bot["key"]] = cache.get(bot["key"]) or data_of(bot)
+        except (OSError, ValueError, KeyError, TypeError):
+            continue
+        names = names_for(sg["id"], sg["name"], data)
+        tr = data.get("trades") or {}
+        for kind in ("closed", "open"):
+            for t in tr.get(kind) or []:
+                if strategy_matches(t, names) and isinstance(t.get("ts"), (int, float)) and sg["from"] <= t["ts"] < sg["to"]:
+                    trades.append({"ts": t["ts"], "symbol": t.get("symbol"), "side": t.get("side"), "result_pct": t.get("result_pct"),
+                                   "open": kind == "open", "strategy": sg["name"], "bot": sg["bot"]})
+    orders = []
+    if ov.live is not None:
+        for v in ov.live.venues.values():
+            orders += [o for o in v.state.get("orders") or [] if start <= o["ts"] < start + 86400 and not o.get("sim")]
+    return {"day": day, "result_pct": result, "segments": segs, "trades": sorted(trades, key=lambda t: -t["ts"])[:150],
+            "orders": sorted(orders, key=lambda o: -o["ts"])[:50]}
 
 
 def live_plan(weights, bots_by_key: dict, total_usd: float, data_of=None) -> tuple[dict, list[str]]:

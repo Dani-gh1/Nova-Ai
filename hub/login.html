@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#050607">
+<meta name="color-scheme" content="dark">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Nova AI">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="robots" content="noindex">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+<title>Log ind · Nova AI</title>
+<style>
+:root{--bg:#050607;--card:#0e1211;--card2:#141917;--line:rgba(255,255,255,.08);--line2:rgba(255,255,255,.14);--ink:#f3f7f5;--ink2:#a3ada9;--mute:#67726d;
+  --neon:#5cf0a2;--neg:#ff6b78;--warn:#f6c453;--font:-apple-system,BlinkMacSystemFont,"SF Pro Display","Inter","Segoe UI",Roboto,system-ui,sans-serif}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{background:var(--bg)}
+body{margin:0;min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-content:center;background:var(--bg);color:var(--ink);
+  font:15px/1.45 var(--font);-webkit-font-smoothing:antialiased;padding:calc(env(safe-area-inset-top) + 24px) 20px calc(env(safe-area-inset-bottom) + 24px);
+  background-image:radial-gradient(520px 380px at 50% 0,rgba(92,240,162,.12),transparent 70%);background-repeat:no-repeat}
+main{width:100%;max-width:380px;animation:in .4s cubic-bezier(.2,.7,.2,1) both}
+@keyframes in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.logo{display:block;width:84px;height:84px;margin:0 auto 22px;border-radius:24px;box-shadow:0 0 40px rgba(92,240,162,.25)}
+h1{margin:0;text-align:center;font-size:30px;letter-spacing:-.03em;font-weight:750}
+p.sub{margin:6px 0 28px;text-align:center;color:var(--ink2);font-size:16px}
+form{background:linear-gradient(180deg,var(--card2),var(--card));border:1px solid var(--line);border-radius:24px;padding:20px}
+label{display:block;color:var(--ink2);font-size:14px;margin-bottom:8px}
+.pw{display:flex;align-items:center;background:#000;border:1px solid var(--line2);border-radius:16px;padding:0 6px 0 16px;transition:border-color .15s,box-shadow .15s}
+.pw:focus-within{border-color:var(--neon);box-shadow:0 0 0 3px rgba(92,240,162,.15)}
+.pw input{flex:1;min-width:0;background:none;border:0;outline:none;color:var(--ink);font:inherit;font-size:17px;padding:15px 0}
+.pw button{background:none;border:0;color:var(--ink2);font:inherit;font-size:13.5px;padding:10px;cursor:pointer;border-radius:10px}
+.go{width:100%;height:56px;margin-top:16px;border:0;border-radius:18px;background:linear-gradient(180deg,#76f6b3,#45e391);color:#03140b;font:inherit;font-weight:680;font-size:17px;
+  cursor:pointer;box-shadow:0 14px 34px -14px rgba(92,240,162,.75);transition:transform .12s}
+.go:active{transform:scale(.985)}.go:disabled{opacity:.55;cursor:default}
+.msg{display:none;margin:14px 0 0;padding:11px 14px;border-radius:14px;font-size:14px}
+.msg.bad{display:block;background:rgba(255,107,120,.1);border:1px solid rgba(255,107,120,.25);color:#ffc2c8}
+.msg.wait{display:block;background:rgba(246,196,83,.08);border:1px solid rgba(246,196,83,.22);color:#f9dc97}
+.foot{display:flex;align-items:center;justify-content:center;gap:8px;color:var(--mute);font-size:13px;margin-top:20px}
+.foot svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+:focus-visible{outline:2px solid var(--neon);outline-offset:2px}
+.hidden{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+@media (prefers-reduced-motion:reduce){main{animation:none}}
+</style>
+</head>
+<body>
+<main>
+  <img class="logo" src="/static/logo.svg" alt="">
+  <h1>Nova AI</h1>
+  <p class="sub">Log ind for at se din investeringsbot</p>
+  <form method="post" action="/login" id="f">
+    <input class="hidden" type="text" name="username" value="Nova AI" autocomplete="username" tabindex="-1" aria-hidden="true">
+    <label for="pw">Adgangskode</label>
+    <div class="pw">
+      <input id="pw" name="password" type="password" autocomplete="current-password" required autofocus>
+      <button type="button" id="show" aria-label="Vis adgangskoden">Vis</button>
+    </div>
+    <button class="go" type="submit" id="go">Log ind</button>
+    <div class="msg" id="msg" role="alert"></div>
+  </form>
+  <div class="foot"><svg viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>Du forbliver logget ind i 30 dage på denne enhed</div>
+</main>
+<script>
+"use strict";
+(function () {
+  var q = new URLSearchParams(location.search), msg = document.getElementById("msg"), pw = document.getElementById("pw");
+  if (q.get("fejl")) { msg.className = "msg bad"; msg.textContent = "Forkert adgangskode. Prøv igen."; }
+  var wait = parseInt(q.get("vent") || "0", 10);
+  if (wait > 0) {
+    var go = document.getElementById("go"), end = Date.now() + wait * 1000;
+    go.disabled = true; msg.className = "msg wait";
+    var tick = function () {
+      var s = Math.ceil((end - Date.now()) / 1000);
+      if (s <= 0) { go.disabled = false; msg.className = "msg"; msg.textContent = ""; return; }
+      msg.textContent = "For mange forkerte forsøg. Prøv igen om " + (s >= 60 ? Math.ceil(s / 60) + " min." : s + " sek.");
+      setTimeout(tick, 1000);
+    };
+    tick();
+  }
+  if (q.toString() && history.replaceState) history.replaceState(null, "", location.pathname);
+  document.getElementById("show").onclick = function () {
+    var on = pw.type === "password"; pw.type = on ? "text" : "password"; this.textContent = on ? "Skjul" : "Vis";
+    this.setAttribute("aria-label", on ? "Skjul adgangskoden" : "Vis adgangskoden"); pw.focus();
+  };
+  document.getElementById("f").onsubmit = function () { document.getElementById("go").textContent = "Logger ind…"; };
+})();
+</script>
+</body>
+</html>

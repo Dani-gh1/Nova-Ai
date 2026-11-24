@@ -377,7 +377,7 @@ class VenueAccount:
                 usd /= 1 + lev * self.meta["fee"]                          # så gebyret også kan betales
             r = self._open(sym, side, usd, lev, px)
             st["cash"] -= r["usd"]
-            pos = {"qty": r["qty"], "side": side}
+            pos = {"qty": r["qty"], "side": side, "cost": r["usd"], "opened": round(self.now())}
             if self.meta["kind"] == "futures":
                 pos.update(entry=r["entry"], margin=r["margin"], lev=r["lev"])
                 st["fees"] += r["usd"] - r["margin"]
@@ -399,8 +399,15 @@ class VenueAccount:
         px = self.state["prices"]
         return {"venue": self.venue, "name": self.meta["name"], "value_usd": round(self.value(), 2), "cash_usd": round(self.state["cash"], 2),
                 "fees_usd": round(self.state["fees"], 2), "problem": self.problem,
-                "holdings": [{"symbol": s, "side": p["side"], "lev": p.get("lev", 1), "usd": round(self.mark(s, p, px.get(s)), 2)}
-                             for s, p in sorted(self.state["holdings"].items())]}
+                "holdings": [self._holding(s, p, px.get(s)) for s, p in sorted(self.state["holdings"].items())]}
+
+    def _holding(self, s: str, p: dict, px: float | None) -> dict:
+        """Én rigtig position: købt for (cost), værdi nu, gevinst/tab, købspris og kurs nu."""
+        v, cost = self.mark(s, p, px), p.get("cost")
+        entry = p.get("entry") or (cost / p["qty"] if cost and p.get("qty") else None)
+        return {"symbol": s, "side": p["side"], "lev": p.get("lev", 1), "usd": round(v, 2), "cost_usd": None if cost is None else round(cost, 2),
+                "pnl_usd": None if cost is None else round(v - cost, 2), "pnl_pct": round((v / cost - 1) * 100, 2) if cost else None,
+                "entry": entry, "price": px, "opened": p.get("opened")}
 
 
 # ------------------------------------------------------------------ Kassen

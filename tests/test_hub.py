@@ -147,6 +147,49 @@ class HubTests(unittest.TestCase):
         self.assertEqual(set(d["security"]), {"public", "password", "notify"})
         hub.shutdown()
 
+    def test_risk_level_comes_from_the_largest_drop(self):
+        self.assertEqual(srv.risk_of({"max_dd": -3.2}), {"max_dd": 3.2, "risk": "Lav"})
+        self.assertEqual(srv.risk_of({"max_dd": 9})["risk"], "Mellem")
+        self.assertEqual(srv.risk_of({"curve": [[1, 0], [2, 20], [3, 0]]}), {"max_dd": 16.67, "risk": "Høj"})   # regnet ud af kurven
+        self.assertEqual(srv.risk_of({}), {"max_dd": None, "risk": None})
+
+    def _ov(self, held, switches=(), days=None, day="2026-11-24"):
+        from types import SimpleNamespace
+        st = {"held": held, "capital": 10000.0, "acct": 1.1, "gains": {"b:k1": 2.5}, "switches": list(switches), "days": days or {},
+              "day": day, "day_acct": 1.0}
+        return SimpleNamespace(smart=SimpleNamespace(state=st), live=None)
+
+    def test_positions_show_what_nova_bot_holds_right_now(self):
+        data = {"strategies": [{"key": "k1", "name": "Breakout"}],
+                "trades": {"open": [{"ts": 1, "strategy": "k1", "symbol": "EUR_USD", "side": "long", "result_pct": 10.0},
+                                    {"ts": 2, "strategy": "Breakout", "symbol": "AAPL", "side": "long", "result_pct": None, "entry": 200.0, "price": 210.0},
+                                    {"ts": 3, "strategy": "anden", "symbol": "X", "side": "long", "result_pct": 1.0}]}}
+        ov = self._ov({"id": "b:k1", "name": "Breakout", "bot": "b", "bot_name": "B", "entered": 100})
+        out = srv.nova_positions(ov, {"b": {"key": "b"}}, data_of=lambda b: data)
+        self.assertEqual((out["following"], out["value_kr"], out["gain_today"]), ("Breakout", 11000.0, 2.5))
+        self.assertEqual([p["symbol"] for p in out["positions"]], ["AAPL", "EUR_USD"])          # både navn og nøgle, nyeste først
+        eur = out["positions"][1]
+        self.assertEqual(eur["value_kr"], 5500.0)                                                # kontoen fordelt ligeligt
+        self.assertAlmostEqual(eur["pnl_kr"], 5500 * 10 / 110, places=1)
+        self.assertEqual((out["positions"][0]["entry"], out["positions"][0]["pnl_kr"]), (200.0, None))
+        self.assertEqual(srv.nova_positions(self._ov(None), {}, data_of=lambda b: data), {"following": None, "positions": []})
+
+    def test_a_calendar_day_shows_the_strategies_followed_and_their_trades(self):
+        from datetime import datetime
+        from hub.leader import TZ
+        start = datetime(2026, 11, 23, tzinfo=TZ).timestamp()
+        sw = [{"ts": start + 3600, "to": "Breakout", "to_bot": "B", "to_key": "b", "to_id": "b:k1", "result_pct": None},
+              {"ts": start + 7200, "to": "Anden", "to_bot": "B", "to_key": "b", "result_pct": -1.5}]
+        data = {"strategies": [{"key": "k1", "name": "Breakout"}, {"key": "k2", "name": "Anden"}],
+                "trades": {"closed": [{"ts": start + 4000, "strategy": "k1", "symbol": "A", "result_pct": 2.0},     # mens den blev fulgt
+                                      {"ts": start + 8000, "strategy": "k1", "symbol": "B", "result_pct": 3.0},     # efter skiftet: ikke med
+                                      {"ts": start + 9000, "strategy": "k2", "symbol": "C", "result_pct": -1.0}], "open": []}}
+        out = srv.day_detail(self._ov(None, sw, {"2026-11-23": -0.8}), {"b": {"key": "b"}}, "2026-11-23", data_of=lambda b: data, now=start + 86400 * 2)
+        self.assertEqual(out["result_pct"], -0.8)
+        self.assertEqual([(s["name"], s["result_pct"]) for s in out["segments"]], [("Breakout", -1.5), ("Anden", None)])
+        self.assertEqual(sorted(t["symbol"] for t in out["trades"]), ["A", "C"])
+        self.assertEqual(srv.day_detail(self._ov(None), {}, "ikke-en-dato")["segments"], [])
+
     def test_a_client_hanging_up_is_not_shown_as_a_bot_problem(self):
         import tempfile
         log = ("ERROR scanning fejlede: HTTP 500\n" + "-" * 40 + "\n"

@@ -129,6 +129,69 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(self.get(base + "/api/bots", "gæt-med-ø")[0], 401)
         self.assertEqual(self.get(base + "/api/bots", "blåbærgrød-æøå-123")[0], 429)   # forkerte gæt med æøå tæller med
 
+    def post_login(self, base, pw, extra=None):
+        import http.client, urllib.parse
+        u = urllib.parse.urlparse(base)
+        c = http.client.HTTPConnection(u.hostname, u.port, timeout=10)
+        c.request("POST", "/login", urllib.parse.urlencode({"username": "Nova AI", "password": pw}),
+                  {"Content-Type": "application/x-www-form-urlencoded", **(extra or {})})
+        r = c.getresponse()
+        r.read()
+        return r.status, r.getheader("Location"), r.getheader("Set-Cookie")
+
+    def test_the_front_page_shows_a_login_page_instead_of_the_browser_box(self):
+        base = self.serve()
+        try:
+            urllib.request.urlopen(base + "/")
+            self.fail("forsiden skal kræve login")
+        except urllib.error.HTTPError as e:
+            code, body, headers = e.code, e.read().decode(), e.headers
+        self.assertEqual(code, 401)
+        self.assertIn('name="password"', body)
+        self.assertIn('action="/login"', body)
+        self.assertNotIn("WWW-Authenticate", headers)                           # ingen grå pop-up
+        self.assertIn("form-action 'self'", headers["Content-Security-Policy"])
+        self.assertNotIn("Nova Bot", body)                                       # intet fra selve appen før login
+
+    def test_login_sets_a_cookie_that_opens_the_app_for_30_days(self):
+        base = self.serve()
+        code, loc, cookie = self.post_login(base, "hemmelig-og-lang", {"X-Forwarded-Proto": "https"})
+        self.assertEqual((code, loc), (303, "/"))
+        for part in ("HttpOnly", "SameSite=Lax", "Secure", f"Max-Age={30 * 86400}", "Path=/"):
+            self.assertIn(part, cookie)
+        token = cookie.split(";")[0]
+        self.assertEqual(self.get(base + "/api/bots", extra={"Cookie": token})[0], 200)
+        self.assertEqual(self.get(base + "/", extra={"Cookie": token})[0], 200)
+        self.assertEqual(self.get(base + "/api/bots", extra={"Cookie": "nova_session=9999999999.forfalsket"})[0], 401)
+        self.assertEqual(self.get(base + "/api/bots", extra={"Cookie": token[:-2] + "00"})[0], 401)
+
+    def test_wrong_login_passwords_are_counted_and_lock_the_address(self):
+        base = self.serve(throttle=Throttle(max_fails=3, base=60))
+        self.assertEqual(self.post_login(base, "forkert")[:2], (303, "/login?fejl=1"))
+        self.assertEqual(self.post_login(base, "forkert")[:2], (303, "/login?fejl=1"))
+        code, loc, cookie = self.post_login(base, "forkert")                      # tredje: spærret
+        self.assertTrue(loc.startswith("/login?vent="), loc)
+        code, loc, cookie = self.post_login(base, "hemmelig-og-lang")            # selv den rigtige afvises nu
+        self.assertTrue(loc.startswith("/login?vent=") and cookie is None, loc)
+
+    def test_logout_clears_the_cookie_and_a_new_password_ends_old_logins(self):
+        from hub.server import check_session, make_session
+        base = self.serve()
+        import http.client, urllib.parse
+        u = urllib.parse.urlparse(base)
+        c = http.client.HTTPConnection(u.hostname, u.port, timeout=10)
+        c.request("GET", "/logout")
+        r = c.getresponse()
+        self.assertEqual((r.status, r.getheader("Location")), (303, "/"))
+        self.assertIn("nova_session=;", r.getheader("Set-Cookie"))
+        self.assertIn("Max-Age=0", r.getheader("Set-Cookie"))
+        secret = b"k" * 32
+        tok = make_session(secret, "gammel-kode-123", 1_800_000_000)
+        self.assertTrue(check_session(tok, secret, "gammel-kode-123", 1_800_000_100))
+        self.assertFalse(check_session(tok, secret, "ny-kode-4567890", 1_800_000_100))
+        self.assertFalse(check_session(tok, secret, "gammel-kode-123", 1_800_000_000 + 31 * 86400))     # udløbet
+        self.assertFalse(check_session(tok, b"x" * 32, "gammel-kode-123", 1_800_000_100))               # anden servernøgle
+
     def test_security_headers_and_hsts_behind_https(self):
         base = self.serve()
         _, h = self.get(base + "/healthz")

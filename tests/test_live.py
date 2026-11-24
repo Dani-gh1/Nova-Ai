@@ -241,6 +241,11 @@ class WalletFundingTests(unittest.TestCase):
         self.assertEqual((o["side"], o["fee_usd"]), ("ÅBN", 0.1))
         self.assertAlmostEqual(o["cost_usd"], 10.0 - 0.0099 * 1000.0, places=4)
         self.assertAlmostEqual(o["cost_pct"], 1.0, places=2)
+        h = v.view()["holdings"][0]                                       # købt for, værdi nu, gevinst/tab og købspris
+        self.assertEqual(h["cost_usd"], 10.0)
+        self.assertAlmostEqual(h["usd"], 0.0099 * 1000.0, places=2)
+        self.assertAlmostEqual(h["pnl_usd"], 0.0099 * 1000.0 - 10.0, places=2)
+        self.assertAlmostEqual(h["entry"], 10.0 / 0.0099, places=2)
         v.close_missing({})
         o = v.state["orders"][-1]
         self.assertEqual(o["side"], "LUK")

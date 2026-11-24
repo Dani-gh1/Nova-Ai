@@ -130,7 +130,7 @@ class SmartLeader(SmartBot):
                       "trades": c.get("trades") or 0, "seen": s["at"], "entered": round(now), "entry_acct": entry}
         why = f"overhalede {h['name']} ({gains[to]:+.2f} % mod {gains.get(h['id'], 0.0):+.2f} %)" if h else f"steg først ({gains[to]:+.2f} %)"
         st["switches"] = (st["switches"] + [{"ts": round(now), "from": h and h["name"], "from_bot": h and h["bot_name"], "from_key": h and h["bot"], "to": c["name"],
-                                             "to_bot": c["bot_name"], "to_key": c["bot"], "why": why, "result_pct": None if result is None else round(result, 2), "smart_pct": round((st["acct"] - 1) * 100, 4)}])[-500:]
+                                             "to_bot": c["bot_name"], "to_key": c["bot"], "to_id": to, "why": why, "result_pct": None if result is None else round(result, 2), "smart_pct": round((st["acct"] - 1) * 100, 4)}])[-500:]
         self.log(f"Nova Bot: {(h and h['name']) or 'start'} → {c['name']} ({c['bot_name']}): {why}")
         cb = getattr(self, "on_switch", None)
         if cb:

@@ -16,27 +16,29 @@
 <title>Nova AI</title>
 <style>
 :root{
-  --bg:#050607;--card:#0e1211;--card2:#141917;--line:rgba(255,255,255,.07);--line2:rgba(255,255,255,.13);
-  --ink:#f3f7f5;--ink2:#a3ada9;--mute:#67726d;
-  --neon:#5cf0a2;--neon2:#2fd486;--neon-d:rgba(92,240,162,.12);--glow:0 0 28px rgba(92,240,162,.25);
+  --bg:#050607;--card:#0d1012;--card2:#13171b;--line:rgba(255,255,255,.07);--line2:rgba(255,255,255,.13);
+  --ink:#f3f6f8;--ink2:#a2abb4;--mute:#65707a;
+  --neon:#5cf0a2;--neon2:#2fd486;--neon-d:rgba(92,240,162,.12);
+  --violet:#9d8cff;--violet-d:rgba(157,140,255,.14);--blue:#5aa9ff;--blue-d:rgba(90,169,255,.13);
   --neg:#ff6b78;--neg-d:rgba(255,107,120,.12);--warn:#f6c453;--r:24px;
   --font:-apple-system,BlinkMacSystemFont,"SF Pro Display","Inter","Segoe UI",Roboto,system-ui,sans-serif;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html{-webkit-text-size-adjust:100%;background:var(--bg)}
 body{margin:0;min-height:100vh;background:var(--bg);color:var(--ink);font:15px/1.45 var(--font);-webkit-font-smoothing:antialiased;
-  background-image:radial-gradient(520px 360px at 50% -140px,rgba(92,240,162,.11),transparent 70%);background-repeat:no-repeat}
+  background-image:radial-gradient(480px 340px at 85% -120px,rgba(157,140,255,.14),transparent 70%),radial-gradient(420px 300px at 0% -80px,rgba(92,240,162,.08),transparent 70%);
+  background-repeat:no-repeat}
 button,input{font:inherit;color:inherit}
 button{cursor:pointer;touch-action:manipulation;background:none;border:0;padding:0}
 a{color:inherit;text-decoration:none}
 .num{font-variant-numeric:tabular-nums}
-.pos{color:var(--neon)}.neg{color:var(--neg)}.mute{color:var(--mute)}.warn{color:var(--warn)}
+.pos{color:var(--neon)}.neg{color:var(--neg)}.mute{color:var(--mute)}.warn{color:var(--warn)}.vio{color:var(--violet)}.blu{color:var(--blue)}
 [hidden]{display:none!important}
-:focus-visible{outline:2px solid var(--neon);outline-offset:2px;border-radius:10px}
+:focus-visible{outline:2px solid var(--violet);outline-offset:2px;border-radius:10px}
 .ic0 svg{width:22px;height:22px;display:block;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 
 /* ---------- ramme ---------- */
-.app{max-width:520px;margin:0 auto;padding:calc(env(safe-area-inset-top) + 12px) max(18px,env(safe-area-inset-right)) calc(112px + env(safe-area-inset-bottom)) max(18px,env(safe-area-inset-left))}
+.app{max-width:540px;margin:0 auto;padding:calc(env(safe-area-inset-top) + 12px) max(18px,env(safe-area-inset-right)) calc(112px + env(safe-area-inset-bottom)) max(18px,env(safe-area-inset-left))}
 .app.full{padding-bottom:calc(36px + env(safe-area-inset-bottom))}
 .view{animation:in .35s cubic-bezier(.2,.7,.2,1) both}
 @keyframes in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
@@ -60,92 +62,112 @@ h1.title{font-size:30px;line-height:1.15;letter-spacing:-.03em;margin:0 0 4px;fo
 .empty{padding:26px 8px;text-align:center;color:var(--mute);font-size:14px}
 .badge{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;border-radius:99px;padding:4px 10px;background:var(--neon-d);color:var(--neon);white-space:nowrap}
 .badge.grey{background:rgba(255,255,255,.06);color:var(--ink2)}.badge.warn{background:rgba(246,196,83,.12);color:var(--warn)}
+.badge.vio{background:var(--violet-d);color:var(--violet)}.badge.blu{background:var(--blue-d);color:var(--blue)}.badge.neg{background:var(--neg-d);color:var(--neg)}
 .live{width:8px;height:8px;border-radius:50%;background:var(--neon);display:inline-block;flex:none;box-shadow:0 0 0 0 rgba(92,240,162,.6);animation:pulse 2s infinite}
 .live.off{background:var(--mute);animation:none}
 @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(92,240,162,.55)}70%{box-shadow:0 0 0 8px rgba(92,240,162,0)}100%{box-shadow:0 0 0 0 rgba(92,240,162,0)}}
 
-/* portefølje */
-.pf{padding:22px 22px 14px;min-height:300px;box-shadow:0 24px 60px -30px rgba(92,240,162,.25)}
+/* saldo-kortet */
+.pf{padding:22px 22px 14px;box-shadow:0 24px 60px -30px rgba(157,140,255,.35)}
+.pf::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;pointer-events:none;
+  background:linear-gradient(135deg,rgba(157,140,255,.45),rgba(90,169,255,.15) 40%,rgba(92,240,162,.25));
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude}
 .pf .head{display:flex;align-items:center;justify-content:space-between;gap:10px;position:relative;z-index:2}
-.pf .lbl{color:var(--ink2);font-size:16px}
+.pf .lbl{color:var(--ink2);font-size:15px}
 .pf .big{position:relative;z-index:2;font-size:46px;font-weight:760;letter-spacing:-.04em;line-height:1.05;margin-top:10px}
-.pf .chg{position:relative;z-index:2;display:flex;align-items:center;gap:6px;margin-top:8px;font-weight:600;font-size:16px;flex-wrap:wrap}
-.pf .chg .ic0 svg{width:18px;height:18px;stroke-width:2.2}
-.pf .chg small{color:var(--mute);font-weight:500;font-size:13px}
-.pf .chart,.chart.h{height:150px;margin:6px -22px 0}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px;position:relative;z-index:2}
+.stat{background:rgba(255,255,255,.035);border:1px solid var(--line);border-radius:16px;padding:11px 13px;min-width:0}
+.stat .l{font-size:12.5px;color:var(--ink2);display:flex;align-items:center;gap:6px}
+.stat .v{font-size:19px;font-weight:720;letter-spacing:-.02em;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stat .s{font-size:12.5px;font-weight:600}
+.pf .chart,.chart.h{height:150px;margin:8px -22px 0}
 .per{display:flex;justify-content:space-between;gap:4px;margin-top:6px}
 .per button{flex:1;color:var(--mute);font-weight:600;font-size:14px;padding:9px 0;border-radius:14px;position:relative}
-.per button[aria-pressed=true]{color:var(--ink);background:rgba(255,255,255,.07)}
-.per button[aria-pressed=true]::after{content:"";position:absolute;left:35%;right:35%;bottom:3px;height:2px;border-radius:2px;background:var(--neon);box-shadow:0 0 8px var(--neon)}
+.per button[aria-pressed=true]{color:var(--ink);background:rgba(157,140,255,.12)}
+.per button[aria-pressed=true]::after{content:"";position:absolute;left:32%;right:32%;bottom:3px;height:2px;border-radius:2px;background:linear-gradient(90deg,var(--violet),var(--blue));box-shadow:0 0 8px var(--violet)}
 .seg{display:inline-flex;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:14px;padding:3px;flex:none}
 .seg button{padding:6px 12px;border-radius:11px;color:var(--ink2);font-size:13px;font-weight:600}
-.seg button[aria-pressed=true]{background:rgba(255,255,255,.09);color:var(--ink)}
+.seg button[aria-pressed=true]{background:var(--violet-d);color:var(--ink)}
 
 /* graf */
 .chart{position:relative;width:100%;touch-action:pan-y}
 .chart svg{display:block;width:100%;height:100%;overflow:visible}
-.chart .ln{fill:none;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+.chart .ln{fill:none;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
 .chart .ln.up{filter:drop-shadow(0 0 6px rgba(92,240,162,.55))}.chart .ln.down{filter:drop-shadow(0 0 6px rgba(255,107,120,.45))}
 .chart .ln.draw{stroke-dasharray:3000;stroke-dashoffset:3000;animation:draw 1.4s cubic-bezier(.3,.7,.2,1) forwards}
 @keyframes draw{to{stroke-dashoffset:0}}
 .chart .ring{animation:ring 2.2s ease-out infinite;transform-box:fill-box;transform-origin:center}
 @keyframes ring{0%{opacity:.7;transform:scale(1)}100%{opacity:0;transform:scale(3.2)}}
-.tip{position:absolute;top:0;pointer-events:none;background:rgba(14,18,17,.92);border:1px solid var(--line2);border-radius:12px;padding:7px 10px;font-size:12.5px;white-space:nowrap;opacity:0;transition:opacity .12s;z-index:3;color:var(--ink2)}
+.tip{position:absolute;top:0;pointer-events:none;background:rgba(13,16,18,.94);border:1px solid var(--line2);border-radius:12px;padding:7px 10px;font-size:12.5px;white-space:nowrap;opacity:0;transition:opacity .12s;z-index:3;color:var(--ink2)}
 .tip b{display:block;font-size:14px;color:var(--ink)}
 
-/* bot-række */
+/* bot-status */
 .botrow{display:flex;align-items:center;gap:14px;padding:16px 18px}
-.botrow .av svg{width:58px;height:58px;display:block;filter:drop-shadow(0 0 12px rgba(92,240,162,.35))}
+.botrow .av svg{width:56px;height:56px;display:block;filter:drop-shadow(0 0 12px rgba(157,140,255,.35))}
 .botrow .t{flex:1;min-width:0}.botrow .t b{display:flex;align-items:center;gap:8px;font-size:17px}
 .botrow .t small{display:block;color:var(--ink2);font-size:14px;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .chev{color:var(--ink2)}
 
 /* fordeling */
-.dist{display:grid;grid-template-columns:140px 1fr;gap:18px;align-items:center}
-.dist svg{width:140px;height:140px;display:block}
-.legend{display:flex;flex-direction:column;gap:12px;min-width:0}
+.dist{display:grid;grid-template-columns:130px 1fr;gap:18px;align-items:center}
+.dist svg{width:130px;height:130px;display:block}
+.legend{display:flex;flex-direction:column;gap:11px;min-width:0}
 .legend div{display:flex;align-items:center;gap:10px;font-size:15px}
 .legend i{width:11px;height:11px;border-radius:50%;flex:none}
 .legend span{flex:1;color:var(--ink2);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .legend b{font-weight:600}
 
 /* knapper */
-.btn{width:100%;height:60px;border-radius:22px;background:linear-gradient(180deg,#76f6b3,#45e391);color:#03140b;font-weight:680;font-size:17.5px;
-  display:flex;align-items:center;justify-content:center;gap:10px;box-shadow:0 14px 34px -14px rgba(92,240,162,.75);transition:transform .12s}
+.btn{width:100%;height:58px;border-radius:20px;background:linear-gradient(180deg,#76f6b3,#45e391);color:#03140b;font-weight:680;font-size:17px;
+  display:flex;align-items:center;justify-content:center;gap:10px;box-shadow:0 14px 34px -14px rgba(92,240,162,.7);transition:transform .12s}
 .btn:active{transform:scale(.985)}.btn:disabled{opacity:.42;box-shadow:none;cursor:default;transform:none}
 .btn.ghost{background:var(--card2);color:var(--ink);border:1px solid var(--line2);box-shadow:none}
-.btns{display:grid;grid-template-columns:1fr auto;gap:10px;margin:18px 0 4px}.btns .ghost{width:auto;padding:0 24px}
+.btns{display:grid;grid-template-columns:1fr auto;gap:10px;margin:4px 0 4px}.btns .ghost{width:auto;padding:0 24px}
 
 /* lister */
 .row{display:flex;align-items:center;gap:13px;padding:13px 0;border-top:1px solid var(--line)}
 .row:first-child{border-top:0}
 .ic{width:42px;height:42px;border-radius:14px;display:grid;place-items:center;background:var(--neon-d);color:var(--neon);flex:none}
 .ic.neg{background:var(--neg-d);color:var(--neg)}.ic.grey{background:rgba(255,255,255,.05);color:var(--ink2)}
-.row .t{flex:1;min-width:0}.row .t b{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ic.vio{background:var(--violet-d);color:var(--violet)}.ic.blu{background:var(--blue-d);color:var(--blue)}
+.row .t{flex:1;min-width:0}.row .t b{display:flex;align-items:center;gap:8px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .t b>span:first-child{overflow:hidden;text-overflow:ellipsis}
 .row .t small{display:block;color:var(--mute);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .row .v{text-align:right;font-weight:650;white-space:nowrap}.row .v small{display:block;color:var(--mute);font-weight:500;font-size:12px}
 .rank{width:24px;text-align:center;font-weight:700;color:var(--mute);flex:none}
 .bar2{height:5px;border-radius:5px;background:rgba(255,255,255,.06);margin-top:6px;overflow:hidden}
-.bar2 i{display:block;height:100%;border-radius:5px;background:linear-gradient(90deg,var(--neon2),var(--neon));box-shadow:0 0 10px rgba(92,240,162,.5)}
+.bar2 i{display:block;height:100%;border-radius:5px;background:linear-gradient(90deg,var(--violet),var(--blue))}
+.bar2 i.pos{background:linear-gradient(90deg,var(--neon2),var(--neon));box-shadow:0 0 10px rgba(92,240,162,.45)}
 .dayhead{font-size:12.5px;color:var(--mute);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin:18px 4px 6px}
 .chips{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin:0 -18px 6px;padding:0 18px}
 .chips::-webkit-scrollbar{display:none}
 .chip{border:1px solid var(--line2);background:var(--card);border-radius:99px;padding:11px 17px;white-space:nowrap;color:var(--ink);font-weight:550;flex:none}
-.chip[aria-pressed=true]{border-color:var(--neon);color:var(--neon);background:var(--neon-d);box-shadow:var(--glow)}
+.chip[aria-pressed=true]{border-color:var(--violet);color:var(--ink);background:var(--violet-d);box-shadow:0 0 24px rgba(157,140,255,.25)}
+.rk{font-size:11px;font-weight:700;border-radius:8px;padding:2px 7px;flex:none;letter-spacing:.01em}
+.rk.Lav{background:var(--blue-d);color:var(--blue)}.rk.Mellem{background:var(--violet-d);color:var(--violet)}.rk.Høj{background:var(--neg-d);color:var(--neg)}
 
 /* nøgletal */
 .kgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.kgrid.three{grid-template-columns:repeat(3,1fr)}
 .k{background:linear-gradient(180deg,var(--card2),var(--card));border:1px solid var(--line);border-radius:20px;padding:15px 16px;min-width:0}
 .k .l{font-size:12.5px;color:var(--ink2)}.k .v{font-size:22px;font-weight:720;letter-spacing:-.02em;margin-top:3px;overflow-wrap:anywhere;line-height:1.2}
 .k .s{font-size:12.5px;color:var(--mute);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hist{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.hist div{background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:14px;padding:10px 12px}
+.hist small{display:block;color:var(--ink2);font-size:12px}.hist b{font-size:16px}
+
+/* investeringer */
+.now{display:flex;align-items:center;gap:14px}
+.now .av svg{width:64px;height:64px;display:block;filter:drop-shadow(0 0 14px rgba(157,140,255,.4))}
+.now .t{flex:1;min-width:0}.now small{color:var(--ink2);font-size:13px}.now b{display:block;font-size:20px;letter-spacing:-.02em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 /* bot-siden */
 .bothero{text-align:center;padding:30px 20px 24px}
 .bothero .av{width:132px;height:132px;margin:0 auto 14px;border-radius:50%;display:grid;place-items:center;position:relative;
-  background:radial-gradient(circle,rgba(92,240,162,.18),transparent 66%)}
-.bothero .av::before{content:"";position:absolute;inset:6px;border-radius:50%;border:1.5px solid rgba(92,240,162,.25);border-top-color:var(--neon);animation:spin 9s linear infinite}
+  background:radial-gradient(circle,rgba(157,140,255,.2),transparent 66%)}
+.bothero .av::before{content:"";position:absolute;inset:6px;border-radius:50%;border:1.5px solid rgba(157,140,255,.25);border-top-color:var(--violet);animation:spin 9s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
-.bothero .av svg{width:92px;height:92px;display:block;filter:drop-shadow(0 0 16px rgba(92,240,162,.45))}
+.bothero .av svg{width:92px;height:92px;display:block;filter:drop-shadow(0 0 16px rgba(157,140,255,.45))}
 .bothero h2{margin:0;font-size:24px;letter-spacing:-.02em;display:flex;align-items:center;justify-content:center;gap:9px}
 .bothero p{margin:6px 0 14px;color:var(--ink2)}
 .bothero .badges{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
@@ -157,14 +179,15 @@ h1.title{font-size:30px;line-height:1.15;letter-spacing:-.03em;margin:0 0 4px;fo
 .lbl2{color:var(--ink2);font-size:13.5px;margin-bottom:8px}
 .lock{display:flex;gap:10px;align-items:flex-start;background:rgba(246,196,83,.07);border:1px solid rgba(246,196,83,.18);border-radius:16px;padding:12px 14px;font-size:13.5px;color:var(--ink2);margin-top:14px}
 .lock .ic0{color:var(--warn);flex:none}.lock .ic0 svg{width:18px;height:18px}
-.lock.ok{background:var(--neon-d);border-color:rgba(92,240,162,.2)}.lock.ok .ic0{color:var(--neon)}
+.lock.ok{background:var(--violet-d);border-color:rgba(157,140,255,.25)}.lock.ok .ic0{color:var(--violet)}
 .kv{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:13px 0;border-top:1px solid var(--line);font-size:14.5px}
 .kv:first-child{border-top:0}.kv span{color:var(--ink2)}.kv b{font-weight:600;text-align:right}
+a.kv:hover b,a.kv:hover span{color:var(--ink)}
 .steps{counter-reset:s;margin:0;padding:0;list-style:none}
 .steps li{counter-increment:s;display:flex;gap:12px;padding:12px 0;border-top:1px solid var(--line);font-size:14.5px;color:var(--ink2);min-width:0}
 .steps li:first-child{border-top:0}
 .steps li>span{min-width:0;flex:1}
-.steps li::before{content:counter(s);width:26px;height:26px;border-radius:50%;background:var(--neon-d);color:var(--neon);font-weight:700;font-size:13px;display:grid;place-items:center;flex:none}
+.steps li::before{content:counter(s);width:26px;height:26px;border-radius:50%;background:var(--violet-d);color:var(--violet);font-weight:700;font-size:13px;display:grid;place-items:center;flex:none}
 .steps b{color:var(--ink)}
 code{background:rgba(255,255,255,.07);border-radius:8px;padding:2px 7px;font-size:13px;color:var(--ink)}
 .copy{display:flex;align-items:center;gap:8px;margin-top:8px;background:#000;border:1px solid var(--line2);border-radius:12px;padding:10px 12px;font:13px ui-monospace,Menlo,monospace;color:var(--neon)}
@@ -186,45 +209,49 @@ code{background:rgba(255,255,255,.07);border-radius:8px;padding:2px 7px;font-siz
 .method .t{flex:1;min-width:0}.method .t b{display:block;font-weight:600}.method .t small{color:var(--mute);font-size:12.5px}
 .method .ck{width:24px;height:24px;border-radius:50%;border:1.5px solid var(--line2);display:grid;place-items:center;flex:none;color:#03140b}
 .method .ck .ic0 svg{width:15px;height:15px;stroke-width:3}
-.method[aria-pressed=true]{border-color:var(--neon);box-shadow:inset 0 0 0 1px var(--neon),var(--glow)}
+.method[aria-pressed=true]{border-color:var(--neon);box-shadow:inset 0 0 0 1px var(--neon),0 0 28px rgba(92,240,162,.22)}
 .method[aria-pressed=true] .ck{background:var(--neon);border-color:var(--neon)}
 .method:disabled{opacity:.42;cursor:default}
 .mi{width:44px;height:44px;border-radius:14px;background:rgba(255,255,255,.05);display:grid;place-items:center;color:var(--ink);flex:none}
 .foot{display:flex;align-items:center;justify-content:center;gap:8px;color:var(--mute);font-size:13px;margin-top:16px;text-align:center}
 .foot .ic0 svg{width:16px;height:16px}
 
-/* indstillinger */
+/* profil */
 .profile{display:flex;align-items:center;gap:14px}
-.avatar{width:56px;height:56px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,var(--neon),#1b8f58);color:#03140b;font-weight:800;font-size:22px;flex:none}
+.avatar{width:60px;height:60px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,var(--violet),var(--blue));color:#0a0b1a;font-weight:800;font-size:24px;flex:none;box-shadow:0 0 30px rgba(157,140,255,.35)}
 .field{display:block;margin-top:14px}
 .field small{color:var(--ink2);font-size:13px}
 .field input{display:block;width:100%;margin-top:6px;background:#000;border:1px solid var(--line2);border-radius:14px;padding:13px 14px;font-size:16px;outline:none}
-.field input:focus{border-color:var(--neon)}
+.field input:focus{border-color:var(--violet)}
 
 /* kalender */
-.calhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.calhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:8px}
 .calhead h2{margin:0;font-size:18px;text-transform:capitalize}
-.calnav{width:36px;height:36px;border-radius:50%;border:1px solid var(--line2);color:var(--ink);font-size:18px}
+.calhead small{display:block;font-size:13px;text-align:center}
+.calnav{width:38px;height:38px;border-radius:50%;border:1px solid var(--line2);color:var(--ink);font-size:18px;flex:none}
 .cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}
 .cal .dow{font-size:11.5px;color:var(--mute);text-align:center;padding-bottom:2px}
-.cal .day{border-radius:12px;padding:6px 4px;min-height:50px;display:flex;flex-direction:column;justify-content:space-between;background:rgba(255,255,255,.025);min-width:0}
-.cal .day .d{font-size:11px;color:var(--mute)}.cal .day b{font-size:10px;text-align:right;font-weight:650;overflow:hidden}
+.cal .day{border-radius:12px;padding:6px 4px;min-height:54px;display:flex;flex-direction:column;justify-content:space-between;background:rgba(255,255,255,.025);min-width:0;border:1px solid transparent;text-align:left}
+.cal .day .d{font-size:11.5px;color:var(--ink2)}.cal .day b{font-size:10px;text-align:right;font-weight:650;overflow:hidden}
 .cal .day.pos{background:rgba(92,240,162,.12)}.cal .day.neg{background:rgba(255,107,120,.11)}
 .cal .day.pos b{color:var(--neon)}.cal .day.neg b{color:var(--neg)}
+.cal .day.today{border-color:rgba(90,169,255,.5)}
+.cal .day[aria-pressed=true]{border-color:var(--violet);box-shadow:0 0 0 1px var(--violet),0 0 18px rgba(157,140,255,.35)}
+.cal button.day:disabled{cursor:default}
 
 /* skelet */
 .sk{border-radius:var(--r);background:linear-gradient(90deg,var(--card) 0%,var(--card2) 50%,var(--card) 100%);background-size:200% 100%;animation:sk 1.4s infinite;margin-bottom:14px}
 @keyframes sk{to{background-position:-200% 0}}
 
 /* bundmenu */
-.tabbar{position:fixed;left:50%;transform:translateX(-50%);bottom:0;width:100%;max-width:520px;display:grid;grid-template-columns:repeat(4,1fr);
-  padding:8px 10px calc(10px + env(safe-area-inset-bottom));background:rgba(5,6,7,.84);backdrop-filter:blur(18px) saturate(1.4);-webkit-backdrop-filter:blur(18px) saturate(1.4);
+.tabbar{position:fixed;left:50%;transform:translateX(-50%);bottom:0;width:100%;max-width:540px;display:grid;grid-template-columns:repeat(5,1fr);
+  padding:8px 6px calc(10px + env(safe-area-inset-bottom));background:rgba(5,6,7,.86);backdrop-filter:blur(18px) saturate(1.4);-webkit-backdrop-filter:blur(18px) saturate(1.4);
   border-top:1px solid var(--line);z-index:30}
-.tab{display:flex;flex-direction:column;align-items:center;gap:4px;padding:7px 0;color:var(--mute);font-size:12px;font-weight:550}
-.tab .ic0 svg{width:25px;height:25px}
-.tab[aria-current=page]{color:var(--neon)}.tab[aria-current=page] .ic0{filter:drop-shadow(0 0 8px rgba(92,240,162,.6))}
+.tab{display:flex;flex-direction:column;align-items:center;gap:4px;padding:7px 0;color:var(--mute);font-size:11px;font-weight:550;min-width:0}
+.tab .ic0 svg{width:24px;height:24px}
+.tab[aria-current=page]{color:var(--violet)}.tab[aria-current=page] .ic0{filter:drop-shadow(0 0 8px rgba(157,140,255,.7))}
 @media (min-width:700px){.app{padding-top:28px}}
-@media (max-width:360px){.pf .big{font-size:38px}.amounts{grid-template-columns:repeat(2,1fr)}.dist{grid-template-columns:110px 1fr}.dist svg{width:110px;height:110px}}
+@media (max-width:360px){.pf .big{font-size:38px}.amounts{grid-template-columns:repeat(2,1fr)}.dist{grid-template-columns:100px 1fr}.dist svg{width:100px;height:100px}.stat .v{font-size:16px}}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}.chart .ln.draw{stroke-dashoffset:0}}
 </style>
 </head>
@@ -235,7 +262,7 @@ code{background:rgba(255,255,255,.07);border-radius:8px;padding:2px 7px;font-siz
 <script>
 "use strict";
 /* Nova AI: en investeringsbot. Alt her læses fra hubben (kun læsning); intet på siden kan flytte penge. */
-const NEON = "#5cf0a2", NEG = "#ff6b78", STALE = 20 * 60, BASE_KR = 10000, EUR_DKK = 7.46;
+const NEON = "#5cf0a2", NEG = "#ff6b78", VIOLET = "#9d8cff", BLUE = "#5aa9ff", STALE = 20 * 60, BASE_KR = 10000, EUR_DKK = 7.46;
 const $ = (id) => document.getElementById(id);
 const RM = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
 
@@ -256,9 +283,11 @@ function sv(tag, attrs, ...kids) {
 }
 const ICONS = {
   home: '<path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/>',
+  pie: '<path d="M21 12a9 9 0 1 1-9-9v9z"/><path d="M15 3.5A9 9 0 0 1 20.5 9H15z"/>',
   chart: '<path d="M5 20v-7M10 20V7M15 20v-10M20 20V4"/>',
+  cal: '<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4M8 14h2M14 14h2M8 17h2"/>',
+  user: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
   bot: '<rect x="4" y="8" width="16" height="12" rx="4"/><path d="M12 4v4M9.5 14h.01M14.5 14h.01M2 13v3M22 13v3"/>',
-  gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
   bell: '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/>',
   back: '<path d="M19 12H5M12 19l-7-7 7-7"/>',
   chev: '<path d="m9 18 6-6-6-6"/>',
@@ -279,31 +308,33 @@ const ICONS = {
   play: '<path d="M7 4.5v15l13-7.5z"/>',
   pause: '<path d="M8 5v14M16 5v14"/>',
   info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>',
+  shield: '<path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/>',
 };
 function icon(name, cls) { const s = h("span", { class: "ic0 " + (cls || ""), "aria-hidden": "true" }); s.innerHTML = '<svg viewBox="0 0 24 24">' + (ICONS[name] || "") + "</svg>"; return s; }
 function raw(html, cls) { const s = h("span", { class: cls || "", "aria-hidden": "true" }); s.innerHTML = html; return s; }
 const LOGO = '<svg viewBox="0 0 40 40"><path d="M5 28 15 18l7 7L34 12" fill="none" stroke="#5cf0a2" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><path d="M25.5 12H34v8.5" fill="none" stroke="#5cf0a2" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-const ROBOT = '<svg viewBox="0 0 64 64"><defs><radialGradient id="rbg" cx=".45" cy=".35" r=".7"><stop offset="0" stop-color="#36403c"/><stop offset="1" stop-color="#131816"/></radialGradient></defs>'
-  + '<path d="M32 13V7" stroke="#5cf0a2" stroke-width="2.6" stroke-linecap="round"/><circle cx="32" cy="6" r="3.2" fill="#5cf0a2"/>'
-  + '<rect x="6" y="27" width="5" height="11" rx="2.5" fill="#2a3330"/><rect x="53" y="27" width="5" height="11" rx="2.5" fill="#2a3330"/>'
+const ROBOT = '<svg viewBox="0 0 64 64"><defs><radialGradient id="rbg" cx=".45" cy=".35" r=".7"><stop offset="0" stop-color="#383a4a"/><stop offset="1" stop-color="#14151c"/></radialGradient></defs>'
+  + '<path d="M32 13V7" stroke="#9d8cff" stroke-width="2.6" stroke-linecap="round"/><circle cx="32" cy="6" r="3.2" fill="#9d8cff"/>'
+  + '<rect x="6" y="27" width="5" height="11" rx="2.5" fill="#2b2d3a"/><rect x="53" y="27" width="5" height="11" rx="2.5" fill="#2b2d3a"/>'
   + '<rect x="10" y="13" width="44" height="36" rx="15" fill="url(#rbg)" stroke="rgba(255,255,255,.14)"/>'
-  + '<rect x="16" y="22" width="32" height="17" rx="8.5" fill="#030605"/>'
+  + '<rect x="16" y="22" width="32" height="17" rx="8.5" fill="#05060a"/>'
   + '<circle cx="25" cy="30.5" r="3.8" fill="#5cf0a2"/><circle cx="39" cy="30.5" r="3.8" fill="#5cf0a2"/>'
-  + '<path d="M19 57c3-6 23-6 26 0" stroke="#2a3330" stroke-width="5" fill="none" stroke-linecap="round"/></svg>';
+  + '<path d="M19 57c3-6 23-6 26 0" stroke="#2b2d3a" stroke-width="5" fill="none" stroke-linecap="round"/></svg>';
 const HERO = '<svg viewBox="0 0 340 200"><defs>'
-  + '<linearGradient id="hcard" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2d3331"/><stop offset="1" stop-color="#0b0e0d"/></linearGradient>'
-  + '<radialGradient id="hcoin" cx=".35" cy=".3" r=".85"><stop offset="0" stop-color="#eef2f0"/><stop offset=".5" stop-color="#9aa3a0"/><stop offset="1" stop-color="#3f4644"/></radialGradient>'
+  + '<linearGradient id="hcard" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2d2f3b"/><stop offset="1" stop-color="#0b0c10"/></linearGradient>'
+  + '<radialGradient id="hcoin" cx=".35" cy=".3" r=".85"><stop offset="0" stop-color="#eef0f6"/><stop offset=".5" stop-color="#9aa0ae"/><stop offset="1" stop-color="#3f4350"/></radialGradient>'
+  + '<linearGradient id="hring" x1="0" x2="1"><stop offset="0" stop-color="#9d8cff"/><stop offset=".5" stop-color="#5aa9ff"/><stop offset="1" stop-color="#5cf0a2"/></linearGradient>'
   + '<filter id="hblur"><feGaussianBlur stdDeviation="4"/></filter></defs>'
-  + '<ellipse cx="170" cy="122" rx="150" ry="40" fill="none" stroke="#5cf0a2" stroke-width="7" opacity=".35" filter="url(#hblur)"/>'
-  + '<path d="M20 122a150 40 0 0 1 300 0" fill="none" stroke="#5cf0a2" stroke-width="2" opacity=".7"/>'
+  + '<ellipse cx="170" cy="122" rx="150" ry="40" fill="none" stroke="url(#hring)" stroke-width="7" opacity=".4" filter="url(#hblur)"/>'
+  + '<path d="M20 122a150 40 0 0 1 300 0" fill="none" stroke="url(#hring)" stroke-width="2" opacity=".7"/>'
   + '<g transform="rotate(-11 175 100)"><rect x="92" y="42" width="176" height="114" rx="16" fill="url(#hcard)" stroke="rgba(255,255,255,.14)"/>'
   + '<path d="M168 112l20-20 12 12 26-26" fill="none" stroke="#5cf0a2" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"/>'
   + '<path d="M211 78h15v15" fill="none" stroke="#5cf0a2" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"/></g>'
-  + '<path d="M320 122a150 40 0 0 1-300 0" fill="none" stroke="#5cf0a2" stroke-width="2.5"/>'
+  + '<path d="M320 122a150 40 0 0 1-300 0" fill="none" stroke="url(#hring)" stroke-width="2.5"/>'
   + '<circle cx="98" cy="134" r="32" fill="url(#hcoin)" stroke="rgba(255,255,255,.3)"/>'
-  + '<text x="98" y="146" text-anchor="middle" font-size="34" font-weight="800" fill="#2b302e" font-family="Arial,sans-serif">₿</text>'
+  + '<text x="98" y="146" text-anchor="middle" font-size="34" font-weight="800" fill="#2b2d36" font-family="Arial,sans-serif">₿</text>'
   + '<circle cx="256" cy="44" r="25" fill="url(#hcoin)" stroke="rgba(255,255,255,.3)"/>'
-  + '<path d="M256 28l-9 16 9 5 9-5zM247 47l9 12 9-12-9 5z" fill="#2b302e"/></svg>';
+  + '<path d="M256 28l-9 16 9 5 9-5zM247 47l9 12 9-12-9 5z" fill="#2b2d36"/></svg>';
 
 /* ---------- indstillinger i browseren ---------- */
 const PREF = (() => { try { return JSON.parse(localStorage.getItem("nova-pref") || "{}") || {}; } catch (e) { return {}; } })();
@@ -320,8 +351,10 @@ function cash(kr, sign) {
   const s = sign ? (v > 0 ? "+" : v < 0 ? "−" : "") : (v < 0 ? "−" : "");
   return usd ? `${s}$${nf(a, d)}` : `${s}${nf(a, d)} kr.`;
 }
+const price = (v) => v == null || !Number.isFinite(v) ? "–" : nf(v, v < 1 ? 6 : v < 100 ? 4 : 2);
 const when = (t) => t ? new Date(t * 1000).toLocaleString("da-DK", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "–";
 const clockOf = (t) => new Date(t * 1000).toLocaleTimeString("da-DK", { hour: "2-digit", minute: "2-digit" });
+const dkey = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 function dayLabel(t) {
   const d = new Date(t * 1000), n = new Date(), y = new Date(); y.setDate(n.getDate() - 1);
   if (d.toDateString() === n.toDateString()) return "I dag";
@@ -335,6 +368,7 @@ function ago(s) {
   if (s < 86400) return `${Math.round(s / 3600)} t. siden`;
   return `${Math.round(s / 86400)} d. siden`;
 }
+const riskTag = (r) => r ? h("span", { class: "rk " + r, title: "Risiko ud fra strategiens største fald" }, r) : null;
 
 /* ---------- perioder (1D 1U 1M 3M 1Å ALT) ---------- */
 const PERIODS = [["1d", "1D", 86400, "24t", "seneste døgn"], ["1u", "1U", 7 * 86400, "7d", "seneste uge"], ["1m", "1M", 30 * 86400, "1m", "seneste måned"],
@@ -346,26 +380,30 @@ function periodTabs() {
     onclick: () => { PERIOD = k; savePref("period", k); render(true); } }, t)));
 }
 /* punkterne i perioden, med et startpunkt lige ved periodens start */
-function inPeriod(pts) {
-  const sec = per()[2];
+function inPeriod(pts, sec) {
+  sec = sec == null ? per()[2] : sec;
   if (!pts.length || !Number.isFinite(sec)) return pts;
   const t0 = Date.now() / 1000 - sec, prev = [...pts].reverse().find((p) => p[0] <= t0), rest = pts.filter((p) => p[0] > t0);
   const out = prev ? [[t0, ...prev.slice(1)], ...rest] : rest;
   return out.length === 1 ? [...out, [Date.now() / 1000, ...out[0].slice(1)]] : out;
 }
+const atOrBefore = (pts, t) => [...pts].reverse().find((p) => p[0] <= t) || pts[0];
 
 /* ---------- sider og data ---------- */
-let DATA = { rows: null, live: null, sm: null }, STRAT = null, R = { name: "hjem" }, lastKey = "", ANIM = true, failed = false, loading = false;
-const TABS = [["hjem", "Hjem", "home"], ["analyse", "Analyse", "chart"], ["bot", "Bot", "bot"], ["indstillinger", "Indstillinger", "gear"]];
+let DATA = { rows: null, live: null, sm: null }, POS = null, STRAT = null, R = { name: "hjem" }, lastKey = "", ANIM = true, failed = false, loading = false;
+const TABS = [["hjem", "Dashboard", "home"], ["investeringer", "Investeringer", "pie"], ["strategier", "Strategier", "chart"], ["kalender", "Kalender", "cal"], ["profil", "Profil", "user"]];
+const ALIAS = { analyse: "strategier", indstillinger: "profil" };
+const TAB_OF = { historik: "hjem", bot: "profil" };
 const FULL = new Set(["indsaet", "udbetal", "s"]);                    // fuldskærm: ingen bundmenu
-const CALM = new Set(["indsaet", "udbetal", "indstillinger"]);        // tegnes ikke om hvert 15. sekund (der skrives i felterne)
+const CALM = new Set(["indsaet", "udbetal", "profil"]);                // tegnes ikke om hvert 15. sekund (der skrives i felterne)
 const stratHref = (bot, key) => `#s/${encodeURIComponent(bot)}/${encodeURIComponent(key)}`;
 function stratLink(name, botKey, botName) {
   const key = botKey || ((DATA.rows || []).find((b) => b.name === botName) || {}).key;
   return key ? h("a", { href: stratHref(key, name) }, name) : h("span", {}, name);
 }
 async function api(path) {
-  const r = await fetch(path, { cache: "no-store" });
+  const r = await fetch(path, { cache: "no-store", credentials: "same-origin" });
+  if (r.status === 401) { location.reload(); throw new Error("login"); }      // logget ud (fx efter 30 dage): vis login-siden
   if (!r.ok) throw new Error(r.status);
   return r.json();
 }
@@ -378,6 +416,7 @@ async function load() {
     DATA = { rows, live, sm };
     failed = false;
     if (R.name === "s") STRAT = await api("/api/bot/" + encodeURIComponent(R.a)).catch(() => STRAT);
+    if (R.name === "investeringer" || R.name === "hjem") POS = await api("/api/positions").catch(() => POS);
     render(first);
   } catch (e) {
     failed = true;
@@ -386,7 +425,7 @@ async function load() {
 }
 function route() {
   const p = location.hash.replace(/^#\/?/, "").split("/");
-  R = { name: p[0] || "hjem", a: p[1] && decodeURIComponent(p[1]), b: p[2] && decodeURIComponent(p[2]) };
+  R = { name: ALIAS[p[0]] || p[0] || "hjem", a: p[1] && decodeURIComponent(p[1]), b: p[2] && decodeURIComponent(p[2]) };
   if (R.name === "s" && !(R.a && R.b)) R.name = "hjem";
   if (!VIEWS[R.name]) R.name = "hjem";
   ANIM = true;
@@ -396,17 +435,18 @@ function route() {
     const want = R.a;
     api("/api/bot/" + encodeURIComponent(want)).then((d) => { if (R.name === "s" && R.a === want) { STRAT = d; render(true); } }).catch(() => {});
   }
+  if (R.name === "investeringer" && !POS) api("/api/positions").then((d) => { POS = d; if (R.name === "investeringer") render(true); }).catch(() => {});
   render(true); window.scrollTo(0, 0);
 }
 function view(...kids) { $("main").replaceChildren(h("div", { class: "view" }, ...kids)); }
 function tabbar() {
-  const nav = $("tabbar"), cur = R.name === "historik" ? "hjem" : R.name;
+  const nav = $("tabbar"), cur = TAB_OF[R.name] || R.name;
   nav.hidden = FULL.has(R.name);
   nav.replaceChildren(...TABS.map(([k, t, ic]) => h("a", { class: "tab", href: k === "hjem" ? "#" : "#" + k, "aria-current": k === cur ? "page" : null }, icon(ic), t)));
 }
 function render(force) {
   if (!force && CALM.has(R.name)) return;
-  const key = JSON.stringify([R, PERIOD, DATA, STRAT, failed]);
+  const key = JSON.stringify([R, PERIOD, DATA, STRAT, POS, failed, DAY.d, DAY.data && DAY.data.day]);
   if (!force && key === lastKey) return;
   lastKey = key;
   const y = window.scrollY;
@@ -417,10 +457,10 @@ function render(force) {
   ANIM = false;
 }
 const skeleton = () => [h("div", { class: "sk", style: "height:48px;width:48px;border-radius:50%" }), h("div", { class: "sk", style: "height:90px" }),
-  h("div", { class: "sk", style: "height:300px" }), h("div", { class: "sk", style: "height:90px" })];
+  h("div", { class: "sk", style: "height:320px" }), h("div", { class: "sk", style: "height:90px" })];
 const errorBox = () => h("div", { class: "card center", style: "margin-top:20vh" }, h("h2", { style: "margin:0 0 6px" }, "Kan ikke hente dine tal"),
   h("p", { class: "note" }, "Serveren svarer ikke lige nu. Prøver igen om lidt."));
-function topbar(right) { return h("div", { class: "top" }, h("a", { class: "logo", href: "#", "aria-label": "Forsiden" }, raw(LOGO)), right || h("span")); }
+function topbar(right) { return h("div", { class: "top" }, h("a", { class: "logo", href: "#", "aria-label": "Dashboard" }, raw(LOGO)), right || h("span")); }
 function backbar(right) {
   return h("div", { class: "top" }, h("button", { class: "iconbtn", type: "button", "aria-label": "Tilbage",
     onclick: () => { if (history.length > 1) history.back(); else location.hash = "#"; } }, icon("back")), right || h("span"));
@@ -470,11 +510,12 @@ function area(el, pts, fmt) {
   const last = px[px.length - 1];
   const svg = sv("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "Udvikling i perioden" },
     sv("defs", {}, sv("linearGradient", { id, x1: "0", y1: "0", x2: "0", y2: "1" },
-      sv("stop", { offset: "0", "stop-color": col, "stop-opacity": ".32" }), sv("stop", { offset: "1", "stop-color": col, "stop-opacity": "0" }))),
+      sv("stop", { offset: "0", "stop-color": col, "stop-opacity": ".30" }), sv("stop", { offset: ".7", "stop-color": VIOLET, "stop-opacity": ".05" }),
+      sv("stop", { offset: "1", "stop-color": VIOLET, "stop-opacity": "0" }))),
     sv("path", { d: `${d}L${last[0]},${H}L${px[0][0]},${H}Z`, fill: `url(#${id})` }),
     sv("path", { class: "ln " + (up ? "up" : "down") + (ANIM && !RM ? " draw" : ""), d, stroke: col }));
   const dot = sv("circle", { cx: last[0], cy: last[1], r: 4.5, fill: col }), ring = sv("circle", { class: "ring", cx: last[0], cy: last[1], r: 4.5, fill: col });
-  const cross = sv("line", { x1: 0, x2: 0, y1: 0, y2: H, stroke: "rgba(255,255,255,.25)", "stroke-dasharray": "3 4", opacity: 0 });
+  const cross = sv("line", { x1: 0, x2: 0, y1: 0, y2: H, stroke: "rgba(157,140,255,.45)", "stroke-dasharray": "3 4", opacity: 0 });
   const hot = sv("circle", { r: 5, fill: col, stroke: "#050607", "stroke-width": 2, opacity: 0 });
   svg.append(cross, ring, dot, hot);
   const tip = h("div", { class: "tip" });
@@ -499,6 +540,7 @@ function chartBox(cls, pts, fmt) {
 }
 
 /* ---------- porteføljen: rigtige penge, eller Nova Bot på papir ---------- */
+function midnight() { const d = new Date(); d.setHours(0, 0, 0, 0); return d.getTime() / 1000; }
 function portfolio() {
   const { live, sm } = DATA, real = live && live.real;
   const hasReal = !!(real && (real.balance_usd > 0 || (live.history || []).length > 1));
@@ -508,56 +550,98 @@ function portfolio() {
   const now = Date.now() / 1000;
   if (mode === "real" && real) {
     const r = RATE(), cur = [now, real.balance_usd * r, real.deposited_usd == null ? null : real.deposited_usd * r];
-    const hist = (live.history || []).map((p) => [p[0], p[1] * r, p[2] == null ? null : p[2] * r]).filter((p) => p[0] < now - 30);
-    const w = inPeriod([...hist, cur]), s = w[0] || cur, e = w[w.length - 1] || cur;
+    const all = [...(live.history || []).map((p) => [p[0], p[1] * r, p[2] == null ? null : p[2] * r]).filter((p) => p[0] < now - 30), cur];
     const earn = (p) => p[1] - (p[2] == null ? 0 : p[2]);
+    const w = inPeriod(all), s = w[0] || cur, e = w[w.length - 1] || cur;
     let delta = earn(e) - earn(s), base = s[1] > 0 ? s[1] : e[2];
     if (!Number.isFinite(per()[2])) { delta = (real.earned_usd || 0) * r; base = (real.deposited_usd || 0) * r; }
+    const m0 = atOrBefore(all, midnight()), today = earn(cur) - earn(m0);
     return { mode, hasReal, value: cur[1], delta, pct: base > 0 ? delta / base * 100 : null, pts: w.map((p) => [p[0], p[1]]),
+      todayKr: today, todayPct: m0[1] > 0 ? today / m0[1] * 100 : null,
+      profitKr: (real.earned_usd || 0) * r, profitPct: real.deposited_usd > 0 ? real.earned_usd / real.deposited_usd * 100 : null,
       note: real.deposited_usd != null ? `Saldo hos Binance og dine wallets · indsat ${cash(real.deposited_usd * r)}` : "Saldo hos Binance og dine wallets" };
   }
-  if (!sm) return { mode: "paper", hasReal, value: null, delta: null, pct: null, pts: [], note: "" };
+  if (!sm) return { mode: "paper", hasReal, value: null, delta: null, pct: null, pts: [], todayKr: null, todayPct: null, profitKr: null, profitPct: null, note: "" };
   const pts = (sm.curve || []).map(([t, p]) => [t, sm.capital * (1 + p / 100)]).concat([[now, sm.value]]);
   const w = inPeriod(pts), s = w.length ? w[0][1] : sm.capital;
   return { mode, hasReal, value: sm.value, delta: sm.value - s, pct: s > 0 ? (sm.value / s - 1) * 100 : null, pts: w,
+    todayKr: sm.value - sm.value / (1 + sm.today_pct / 100), todayPct: sm.today_pct,
+    profitKr: sm.value - sm.capital, profitPct: sm.return_pct,
     note: `Papir: Nova Bot med ${cash(sm.capital)} i startkapital` };
 }
 function issuesOf(rows) {
   return (rows || []).filter((b) => b.configured && !(b.up && (b.idle || (b.scan_age != null && b.scan_age <= STALE))));
 }
 
-/* ---------- HJEM ---------- */
+/* ---------- 1. DASHBOARD ---------- */
 function vHome() {
   const { rows, live, sm } = DATA, pf = portfolio(), issues = issuesOf(rows), liveOn = !!(live && live.mode);
   const big = h("span", { class: "num" });
   countUp(big, pf.value, (v) => cash(v));
   const modeSeg = pf.hasReal && sm ? h("div", { class: "seg", role: "group", "aria-label": "Visning" },
     [["real", "Rigtig"], ["paper", "Papir"]].map(([k, t]) => h("button", { type: "button", "aria-pressed": String(pf.mode === k),
-      onclick: () => { savePref("pf", k); render(true); } }, t))) : h("span", { class: "badge " + (pf.mode === "real" ? "" : "grey") }, pf.mode === "real" ? "Rigtige penge" : "Papir");
+      onclick: () => { savePref("pf", k); render(true); } }, t))) : h("span", { class: "badge " + (pf.mode === "real" ? "" : "vio") }, pf.mode === "real" ? "Rigtige penge" : "Papir");
+  const stat = (l, ic, kr, p) => h("div", { class: "stat" }, h("div", { class: "l" }, icon(ic), l),
+    h("div", { class: "v num " + tone(kr) }, cash(kr, true)), h("div", { class: "s num " + tone(p) }, pct(p)));
   view(
     topbar(h("a", { class: "iconbtn", href: "#historik", "aria-label": issues.length ? `${issues.length} markeder kræver opmærksomhed` : "Historik" },
       icon("bell"), issues.length ? h("span", { class: "dot" }) : null)),
     h("h1", { class: "hello" }, `Hej${PREF.name ? " " + PREF.name : ""} 👋`),
     h("p", { class: "sub" }, liveOn ? "Din investeringsbot arbejder for dig" : "Din investeringsbot arbejder for dig · på papir"),
     h("div", { class: "card pf" },
-      h("div", { class: "head" }, h("span", { class: "lbl" }, "Din portefølje"), modeSeg),
+      h("div", { class: "head" }, h("span", { class: "lbl" }, "Samlet saldo"), modeSeg),
       h("div", { class: "big" }, big),
-      h("div", { class: "chg " + tone(pf.delta) }, icon(pf.delta < 0 ? "down" : "up"),
-        h("span", { class: "num" }, `${pct(pf.pct)} (${cash(pf.delta, true)})`), h("small", {}, per()[4])),
+      h("div", { class: "stats" }, stat("I dag", "clock", pf.todayKr, pf.todayPct), stat("Samlet profit", "trend", pf.profitKr, pf.profitPct)),
       chartBox("", pf.pts, (v) => cash(v)),
+      h("div", { style: "display:flex;justify-content:space-between;align-items:baseline;margin-top:2px" },
+        h("small", { class: "mute" }, "Udvikling " + per()[4]), h("small", { class: "num " + tone(pf.delta), style: "font-weight:600" }, `${cash(pf.delta, true)} (${pct(pf.pct)})`)),
       periodTabs(),
       pf.note ? h("p", { class: "note", style: "margin-top:6px" }, pf.note) : null),
-    h("a", { class: "card botrow", href: "#bot" }, raw(ROBOT, "av"),
-      h("div", { class: "t" }, h("b", {}, sm ? "Botten er aktiv" : "Botten starter", h("span", { class: "live" + (sm ? "" : " off") })),
-        h("small", {}, sm && sm.following ? `Følger ${sm.following} · ${sm.following_bot}` : "Venter på, at en strategi stiger i dag")),
+    h("a", { class: "card botrow", href: "#investeringer" }, raw(ROBOT, "av"),
+      h("div", { class: "t" }, h("b", {}, "Bot-status: ", h("span", { class: sm ? "pos" : "mute" }, sm ? "Aktiv" : "Starter"), h("span", { class: "live" + (sm ? "" : " off") })),
+        h("small", {}, sm && sm.following ? `Investerer i ${sm.following} · ${sm.following_bot}` : "Venter på, at en strategi stiger i dag")),
       icon("chev", "chev")),
-    section("Fordeling", seeAll("#analyse"), h("div", { class: "card" }, distribution(pf.mode))),
     h("div", { class: "btns" }, h("a", { class: "btn", href: "#indsaet" }, icon("wallet"), "Indsæt penge"), h("a", { class: "btn ghost", href: "#udbetal" }, "Hæv")),
     section("Seneste aktivitet", seeAll("#historik"), h("div", { class: "card tight" }, activityRows(activities().slice(0, 4)))),
     issues.length ? h("div", { class: "lock" }, icon("info"),
       h("span", {}, `${issues.length === 1 ? "Et marked kører" : issues.length + " markeder kører"} ikke lige nu: ${issues.map((b) => b.name).join(", ")}.`)) : null);
 }
-const DONUT = [NEON, "#2bbf78", "#1d7d51", "#8a948f", "#3d4542", "#c9f7de"];
+
+/* ---------- 2. INVESTERINGER ---------- */
+function vInvest() {
+  const { live, sm } = DATA, P = POS, real = live && live.real;
+  const pos = (P && P.positions) || [], known = pos.filter((p) => p.pnl_kr != null), unreal = known.reduce((a, p) => a + p.pnl_kr, 0);
+  const holdings = ((live && live.venues) || []).flatMap((v) => (v.holdings || []).map((x) => ({ ...x, venue: v.name })));
+  view(topbar(h("span")), h("h1", { class: "title" }, "Investeringer"), h("p", { class: "sub" }, "Hvad botten investerer i lige nu"),
+    h("a", { class: "card now", href: P && P.bot_key && P.id ? stratHref(P.bot_key, P.id.split(":").slice(1).join(":")) : "#strategier" }, raw(ROBOT, "av"),
+      h("div", { class: "t" }, h("small", {}, sm && sm.following ? `Følger siden ${P && P.since ? clockOf(P.since) : "–"}` : "Botten venter"),
+        h("b", {}, (P && P.following) || (sm && sm.following) || "Ingen strategi endnu"),
+        h("small", {}, (P && P.bot) || (sm && sm.following_bot) || "Botten køber, når en strategi stiger i dag")),
+      h("div", { class: "v num " + tone(P && P.gain_today), style: "text-align:right;font-weight:700;font-size:18px" }, P && P.gain_today != null ? pct(P.gain_today) : "",
+        P && P.gain_today != null ? h("small", { class: "mute", style: "display:block;font-size:12px;font-weight:500" }, "i dag") : null)),
+    h("div", { class: "kgrid three" },
+      kpi("Investeret", P && P.value_kr != null ? cash(P.value_kr) : "–", "papir"),
+      kpi("Positioner", String(pos.length), "åbne nu"),
+      kpi("Urealiseret", known.length ? cash(unreal, true) : "–", known.length ? `${known.length} med kurs` : "ikke oplyst", tone(unreal))),
+    section("Aktive positioner", null, h("div", { class: "card tight" }, !P ? h("div", { class: "empty" }, "Henter positioner…") : pos.length ? pos.map((p) => {
+      const short = /short|sell|sælg/i.test(p.side || "");
+      return h("div", { class: "row" }, h("span", { class: "ic " + (short ? "neg" : p.pnl_pct < 0 ? "neg" : "") }, icon(short ? "down" : "up")),
+        h("div", { class: "t" }, h("b", {}, h("span", {}, String(p.symbol)), h("span", { class: "badge " + (short ? "neg" : "blu") }, short ? "Short" : "Long")),
+          h("small", {}, p.entry != null && p.price != null ? `Købt ${price(p.entry)} · nu ${price(p.price)}` : `Åbnet ${when(p.ts)} · ≈ ${cash(p.value_kr)}`)),
+        h("div", { class: "v num " + tone(p.pnl_pct) }, p.pnl_pct == null ? "–" : pct(p.pnl_pct), h("small", {}, p.pnl_kr == null ? "kurs ikke oplyst" : cash(p.pnl_kr, true))));
+    }) : h("div", { class: "empty" }, sm && sm.following ? "Strategien har ingen åbne positioner lige nu." : "Ingen positioner endnu i dag.")),
+      h("p", { class: "note" }, "Papir: Nova Bots konto er fordelt ligeligt på strategiens positioner. Gevinst/tab er botternes egne tal.")),
+    section("Rigtige penge", null, h("div", { class: "card tight" }, holdings.length ? holdings.map((x) => h("div", { class: "row" },
+      h("span", { class: "ic " + (x.pnl_usd < 0 ? "neg" : "") }, icon("coin")),
+      h("div", { class: "t" }, h("b", {}, h("span", {}, String(x.symbol).slice(0, 20)), h("span", { class: "badge grey" }, x.venue)),
+        h("small", {}, x.entry != null ? `Købt ${price(x.entry)} · nu ${price(x.price)}` : x.venue)),
+      h("div", { class: "v num " + tone(x.pnl_usd) }, cash(x.usd * RATE()), h("small", { class: tone(x.pnl_usd) },
+        x.pnl_usd == null ? (x.cost_usd == null ? "" : "") : `${cash(x.pnl_usd * RATE(), true)} (${pct(x.pnl_pct)})`)))) :
+      h("div", { class: "empty" }, live && live.mode ? "Ingen rigtige positioner lige nu." : "Rigtige penge er slået fra, så der er ingen rigtige positioner."))),
+    section("Fordeling", null, h("div", { class: "card" }, distribution(real && real.balance_usd > 0 && PREF.pf !== "paper" ? "real" : "paper"))),
+    section("Papir mod virkelighed", null, realCard(live)));
+}
+const DONUT = [NEON, VIOLET, BLUE, "#2bbf78", "#6b5fd6", "#8a948f"];
 function distribution(mode) {
   const { live, sm } = DATA, real = live && live.real;
   let parts = [], note = "";
@@ -583,82 +667,6 @@ function distribution(mode) {
   return [h("div", { class: "dist" }, svg, h("div", { class: "legend" }, parts.map((p, i) => h("div", {}, h("i", { style: `background:${DONUT[i % DONUT.length]}` }),
     h("span", {}, p.name), h("b", { class: "num" }, nf(p.v / tot * 100, 0) + " %"))))), h("p", { class: "note" }, note)];
 }
-
-/* ---------- aktivitet: indbetalinger, handler og gevinster ---------- */
-function activities() {
-  const { live, sm } = DATA, real = live && live.real, out = [], r = RATE();
-  for (const e of (real && real.events) || []) out.push({ ts: e.ts, g: "ind", ic: e.kind === "ind" ? "down" : "up", neg: e.kind !== "ind",
-    title: e.kind === "ind" ? "Indbetaling" : "Udbetaling", sub: `${e.what} · Binance`, val: cash((e.kind === "ind" ? 1 : -1) * e.usd * r, true), tone: e.kind === "ind" ? "pos" : "neg" });
-  for (const o of ((live && live.orders) || []).filter((o) => !o.sim)) out.push({ ts: o.ts, g: "handel", ic: "swap", grey: true,
-    title: `${o.side === "ÅBN" ? "Køb" : "Salg"} ${String(o.symbol).slice(0, 16)}`, sub: `${o.venue} · rigtige penge`,
-    val: cash(o.usd * r), small: o.cost_usd == null ? null : `omkostning ${nf(o.cost_pct || 0, 2)} %` });
-  for (const x of (sm && (sm.history || sm.recent)) || []) out.push({ ts: x.ts, g: "handel", ic: "swap", grey: true,
-    title: `${x.from ? "Skiftede til" : "Startede med"} ${x.to}`, sub: `${x.to_bot} · Nova Bot (papir)`, href: x.to_key ? stratHref(x.to_key, x.to) : null,
-    val: x.result_pct == null ? "" : pct(x.result_pct), small: x.result_pct == null ? null : "på den forrige", tone: tone(x.result_pct) });
-  if (sm) {
-    const days = Object.keys(sm.days || {}).sort();
-    for (const day of days) {
-      const v = sm.days[day], ts = Math.min(new Date(day + "T23:59:00").getTime() / 1000, Date.now() / 1000);
-      out.push({ ts, g: "gevinst", ic: "trend", neg: v < 0, title: day === days[days.length - 1] ? "Dagens resultat indtil nu" : "Dagens resultat",
-        sub: "Nova Bot (papir)", val: pct(v), small: cash(BASE_KR * v / 100, true) + " pr. 10.000 kr.", tone: tone(v) });
-    }
-  }
-  return out.sort((a, b) => b.ts - a.ts);
-}
-function activityRows(list) {
-  if (!list.length) return h("div", { class: "empty" }, "Ingen aktivitet endnu.");
-  return list.map((a) => h(a.href ? "a" : "div", { class: "row", href: a.href || null },
-    h("span", { class: "ic" + (a.grey ? " grey" : a.neg ? " neg" : "") }, icon(a.ic)),
-    h("div", { class: "t" }, h("b", {}, a.title), h("small", {}, `${a.sub} · ${clockOf(a.ts)}`)),
-    h("div", { class: "v num " + (a.tone || "") }, a.val, a.small ? h("small", {}, a.small) : null)));
-}
-
-/* ---------- HISTORIK ---------- */
-let HF = "alle";
-function vHistory() {
-  const all = activities(), list = HF === "alle" ? all : all.filter((a) => a.g === HF);
-  const groups = [];
-  for (const a of list.slice(0, 150)) { const k = dayLabel(a.ts); if (!groups.length || groups[groups.length - 1][0] !== k) groups.push([k, []]); groups[groups.length - 1][1].push(a); }
-  view(topbar(h("span")), h("h1", { class: "title" }, "Historik"), h("p", { class: "sub" }, "Indbetalinger, handler og gevinster"),
-    h("div", { class: "chips", role: "group", "aria-label": "Filter" }, [["alle", "Alle"], ["ind", "Indbetalinger"], ["handel", "Handler"], ["gevinst", "Gevinster"]].map(([k, t]) =>
-      h("button", { class: "chip", type: "button", "aria-pressed": String(HF === k), onclick: () => { HF = k; render(true); } }, t))),
-    groups.length ? groups.map(([k, l]) => [h("div", { class: "dayhead" }, k), h("div", { class: "card tight" }, activityRows(l))]) :
-      h("div", { class: "card" }, h("div", { class: "empty" }, HF === "ind" ? "Ingen indbetalinger endnu." : "Intet her endnu.")));
-}
-
-/* ---------- ANALYSE ---------- */
-let showAll = false;
-function vAnalyse() {
-  const { rows, sm } = DATA, conf = (rows || []).filter((b) => b.configured), bad = issuesOf(rows), all = rankings(rows);
-  const best = sm && sm.leaders && sm.leaders[0];
-  view(topbar(h("span")), h("h1", { class: "title" }, "Analyse"), h("p", { class: "sub" }, "Hvad botten har gjort, og hvordan strategierne klarer sig"),
-    h("div", { class: "kgrid" },
-      kpi("Nova Bot i dag", sm ? pct(sm.today_pct) : "–", sm ? `${cash(BASE_KR * sm.today_pct / 100, true)} pr. 10.000 kr.` : "", sm && tone(sm.today_pct)),
-      kpi("Bedste i dag", best ? pct(best.gain) : "–", best ? `${best.name} · ${best.bot_name}` : "ingen er steget endnu", best && tone(best.gain)),
-      kpi("Markeder", `${conf.length - bad.length}/${conf.length}`, bad.length ? `${bad.length} kører ikke` : "alle kører", bad.length ? "neg" : "pos"),
-      kpi(`I plus (${per()[1]})`, `${all.filter((s) => s.r > 0).length}/${all.length}`, "strategier")),
-    section("Kapløbet i dag", null, raceCard(sm)),
-    section("Botten har investeret i", seeAll("#historik"), h("div", { class: "card tight" }, switchRows(sm))),
-    section("Papir mod virkelighed", null, realCard(DATA.live)),
-    calendarCard(sm),
-    section("Bedste strategier", null, h("div", { style: "margin-bottom:12px" }, periodTabs()), allStrategiesCard(all)),
-    section("Markeder", null, marketsCard(conf)));
-}
-function raceCard(sm) {
-  const L = (sm && sm.leaders) || [], top = Math.max(...L.map((x) => Math.abs(x.gain)), 0.01);
-  return h("div", { class: "card tight" }, L.length ? L.map((x, i) => h("div", { class: "row" }, h("span", { class: "rank", style: x.held ? "color:var(--neon)" : null }, String(i + 1)),
-    h("div", { class: "t" }, h("b", {}, x.name), h("small", {}, x.bot_name + (x.held ? " · Nova Bot følger den" : "")),
-      h("div", { class: "bar2" }, h("i", { style: `width:${Math.max(3, Math.abs(x.gain) / top * 100)}%` }))),
-    h("div", { class: "v num " + tone(x.gain) }, pct(x.gain)))) : h("div", { class: "empty" }, "Ingen strategi er steget endnu i dag."),
-    h("p", { class: "note", style: "margin-bottom:12px" }, "Målt siden midnat. Nova Bot følger altid nr. 1."));
-}
-function switchRows(sm) {
-  const list = ((sm && (sm.history || sm.recent)) || []).slice(0, 8);
-  if (!list.length) return h("div", { class: "empty" }, "Ingen skift endnu.");
-  return list.map((x) => h("div", { class: "row" }, h("span", { class: "ic grey" }, icon("swap")),
-    h("div", { class: "t" }, h("b", {}, stratLink(x.to, x.to_key, x.to_bot)), h("small", {}, `${x.to_bot} · ${when(x.ts)}${x.from ? " · fra " + x.from : ""}`)),
-    h("div", { class: "v num " + tone(x.result_pct) }, x.result_pct == null ? "" : pct(x.result_pct), x.result_pct == null ? null : h("small", {}, "på den forrige"))));
-}
 function realCard(live) {
   const sm = live && live.smart, real = live && live.real;
   if (!live || !live.mode) return h("div", { class: "card" }, h("p", { class: "note", style: "margin:0" },
@@ -675,6 +683,31 @@ function realCard(live) {
       h("div", { class: "empty" }, "Ingen rigtige handler endnu."),
       h("p", { class: "note", style: "margin-bottom:12px" }, "Alle beløb er regnet om til, hvis man havde 10.000 kr.")));
 }
+
+/* ---------- 3. STRATEGIER ---------- */
+let showAll = false, RISKF = "alle";
+function vStrategies() {
+  const { rows, sm } = DATA, conf = (rows || []).filter((b) => b.configured), bad = issuesOf(rows);
+  const all = rankings(rows), list = RISKF === "alle" ? all : all.filter((s) => s.risk === RISKF);
+  view(topbar(h("span")), h("h1", { class: "title" }, "Strategier"), h("p", { class: "sub" }, "Afkast, risiko og historik for alle strategier"),
+    section("Dagens bedste", null, raceCard(sm)),
+    h("div", { class: "sh" }, h("h2", {}, "Afkast pr. strategi"), h("span", { class: "mute", style: "font-size:13px" }, `${all.filter((s) => s.r > 0).length} af ${all.length} i plus`)),
+    h("div", { style: "margin-bottom:10px" }, periodTabs()),
+    h("div", { class: "chips", role: "group", "aria-label": "Risiko" }, [["alle", "Alle"], ["Lav", "Lav risiko"], ["Mellem", "Mellem"], ["Høj", "Høj risiko"]].map(([k, t]) =>
+      h("button", { class: "chip", type: "button", "aria-pressed": String(RISKF === k), onclick: () => { RISKF = k; showAll = false; render(true); } }, t))),
+    allStrategiesCard(list),
+    h("p", { class: "note", style: "margin:-4px 4px 0" }, "Risiko ud fra strategiens største fald: lav under 5 %, mellem under 15 %, ellers høj."),
+    section("Markeder", h("span", { class: "mute", style: "font-size:13px" }, `${conf.length - bad.length}/${conf.length} kører`), marketsCard(conf)));
+}
+function raceCard(sm) {
+  const L = (sm && sm.leaders) || [], top = Math.max(...L.map((x) => Math.abs(x.gain)), 0.01);
+  const riskOf = (name, bot) => { const b = (DATA.rows || []).find((x) => x.name === bot), s = b && (b.strategies || []).find((x) => x.name === name); return s && s.risk; };
+  return h("div", { class: "card tight" }, L.length ? L.map((x, i) => h("div", { class: "row" }, h("span", { class: "rank", style: x.held ? "color:var(--violet)" : null }, String(i + 1)),
+    h("div", { class: "t" }, h("b", {}, h("span", {}, x.name), riskTag(riskOf(x.name, x.bot_name))), h("small", {}, x.bot_name + (x.held ? " · botten følger den" : "")),
+      h("div", { class: "bar2" }, h("i", { class: x.gain > 0 ? "pos" : "", style: `width:${Math.max(3, Math.abs(x.gain) / top * 100)}%` }))),
+    h("div", { class: "v num " + tone(x.gain) }, pct(x.gain)))) : h("div", { class: "empty" }, "Ingen strategi er steget endnu i dag."),
+    h("p", { class: "note", style: "margin-bottom:12px" }, "Målt siden midnat. Botten følger altid nr. 1."));
+}
 function rankings(rows) {
   const key = per()[3];
   return (rows || []).flatMap((b) => (b.strategies || []).map((s) => ({ ...s, bot: b })))
@@ -682,12 +715,13 @@ function rankings(rows) {
     .filter((s) => typeof s.r === "number").sort((x, y) => y.r - x.r);
 }
 function allStrategiesCard(all) {
-  const list = showAll ? all : all.slice(0, 10);
+  const list = showAll ? all : all.slice(0, 12);
   return h("div", { class: "card tight" }, list.length ? list.map((s, i) => h("a", { class: "row", href: stratHref(s.bot.key, s.key ?? s.name) },
-    h("span", { class: "rank" }, String(i + 1)), h("div", { class: "t" }, h("b", {}, s.name), h("small", {}, `${s.bot.name} · ${s.trades} lukkede handler${s.trades < 20 ? " · få" : ""}`)),
-    h("div", { class: "v num " + tone(s.r) }, pct(s.r)))) : h("div", { class: "empty" }, "Ingen strategier med afkast i perioden."),
-    all.length > 10 ? h("button", { class: "pillbtn", type: "button", style: "display:block;margin:12px auto 14px",
-      onclick: () => { showAll = !showAll; render(true); } }, showAll ? "Vis kun top 10" : `Se alle ${all.length}`) : null);
+    h("span", { class: "rank" }, String(i + 1)), h("div", { class: "t" }, h("b", {}, h("span", {}, s.name), riskTag(s.risk)),
+      h("small", {}, `${s.bot.name} · ${s.trades} handler${s.win_rate != null ? ` · ${nf(s.win_rate, 0)} % vundet` : ""}`)),
+    h("div", { class: "v num " + tone(s.r) }, pct(s.r)))) : h("div", { class: "empty" }, "Ingen strategier her i perioden."),
+    all.length > 12 ? h("button", { class: "pillbtn", type: "button", style: "display:block;margin:12px auto 14px",
+      onclick: () => { showAll = !showAll; render(true); } }, showAll ? "Vis færre" : `Se alle ${all.length}`) : null);
 }
 function marketsCard(conf) {
   return h("div", { class: "card tight" }, conf.length ? conf.map((b) => {
@@ -697,34 +731,153 @@ function marketsCard(conf) {
       h("div", { class: "v num " + tone(b.best && b.best.return_pct) }, b.best && b.best.return_pct != null ? pct(b.best.return_pct) : "", b.best && b.best.name ? h("small", {}, "bedste") : null));
   }) : h("div", { class: "empty" }, "Ingen markeder."));
 }
-/* Månedskalender: hvad Nova Bot har tjent hver dag */
+
+/* ---------- 4. AFKASTKALENDER ---------- */
 let calShift = 0;
+const DAY = { d: null, data: null, loading: false };
+function pickDay(d) {
+  DAY.d = d; DAY.data = null; DAY.loading = true; render(true);
+  api("/api/day?d=" + encodeURIComponent(d)).then((x) => { if (DAY.d === d) { DAY.data = x; DAY.loading = false; render(true); } })
+    .catch(() => { if (DAY.d === d) { DAY.loading = false; DAY.data = { day: d, error: true }; render(true); } });
+}
+function vCalendar() {
+  const sm = DATA.sm;
+  view(topbar(h("span")), h("h1", { class: "title" }, "Afkastkalender"), h("p", { class: "sub" }, "Tryk på en dag for at se dagens handler"),
+    calendarCard(sm), dayPanel(sm));
+}
+/* Månedskalender: hvad Nova Bot har tjent hver dag (grøn = overskud, rød = tab) */
 function calendarCard(sm) {
-  if (!sm) return null;
+  if (!sm) return h("div", { class: "card" }, h("div", { class: "empty" }, "Kalenderen vises, når botten har kørt en dag."));
   const now = new Date(), first = new Date(now.getFullYear(), now.getMonth() + calShift, 1);
   const y = first.getFullYear(), m = first.getMonth(), days = new Date(y, m + 1, 0).getDate(), lead = (first.getDay() + 6) % 7;
-  const key = (d) => `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+  const key = (d) => `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`, todayKey = dkey(now);
   const vals = Array.from({ length: days }, (_, i) => (sm.days || {})[key(i + 1)]);
-  const total = vals.filter((v) => v != null).reduce((a, v) => a * (1 + v / 100), 1);
+  const known = vals.filter((v) => v != null), total = known.reduce((a, v) => a * (1 + v / 100), 1);
   const nav = (dx) => h("button", { class: "calnav", type: "button", "aria-label": dx < 0 ? "Forrige måned" : "Næste måned", onclick: () => { calShift += dx; render(true); } }, dx < 0 ? "‹" : "›");
-  return [h("div", { class: "sh" }, h("h2", {}, "Kalender"), h("span", { class: "num " + tone(total - 1), style: "font-weight:650" }, pct((total - 1) * 100))),
-    h("div", { class: "card" }, h("div", { class: "calhead" }, nav(-1), h("h2", {}, first.toLocaleDateString("da-DK", { month: "long", year: "numeric" })), calShift < 0 ? nav(1) : h("span", { style: "width:36px" })),
+  const best = known.length ? Math.max(...known) : null, worst = known.length ? Math.min(...known) : null;
+  return [h("div", { class: "card" },
+      h("div", { class: "calhead" }, nav(-1), h("div", { class: "center" }, h("h2", {}, first.toLocaleDateString("da-DK", { month: "long", year: "numeric" })),
+        h("small", { class: "num " + tone(total - 1) }, known.length ? `${pct((total - 1) * 100)} · ${cash(BASE_KR * (total - 1), true)} pr. 10.000 kr.` : "ingen dage endnu")),
+        calShift < 0 ? nav(1) : h("span", { style: "width:38px" })),
       h("div", { class: "cal" }, ["man", "tir", "ons", "tor", "fre", "lør", "søn"].map((d) => h("div", { class: "dow" }, d)),
-        [...Array(lead).fill(null), ...vals.map((v, i) => ({ d: i + 1, v }))].map((c) => c ? h("div", { class: "day " + (c.v == null ? "" : tone(c.v)) },
-          h("span", { class: "d" }, String(c.d)), h("b", { class: "num" }, c.v == null ? "" : pct(c.v))) : h("div", {}))),
-      h("p", { class: "note" }, "Nova Bots resultat pr. dag (papir)."))];
+        [...Array(lead).fill(null), ...vals.map((v, i) => ({ d: i + 1, v, k: key(i + 1) }))].map((c) => c ? h("button", {
+          class: "day " + (c.v == null ? "" : tone(c.v)) + (c.k === todayKey ? " today" : ""), type: "button", disabled: c.v == null,
+          "aria-pressed": String(DAY.d === c.k), "aria-label": `${c.d}. ${c.v == null ? "ingen data" : pct(c.v)}`, onclick: () => pickDay(c.k) },
+          h("span", { class: "d" }, String(c.d)), h("b", { class: "num" }, c.v == null ? "" : pct(c.v))) : h("div", {})))),
+    h("div", { class: "kgrid" },
+      kpi("Grønne dage", String(known.filter((v) => v > 0).length), "med overskud", "pos"), kpi("Røde dage", String(known.filter((v) => v < 0).length), "med tab", "neg"),
+      kpi("Bedste dag", pct(best), best == null ? "" : cash(BASE_KR * best / 100, true) + " pr. 10.000 kr.", tone(best)),
+      kpi("Værste dag", pct(worst), worst == null ? "" : cash(BASE_KR * worst / 100, true) + " pr. 10.000 kr.", tone(worst)))];
+}
+function dayPanel(sm) {
+  if (!DAY.d) return h("div", { class: "lock ok" }, icon("info"), h("span", {}, "Vælg en grøn eller rød dag i kalenderen for at se, hvilke strategier botten fulgte, og deres handler."));
+  const x = DAY.data, v = x ? x.result_pct : (sm && sm.days || {})[DAY.d], date = new Date(DAY.d + "T12:00:00");
+  const title = date.toLocaleDateString("da-DK", { weekday: "long", day: "numeric", month: "long" });
+  return [h("div", { class: "sh" }, h("h2", { style: "text-transform:capitalize" }, title), h("span", { class: "num " + tone(v), style: "font-weight:700" }, pct(v))),
+    h("p", { class: "note", style: "margin:-6px 2px 10px" }, v == null ? "" : `${cash(BASE_KR * v / 100, true)} pr. 10.000 kr. (papir)`),
+    DAY.loading ? h("div", { class: "sk", style: "height:180px" }) : !x || x.error ? h("div", { class: "card" }, h("div", { class: "empty" }, "Kunne ikke hente dagen. Prøv igen.")) : [
+      h("div", { class: "card tight" }, (x.segments || []).length ? x.segments.map((s) => h("div", { class: "row" }, h("span", { class: "ic vio" }, icon("bot")),
+        h("div", { class: "t" }, h("b", {}, stratLink(s.name, s.bot_key, s.bot)), h("small", {}, `${s.bot || ""} · ${clockOf(s.from)}–${clockOf(s.to)}`)),
+        h("div", { class: "v num " + tone(s.result_pct) }, s.result_pct == null ? "" : pct(s.result_pct), s.result_pct == null ? h("small", {}, "følges stadig") : h("small", {}, "for botten")))) :
+        h("div", { class: "empty" }, "Botten fulgte ingen strategi denne dag.")),
+      h("div", { class: "sh", style: "margin-top:18px" }, h("h2", { style: "font-size:17px" }, "Handler"), h("span", { class: "mute", style: "font-size:13px" }, String((x.trades || []).length))),
+      h("div", { class: "card tight" }, (x.trades || []).length ? x.trades.map((t) => h("div", { class: "row" },
+        h("span", { class: "ic " + (t.open ? "blu" : t.result_pct < 0 ? "neg" : "") }, icon(t.open ? "clock" : t.result_pct < 0 ? "down" : "up")),
+        h("div", { class: "t" }, h("b", {}, String(t.symbol)), h("small", {}, `${clockOf(t.ts)} · ${t.strategy}${t.side ? " · " + t.side : ""}${t.open ? " · åben" : ""}`)),
+        h("div", { class: "v num " + tone(t.result_pct) }, t.result_pct == null ? "–" : pct(t.result_pct)))) :
+        h("div", { class: "empty" }, "Ingen handler i de timer, botten fulgte strategierne.")),
+      (x.orders || []).length ? [h("div", { class: "sh", style: "margin-top:18px" }, h("h2", { style: "font-size:17px" }, "Rigtige handler")),
+        h("div", { class: "card tight" }, x.orders.map((o) => h("div", { class: "row" }, h("span", { class: "ic grey" }, icon("swap")),
+          h("div", { class: "t" }, h("b", {}, `${o.side === "ÅBN" ? "Køb" : "Salg"} ${String(o.symbol).slice(0, 18)}`), h("small", {}, `${o.venue} · ${clockOf(o.ts)}`)),
+          h("div", { class: "v num" }, cash(o.usd * RATE())))))] : null]];
 }
 
-/* ---------- BOT ---------- */
+/* ---------- historik (fra dashboardet) ---------- */
+function activities() {
+  const { live, sm } = DATA, real = live && live.real, out = [], r = RATE();
+  for (const e of (real && real.events) || []) out.push({ ts: e.ts, g: "ind", ic: e.kind === "ind" ? "down" : "up", neg: e.kind !== "ind",
+    title: e.kind === "ind" ? "Indbetaling" : "Udbetaling", sub: `${e.what} · Binance`, val: cash((e.kind === "ind" ? 1 : -1) * e.usd * r, true), tone: e.kind === "ind" ? "pos" : "neg" });
+  for (const o of ((live && live.orders) || []).filter((o) => !o.sim)) out.push({ ts: o.ts, g: "handel", ic: "swap", grey: true,
+    title: `${o.side === "ÅBN" ? "Køb" : "Salg"} ${String(o.symbol).slice(0, 16)}`, sub: `${o.venue} · rigtige penge`,
+    val: cash(o.usd * r), small: o.cost_usd == null ? null : `omkostning ${nf(o.cost_pct || 0, 2)} %` });
+  for (const x of (sm && (sm.history || sm.recent)) || []) out.push({ ts: x.ts, g: "handel", ic: "swap", vio: true,
+    title: `${x.from ? "Skiftede til" : "Startede med"} ${x.to}`, sub: `${x.to_bot} · Nova Bot (papir)`, href: x.to_key ? stratHref(x.to_key, x.to) : null,
+    val: x.result_pct == null ? "" : pct(x.result_pct), small: x.result_pct == null ? null : "på den forrige", tone: tone(x.result_pct) });
+  if (sm) {
+    const days = Object.keys(sm.days || {}).sort();
+    for (const day of days) {
+      const v = sm.days[day], ts = Math.min(new Date(day + "T23:59:00").getTime() / 1000, Date.now() / 1000);
+      out.push({ ts, g: "gevinst", ic: "trend", neg: v < 0, title: day === days[days.length - 1] ? "Dagens resultat indtil nu" : "Dagens resultat",
+        sub: "Nova Bot (papir)", val: pct(v), small: cash(BASE_KR * v / 100, true) + " pr. 10.000 kr.", tone: tone(v) });
+    }
+  }
+  return out.sort((a, b) => b.ts - a.ts);
+}
+function activityRows(list) {
+  if (!list.length) return h("div", { class: "empty" }, "Ingen aktivitet endnu.");
+  return list.map((a) => h(a.href ? "a" : "div", { class: "row", href: a.href || null },
+    h("span", { class: "ic" + (a.grey ? " grey" : a.vio ? " vio" : a.neg ? " neg" : "") }, icon(a.ic)),
+    h("div", { class: "t" }, h("b", {}, a.title), h("small", {}, `${a.sub} · ${clockOf(a.ts)}`)),
+    h("div", { class: "v num " + (a.tone || "") }, a.val, a.small ? h("small", {}, a.small) : null)));
+}
+let HF = "alle";
+function vHistory() {
+  const all = activities(), list = HF === "alle" ? all : all.filter((a) => a.g === HF);
+  const groups = [];
+  for (const a of list.slice(0, 150)) { const k = dayLabel(a.ts); if (!groups.length || groups[groups.length - 1][0] !== k) groups.push([k, []]); groups[groups.length - 1][1].push(a); }
+  view(backbar(), h("h1", { class: "title" }, "Historik"), h("p", { class: "sub" }, "Indbetalinger, handler og gevinster"),
+    h("div", { class: "chips", role: "group", "aria-label": "Filter" }, [["alle", "Alle"], ["ind", "Indbetalinger"], ["handel", "Handler"], ["gevinst", "Gevinster"]].map(([k, t]) =>
+      h("button", { class: "chip", type: "button", "aria-pressed": String(HF === k), onclick: () => { HF = k; render(true); } }, t))),
+    groups.length ? groups.map(([k, l]) => [h("div", { class: "dayhead" }, k), h("div", { class: "card tight" }, activityRows(l))]) :
+      h("div", { class: "card" }, h("div", { class: "empty" }, HF === "ind" ? "Ingen indbetalinger endnu." : "Intet her endnu.")));
+}
+
+/* ---------- 5. PROFIL ---------- */
+function vProfile() {
+  const live = DATA.live, sec = (live && live.security) || {}, liveOn = !!(live && live.mode), lim = (live && live.limits) || null;
+  const name = h("input", { type: "text", value: PREF.name || "", placeholder: "Dit fornavn", autocomplete: "given-name", maxlength: "30" });
+  name.onchange = () => { savePref("name", name.value.trim()); render(true); };
+  const seg = (k, opts, cur) => h("div", { class: "seg", role: "group" }, opts.map(([v, t]) => h("button", { type: "button", "aria-pressed": String(cur === v),
+    onclick: () => { savePref(k, v); render(true); } }, t)));
+  const st = (ok, yes, no) => h("span", { class: "badge " + (ok ? "" : "warn") }, ok ? yes : no);
+  const link = (href, ic, t, s) => h("a", { class: "row", href }, h("span", { class: "ic vio" }, icon(ic)), h("div", { class: "t" }, h("b", {}, t), h("small", {}, s)), icon("chev", "chev"));
+  view(topbar(h("span")), h("h1", { class: "title" }, "Profil"), h("p", { class: "sub" }, "Dine oplysninger, risiko og sikkerhed"),
+    h("div", { class: "card" }, h("div", { class: "profile" }, h("div", { class: "avatar" }, (PREF.name || "?").slice(0, 1).toUpperCase()),
+      h("div", {}, h("b", { style: "font-size:19px" }, PREF.name || "Din profil"), h("div", { class: "note", style: "margin:0" }, liveOn ? "Rigtige penge er slået til" : "Papirhandel"))),
+      h("label", { class: "field" }, h("small", {}, "Navn (gemmes kun på denne enhed)"), name)),
+    h("div", { class: "card tight" },
+      link("#bot", "bot", "Investeringsbot", "Status, styring og grænser"),
+      link("#historik", "clock", "Historik", "Indbetalinger, handler og gevinster"),
+      link("#indsaet", "wallet", "Indsæt penge", "Bankoverførsel eller krypto"),
+      link("#udbetal", "bank", "Hæv penge", "Til din bank eller Revolut")),
+    section("Visning", null, h("div", { class: "card tight" },
+      h("div", { class: "kv" }, h("span", {}, "Valuta"), seg("cur", [["kr", "Kroner"], ["usd", "Dollar"]], PREF.cur === "usd" ? "usd" : "kr")),
+      h("div", { class: "kv" }, h("span", {}, "Saldo"), seg("pf", [["auto", "Auto"], ["real", "Rigtig"], ["paper", "Papir"]], PREF.pf || "auto")))),
+    section("Risiko", null, h("div", { class: "card tight" },
+      h("div", { class: "kv" }, h("span", {}, "Rigtige penge"), st(liveOn, "Til", "Fra")),
+      h("div", { class: "kv" }, h("span", {}, "Gearing"), h("b", {}, lim ? `højst ${nf(lim.max_leverage, 0)}×` : "–")),
+      h("div", { class: "kv" }, h("span", {}, "Positioner pr. marked"), h("b", {}, lim ? `højst ${lim.max_positions}` : "–")),
+      h("div", { class: "kv" }, h("span", {}, "Markeder med rigtige penge"), h("b", {}, lim && lim.venues.length ? lim.venues.join(", ") : "–")))),
+    section("Sikkerhed", null, h("div", { class: "card tight" },
+      h("div", { class: "kv" }, h("span", {}, "Login med adgangskode"), st(sec.password, "Til", "Fra")),
+      h("div", { class: "kv" }, h("span", {}, "Offentlig adresse"), h("b", {}, sec.public ? "Ja" : "Nej")),
+      h("div", { class: "kv" }, h("span", {}, "Beskeder på telefonen"), st(sec.notify, "Til", "Fra")),
+      h("div", { class: "kv" }, h("span", {}, "Appen kan flytte penge"), h("b", {}, "Nej, kun læse"))),
+      h("p", { class: "note" }, sec.password ? "Pengene står på din egen Binance-konto og i dine egne wallets. Kun den, der kender adgangskoden, kan se appen."
+        : "Pengene står på din egen Binance-konto og i dine egne wallets. Uden adgangskode kan alle med adressen se saldoen.")),
+    sec.password ? h("a", { class: "btn ghost", href: "/logout", style: "margin-top:18px" }, icon("lock"), "Log ud") : null);
+}
+
+/* ---------- investeringsbot (fra profilen) ---------- */
 function vBot() {
   const { live, sm } = DATA, liveOn = !!(live && live.mode), lim = (live && live.limits) || null;
   const pts = sm ? inPeriod((sm.curve || []).map(([t, p]) => [t, sm.capital * (1 + p / 100)]).concat([[Date.now() / 1000, sm.value]])) : [];
   const chg = pts.length > 1 ? pts[pts.length - 1][1] - pts[0][1] : null;
-  view(topbar(h("span")), h("h1", { class: "title" }, "Investeringsbot"), h("p", { class: "sub" }, "Følger altid den strategi, der er steget mest i dag"),
+  view(backbar(), h("h1", { class: "title" }, "Investeringsbot"), h("p", { class: "sub" }, "Følger altid den strategi, der er steget mest i dag"),
     h("div", { class: "card bothero" }, h("div", { class: "av" }, raw(ROBOT)),
       h("h2", {}, sm ? "Aktiv" : "Starter", h("span", { class: "live" + (sm ? "" : " off") })),
       h("p", {}, sm && sm.following ? `Følger ${sm.following} · ${sm.following_bot}` : "Venter på, at en strategi stiger i dag"),
-      h("div", { class: "badges" }, h("span", { class: "badge" }, "Papir: kører 24/7"), h("span", { class: "badge " + (liveOn ? "" : "grey") }, liveOn ? "Rigtige penge: til" : "Rigtige penge: fra"))),
+      h("div", { class: "badges" }, h("span", { class: "badge vio" }, "Papir: kører 24/7"), h("span", { class: "badge " + (liveOn ? "" : "grey") }, liveOn ? "Rigtige penge: til" : "Rigtige penge: fra"))),
     h("div", { class: "kgrid" },
       kpi("I dag", sm ? pct(sm.today_pct) : "–", sm ? cash(BASE_KR * sm.today_pct / 100, true) + " pr. 10.000 kr." : "", sm && tone(sm.today_pct)),
       kpi("I alt", sm ? pct(sm.return_pct) : "–", sm ? `${cash(sm.value)} af ${cash(sm.capital)}` : "", sm && tone(sm.return_pct)),
@@ -739,7 +892,7 @@ function vBot() {
         h("button", { class: "btn ghost", type: "button", disabled: true }, icon("pause"), "Stop")),
       h("div", { class: "lbl2" }, "Risikoniveau"),
       h("div", { class: "risk", role: "group", "aria-label": "Risikoniveau" }, ["Lav", "Mellem", "Høj"].map((t) => h("button", { type: "button", disabled: true }, t))),
-      h("div", { class: "lock" }, icon("lock"), h("span", {}, "Styring fra appen er ikke slået til endnu. Den kræver en adgangskode, fordi appen er offentlig. Rigtige penge startes i dag med ",
+      h("div", { class: "lock" }, icon("lock"), h("span", {}, "Styring fra appen er ikke slået til endnu. Den kræver login, og du skal vælge, hvad risikoniveauerne betyder. Rigtige penge startes i dag med ",
         h("code", {}, "HUB_LIVE=1"), " på serveren.")))),
     section("Grænser for rigtige penge", null, h("div", { class: "card tight" },
       h("div", { class: "kv" }, h("span", {}, "Gearing"), h("b", {}, lim ? `højst ${nf(lim.max_leverage, 0)}×` : "–")),
@@ -827,65 +980,40 @@ function flowSteps(dep, method, kr, usd, eur, liveOn) {
     li("Hæv først ", h("b", {}, "et lille beløb som test"), ".")];
 }
 
-/* ---------- INDSTILLINGER ---------- */
-function vSettings() {
-  const live = DATA.live, sec = (live && live.security) || {}, liveOn = !!(live && live.mode), lim = (live && live.limits) || null;
-  const name = h("input", { type: "text", value: PREF.name || "", placeholder: "Dit fornavn", autocomplete: "given-name", maxlength: "30" });
-  name.onchange = () => { savePref("name", name.value.trim()); render(true); };
-  const seg = (k, opts, cur) => h("div", { class: "seg", role: "group" }, opts.map(([v, t]) => h("button", { type: "button", "aria-pressed": String(cur === v),
-    onclick: () => { savePref(k, v); render(true); } }, t)));
-  const st = (ok, yes, no) => h("span", { class: "badge " + (ok ? "" : "warn") }, ok ? yes : no);
-  view(topbar(h("span")), h("h1", { class: "title" }, "Indstillinger"), h("p", { class: "sub" }, "Risiko, sikkerhed og dine oplysninger"),
-    h("div", { class: "card" }, h("div", { class: "profile" }, h("div", { class: "avatar" }, (PREF.name || "?").slice(0, 1).toUpperCase()),
-      h("div", {}, h("b", { style: "font-size:18px" }, PREF.name || "Din profil"), h("div", { class: "note", style: "margin:0" }, "Gemmes kun på denne enhed"))),
-      h("label", { class: "field" }, h("small", {}, "Navn"), name)),
-    section("Visning", null, h("div", { class: "card tight" },
-      h("div", { class: "kv" }, h("span", {}, "Valuta"), seg("cur", [["kr", "Kroner"], ["usd", "Dollar"]], PREF.cur === "usd" ? "usd" : "kr")),
-      h("div", { class: "kv" }, h("span", {}, "Portefølje"), seg("pf", [["auto", "Auto"], ["real", "Rigtig"], ["paper", "Papir"]], PREF.pf || "auto")))),
-    section("Risiko", null, h("div", { class: "card tight" },
-      h("div", { class: "kv" }, h("span", {}, "Rigtige penge"), st(liveOn, "Til", "Fra")),
-      h("div", { class: "kv" }, h("span", {}, "Gearing"), h("b", {}, lim ? `højst ${nf(lim.max_leverage, 0)}×` : "–")),
-      h("div", { class: "kv" }, h("span", {}, "Positioner pr. marked"), h("b", {}, lim ? `højst ${lim.max_positions}` : "–")),
-      h("div", { class: "kv" }, h("span", {}, "Markeder med rigtige penge"), h("b", {}, lim && lim.venues.length ? lim.venues.join(", ") : "–")))),
-    section("Sikkerhed", null, h("div", { class: "card tight" },
-      h("div", { class: "kv" }, h("span", {}, "Adgangskode til appen"), st(sec.password, "Til", "Fra")),
-      h("div", { class: "kv" }, h("span", {}, "Offentlig adresse"), h("b", {}, sec.public ? "Ja" : "Nej")),
-      h("div", { class: "kv" }, h("span", {}, "Beskeder på telefonen"), st(sec.notify, "Til", "Fra")),
-      h("div", { class: "kv" }, h("span", {}, "Appen kan flytte penge"), h("b", {}, "Nej, kun læse"))),
-      h("p", { class: "note" }, "Pengene står på din egen Binance-konto og i dine egne wallets. Uden adgangskode kan alle med adressen se saldoen.")),
-    section("Om", null, h("div", { class: "card tight" },
-      h("div", { class: "kv" }, h("span", {}, "App"), h("b", {}, "Nova AI")),
-      h("div", { class: "kv" }, h("span", {}, "Opdateres"), h("b", {}, "hvert 15. sekund")))));
-}
-
 /* ---------- STRATEGI-SIDE ---------- */
 function vStrategy() {
   const b = (DATA.rows || []).find((x) => x.key === R.a) || { name: R.a };
   if (!STRAT) return view(backbar(), h("div", { class: "sk", style: "height:120px" }), h("div", { class: "sk", style: "height:260px" }));
   const s = (STRAT.strategies || []).find((x) => String(x.key) === R.b || x.name === R.b);
   if (!s) return view(backbar(), h("div", { class: "card center" }, h("h2", { style: "margin:0" }, "Strategien findes ikke"), h("p", { class: "note" }, "Den er måske omdøbt eller fjernet.")));
+  const o = (b.strategies || []).find((x) => String(x.key) === String(s.key) || x.name === s.name) || {};
   const cv = (s.curve || []).filter((p) => p.length >= 2).map((p) => [p[0], p[1]]), w = inPeriod(cv), sec = per()[2];
   const r = w.length > 1 && 100 + w[0][1] > 0 ? ((100 + w[w.length - 1][1]) / (100 + w[0][1]) - 1) * 100 : null, shown = Number.isFinite(sec) ? r : s.return_pct;
   const from = Number.isFinite(sec) ? Date.now() / 1000 - sec : 0, mine = (t) => t.strategy === s.name || t.strategy === String(s.key);
   const open = ((STRAT.trades || {}).open || []).filter(mine), closed = ((STRAT.trades || {}).closed || []).filter((t) => mine(t) && t.ts >= from);
+  const ret = o.ret || {};
   view(backbar(h("span", { class: "badge grey" }, b.name)),
     h("h1", { class: "title" }, s.name), h("p", { class: "sub" }, s.description || b.name),
-    h("div", { class: "card pf", style: "min-height:0" }, h("div", { class: "head" }, h("span", { class: "lbl" }, "Afkast " + per()[4])),
+    h("div", { class: "card pf" }, h("div", { class: "head" }, h("span", { class: "lbl" }, "Afkast " + per()[4]), riskTag(o.risk)),
       h("div", { class: "big num " + tone(shown) }, pct(shown)),
       chartBox("", w, (v) => pct(v)), periodTabs()),
-    h("div", { class: "kgrid" }, kpi("I alt", pct(s.return_pct), "siden strategien startede", tone(s.return_pct)),
+    section("Historiske resultater", null, h("div", { class: "card" }, h("div", { class: "hist" },
+      PERIODS.map(([, t, , k]) => { const v = ret[k] != null ? ret[k] : (k === "max" ? s.return_pct : null);
+        return h("div", {}, h("small", {}, t), h("b", { class: "num " + tone(v) }, pct(v))); })))),
+    h("div", { class: "kgrid" }, kpi("Risiko", o.risk || "–", o.max_dd != null ? `største fald ${nf(o.max_dd, 1)} %` : "ikke nok data", o.risk === "Høj" ? "neg" : o.risk === "Lav" ? "blu" : "vio"),
       kpi("Vundet", s.win_rate == null ? "–" : nf(s.win_rate, 0) + " %", `${s.trades ?? 0} lukkede i alt`),
       kpi("Åbne nu", String(open.length), "positioner"), kpi("Handler", String(closed.length), per()[4])),
     section("Handler", null, h("div", { class: "card tight" }, open.length + closed.length ?
       [...open.map((t) => ({ ...t, isOpen: true })), ...closed].sort((a, z) => z.ts - a.ts).slice(0, 60).map((t) => h("div", { class: "row" },
-        h("span", { class: "ic " + (t.isOpen ? "" : t.result_pct < 0 ? "neg" : "grey") }, icon(t.isOpen ? "clock" : "swap")),
+        h("span", { class: "ic " + (t.isOpen ? "blu" : t.result_pct < 0 ? "neg" : "") }, icon(t.isOpen ? "clock" : t.result_pct < 0 ? "down" : "up")),
         h("div", { class: "t" }, h("b", {}, String(t.symbol)), h("small", {}, `${when(t.ts)}${t.side ? " · " + t.side : ""}${t.isOpen ? " · åben" : ""}`)),
         h("div", { class: "v num " + tone(t.result_pct) }, t.result_pct == null ? "–" : pct(t.result_pct)))) :
       h("div", { class: "empty" }, "Ingen handler i perioden."))),
     (s.rules || []).length ? section("Regler", null, h("div", { class: "card tight" }, s.rules.map(([a, z]) => h("div", { class: "kv" }, h("span", {}, a), h("b", {}, z))))) : null);
 }
 
-const VIEWS = { hjem: vHome, historik: vHistory, analyse: vAnalyse, bot: vBot, indstillinger: vSettings, indsaet: vFlow, udbetal: vFlow, s: vStrategy };
+const VIEWS = { hjem: vHome, investeringer: vInvest, strategier: vStrategies, kalender: vCalendar, profil: vProfile,
+  historik: vHistory, bot: vBot, indsaet: vFlow, udbetal: vFlow, s: vStrategy };
 
 /* ---------- start ---------- */
 let rz;

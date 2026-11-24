@@ -349,7 +349,8 @@ def stocks(get):
         sections.append({"title": "Seneste hændelser", "rows": events})
     desk = {"kpis": [["Marked", stat.get("label", "–")], ["Næste åbning", stat.get("next_open_dk", "–")], ["Epoch", stat.get("epoch", "–")], ["Regelsæt", len(strategies)]],
             "sections": sections}
-    opened = [trade_row(p.get("strategy"), p.get("symbol"), "long", p.get("opened"), p.get("unreal_pct"), f"{p.get('weight_pct', 0):.1f} % af konto".replace(".", ",")) for p in tr.get("positions", [])]
+    opened = [{**trade_row(p.get("strategy"), p.get("symbol"), "long", p.get("opened"), p.get("unreal_pct"), f"{p.get('weight_pct', 0):.1f} % af konto".replace(".", ",")),
+               "entry": num(p.get("entry")), "price": num(p.get("last"))} for p in tr.get("positions", [])]
     closed = [trade_row(c.get("strategy"), c.get("symbol"), "long", c.get("ts"), c.get("pnl_pct"), c.get("reason", ""))
               for c in tr.get("closed", []) if c.get("pnl_pct") is not None]
     out = {"strategies": strategies, "desk": desk, "trades": {"open": opened, "closed": closed},
