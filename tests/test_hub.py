@@ -33,7 +33,7 @@ class HubTests(unittest.TestCase):
         bots = load_bots()
         self.assertEqual(len(bots), 21)
         self.assertEqual(len({b["key"] for b in bots}), 21)
-        self.assertEqual(len({b["port"] for b in bots}), 22)
+        self.assertEqual(len({b["port"] for b in bots}), 21)
         for b in bots:
             if b.get("repo"):
                 self.assertTrue(b["launch"])
