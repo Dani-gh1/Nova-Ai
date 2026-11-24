@@ -10,8 +10,8 @@ import threading
 import time
 from pathlib import Path
 
-TICK_S = 60                 # så tit der tages et skridt
-REFRESH_S = 300             # så tit der hentes friske tal fra botterne (skåner en lille server; strategierne ændrer sig kun ved handler)
+TICK_S = 20                 # så tit der tages et skridt (hurtig reaktion på et skift)
+REFRESH_S = 60              # så tit der hentes friske tal fra botterne (strategierne ændrer sig kun ved handler)
 MAX_POINTS = 3000           # gemte punkter i grafen (tyndes ud, når der er flere)
 WARMUP_S = 15 * 60          # efter start: vælg først, når alle botter har svaret (eller der er gået så længe)
 

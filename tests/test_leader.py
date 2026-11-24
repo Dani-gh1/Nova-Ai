@@ -68,31 +68,31 @@ class LeaderTests(unittest.TestCase):
         self.assertAlmostEqual(v["return_pct"], 1, places=1)       # Smart sad i strategi 1 under springet
         self.assertEqual(v["following"], "Strategi 2")             # og skifter med det samme bagefter
 
-    def test_keeps_following_across_midnight_and_keeps_each_days_result(self):
+    def test_starts_over_every_day_at_midnight_and_keeps_each_days_result(self):
         self.tick(0, 0)
         self.tick(2, 0)                                            # 23:15 dansk tid: Smart +2 % i dag
-        self.assertEqual(list(self.sm.view()["days"].values()), [2.0])
+        day1 = self.sm.view()["days"]
+        self.assertEqual(list(day1.values()), [2.0])
         self.clk.t += 3600                                         # efter midnat
-        v = self.tick(2, 0)
-        self.assertEqual(v["following"], "Strategi 1")             # valget nulstilles ikke ved midnat: det er de seneste 24 timer
-        self.assertEqual(v["today_pct"], 0)                        # men dagens resultat starter forfra
-        self.assertAlmostEqual(v["return_pct"], 2, places=1)
+        v = self.tick(2, 0)                                        # ingen er steget i den nye dag endnu
+        self.assertIsNone(v["following"])
+        self.assertEqual(v["today_pct"], 0)
+        self.assertAlmostEqual(v["return_pct"], 2, places=1)       # kontoen fortsætter
+        v = self.tick(2, 1)                                        # strategi 2 stiger først i den nye dag
+        self.assertEqual(v["following"], "Strategi 2")
         self.assertEqual(len(v["days"]), 2)
 
-    def test_picks_the_best_of_the_last_24_hours(self):
-        sm = SmartLeader(Path(self.dir.name) / "w24.json", now=self.clk, log=lambda m: None)
-        def tick(old_curve, new_curve):
-            self.clk.t += 60
-            sm.feed("b", [{**cand("Gammel", old_curve[-1][1]), "curve": old_curve}, {**cand("Ny", new_curve[-1][1]), "curve": new_curve}])
-            sm.step()
-            return sm.view()
-        day = 24 * 3600
-        tick([[T0, 0.0], [T0 + 60, 0.0]], [[T0, 0.0], [T0 + 60, 0.0]])
-        self.clk.t += day + 3600                                   # nu er begge set for over 24 timer siden
-        t = self.clk.t
-        # Gammel steg +30 % for 30 timer siden og står stille; Ny er steget +3 % de seneste 24 timer
-        v = tick([[t - 40 * 3600, 0.0], [t - 30 * 3600, 30.0], [t, 30.0]], [[t - 40 * 3600, 0.0], [t - day - 60, 0.0], [t, 3.0]])
-        self.assertEqual(v["following"], "Ny")
+    def test_a_state_saved_before_the_round_started_is_measured_from_midnight(self):
+        """Efter en opdatering midt på dagen måles alle fra midnat, også strategier, der steg meget før."""
+        self.tick(0, 0)
+        rs = self.sm._round_start(self.clk.t)
+        self.sm.state["bases"] = {"b:Gammel": {"v": 0.0, "trades": 10, "t": rs - 100000}, "b:Ny": {"v": 0.0, "trades": 10, "t": rs - 100000}}
+        self.clk.t += 60
+        gammel = {**cand("Gammel", 30.0), "curve": [[rs - 10000, 0.0], [rs - 5000, 30.0], [self.clk.t, 30.0]]}   # steg før midnat, står stille
+        ny = {**cand("Ny", 3.0), "curve": [[rs - 10000, 0.0], [rs - 5000, 0.0], [self.clk.t, 3.0]]}               # +3 % siden midnat
+        self.sm.feed("b", [gammel, ny])
+        self.sm.step()
+        self.assertEqual(self.sm.view()["following"], "Ny")
 
     def test_a_switch_records_the_result_of_the_sold_strategy(self):
         self.tick(0, 0)

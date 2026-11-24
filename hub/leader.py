@@ -1,5 +1,5 @@
-"""Smart strategi: følger altid den strategi, der er steget mest, siden Smart startede, og skifter i samme øjeblik,
-en anden overhaler den.
+"""Smart strategi: følger altid den strategi, der er steget mest i dag (runden starter ved midnat dansk tid, hvor alle
+strategier starter på 0 %), og skifter i samme øjeblik, en anden overhaler den.
 
 Eksempel med to strategier, der begge starter på 0 %:
   * Strategi 1 stiger til +2 %  -> Smart følger den og står på +2 %.
@@ -8,7 +8,7 @@ Eksempel med to strategier, der begge starter på 0 %:
     skifter Smart til strategi 2. Smart står derfor på +1,5 % og følger nu strategi 2.
 
 Som en rigtig konto: Smart vokser og falder med den strategi, den følger (renters rente), og skifter koster intet på papir.
-Hver strategis stigning måles fra den stand, den havde, første gang Smart så den (for de fleste: da Smart startede).
+Hver strategis stigning måles fra rundens start (midnat), eller fra første gang Smart så den, hvis det var senere.
 Kører hele tiden i hubben og gemmer sin konto i logs/smart-leader.json; historikken regnes aldrig om.
 """
 from __future__ import annotations
@@ -21,7 +21,6 @@ from .smart import MAX_POINTS, WARMUP_S, SmartBot
 
 VERSION = 1
 EPS = 1e-9
-WINDOW_S = 24 * 3600                     # Nova Bot vælger den strategi, der er steget mest de seneste 24 timer (rullende)
 TZ = ZoneInfo("Europe/Copenhagen")       # en ny dag starter ved midnat dansk tid
 
 
@@ -53,7 +52,7 @@ class SmartLeader(SmartBot):
         if st.get("day"):
             st.setdefault("days", {})[st["day"]] = round((st["acct"] / st.get("day_acct", 1.0) - 1) * 100, 4)
             self.log(f"Nova Bot: {st['day']} sluttede på {st['days'][st['day']]:+.2f} %")
-        st["day"], st["day_acct"] = day, st["acct"]          # kun dagsresultatet nulstilles; valget går på de seneste 24 timer
+        st["day"], st["day_acct"], st["bases"], st["held"] = day, st["acct"], {}, None
 
     @staticmethod
     def _value_at(curve, t: float, default: float) -> float:
@@ -68,8 +67,13 @@ class SmartLeader(SmartBot):
             v = p[1]
         return v
 
+    def _round_start(self, now: float) -> float:
+        """Rundens start: midnat dansk tid."""
+        return datetime.fromtimestamp(now, TZ).replace(hour=0, minute=0, second=0, microsecond=0).timestamp()
+
     def _gains(self, allc: dict, now: float) -> dict[str, float]:
-        """Hver strategis stigning i procent de seneste 24 timer. Er Smart først begyndt at se strategien senere, måles fra da."""
+        """Hver strategis stigning i procent siden rundens start (midnat). Er Smart først begyndt at se strategien senere, måles fra da."""
+        start = self._round_start(now)
         bases, out = self.state["bases"], {}
         for cid, (c, _s) in allc.items():
             v, tr = c["raw_now"], c.get("trades") or 0
@@ -78,8 +82,8 @@ class SmartLeader(SmartBot):
                 b = bases[cid] = {"v": v, "trades": tr, "t": now}
             b["trades"] = max(b["trades"], tr)
             base = b["v"]
-            if b.get("t", 0) < now - WINDOW_S:                 # set for over 24 timer siden: mål fra værdien for præcis 24 timer siden
-                base = self._value_at(c.get("curve"), now - WINDOW_S, b["v"])
+            if b.get("t", 0) < start:                          # gemt fra før rundens start (fx efter en opdatering): mål fra midnat
+                base = self._value_at(c.get("curve"), start, b["v"])
             if 100 + base > 0:
                 out[cid] = ((100 + v) / (100 + base) - 1) * 100
         return out
