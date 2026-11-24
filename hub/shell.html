@@ -471,6 +471,7 @@ function smartCard(sm) {
   const wrap = h("div", { class: "chart", style: "height:200px" });
   const box = h("div", { class: "card" }, h("div", { class: "head" }, h("h2", {}, "Nova Bot")),
     sm.warning ? h("p", { class: "note", style: "color:var(--warn)" }, sm.warning) : null,
+    sm.recalculated ? h("p", { class: "note" }, sm.recalculated.note) : null,
     h("div", { class: "grid kpis", style: "margin-bottom:14px" },
       kpi("I dag", pct(sm.today_pct), "siden midnat", tone(sm.today_pct)),
       kpi("I alt", pct(sm.return_pct), `${nf(sm.value, 0)} ${sm.currency} af ${nf(sm.capital, 0)}`, tone(sm.return_pct)),
@@ -487,6 +488,31 @@ function smartCard(sm) {
           stratLink(x.to, x.to_key, x.to_bot))))))) : null);
   requestAnimationFrame(() => { if (wrap.isConnected) drawChart(wrap, [{ key: "smart", name: "Nova Bot", curve: since(sm.curve) }], { smart: "var(--acc)" }); });
   return box;
+}
+/* Papir mod virkelighed: samme strategi, omregnet til om man havde 10.000 kr, og de seneste rigtige handler */
+const BASE_KR = 10000;
+function realCard(live) {
+  const sm = live && live.smart, real = live && live.real;
+  if (!live || !live.mode) return h("div", { class: "card" }, h("div", { class: "head" }, h("h2", {}, "Papir mod virkelighed")),
+    h("div", { class: "empty" }, "Rigtige penge er ikke tændt endnu. Her vises papirtallet og den rigtige konto ved siden af hinanden, når de er."));
+  const paper = sm ? sm.return_pct : null;
+  const rp = real && real.deposited_usd > 0 ? real.earned_usd / real.deposited_usd * 100 : null;
+  const kr = (p) => p == null ? null : (p >= 0 ? "+" : "−") + nf(Math.abs(BASE_KR * p / 100), 0) + " kr.";
+  const diff = paper != null && rp != null ? rp - paper : null;
+  const orders = (live.orders || []).filter((o) => !o.sim).slice(0, 8);
+  return h("div", { class: "card" }, h("div", { class: "head" }, h("h2", {}, "Papir mod virkelighed"),
+      h("p", {}, "Alle beløb er regnet om til, hvis man havde 10.000 kr.")),
+    h("div", { class: "grid kpis", style: "margin-bottom:14px" },
+      kpi("Papir", pct(paper), kr(paper) || "–", tone(paper), "samme strategi, uden de rigtige omkostninger"),
+      kpi("Rigtig konto", pct(rp), kr(rp) || "ingen penge sat ind endnu", tone(rp), "efter alle gebyrer og prisforskelle"),
+      kpi("Forskel", pct(diff), kr(diff) || "–", tone(diff), "gebyrer, prisforskel og gas")),
+    orders.length ? h("div", { class: "tw" }, h("table", {},
+      h("thead", {}, h("tr", {}, h("th", {}, "Tid"), h("th", {}, "Handel"), h("th", { class: "n" }, "Beløb"), h("th", { class: "n" }, "Omkostning"))),
+      h("tbody", {}, orders.map((o) => h("tr", {}, h("td", { class: "mute" }, when(o.ts)),
+        h("td", { class: "name" }, `${o.side === "ÅBN" ? "Køb" : "Salg"} ${String(o.symbol).slice(0, 18)} · ${o.venue}`),
+        h("td", { class: "n" }, nf(o.usd, 2) + " USD"),
+        h("td", { class: "n neg" }, o.cost_usd == null ? "–" : `${nf(o.cost_usd, 2)} USD (${nf(o.cost_pct || 0, 2)} %)`)))))) :
+      h("div", { class: "empty" }, "Ingen rigtige handler endnu."));
 }
 /* Månedskalender: hvad Smart har tjent hver dag */
 let calShift = 0;
@@ -532,6 +558,7 @@ function renderHub(rows, live, sm) {
           r ? parts + (r.errors.length ? " · ⚠ " + r.errors.join("; ") : "") : null); })(),
       kpi("Nova Bot", sm ? pct(sm.today_pct) : "–", sm ? (sm.following ? `i dag · følger ${sm.following}` : "i dag · venter på, at en strategi stiger") : "starter", sm && tone(sm.today_pct))),
     smartCard(sm),
+    realCard(live),
     h("div", { class: "duo" }, raceCard(sm), marketsCard(conf, ok)),
     calendarCard(sm),
     allStrategiesCard(rows));

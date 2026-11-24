@@ -165,6 +165,7 @@ class SmartLeader(SmartBot):
                     "leaders": [{"name": names.get(k, (k, ""))[0], "bot_name": names.get(k, ("", ""))[1], "gain": round(gains[k], 2),
                                  "held": bool(h and k == h["id"])} for k in top],
                     "count": st.get("count", 0), "bots": st.get("bots", 0), "switches": len(st["switches"]),
+                    "recalculated": st.get("recalculated"),            # {"day", "note"}: dagen er genafspillet med den nuværende regel
                     "recent": st["switches"][-8:][::-1],
                     "warning": f"Starter op: {len(self.snap)} af {self.expected} botter har svaret – vælger, når alle er med" if warm else None,
                     "curve": [[t, round(v, 3)] for t, v in curve]}

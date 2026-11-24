@@ -22,6 +22,7 @@ class BinanceBalance:
         self.api, self.fut, self.now, self.ttl = api, futures_api, now, ttl
         self.lock = threading.Lock()
         self._cache: tuple[float, dict] | None = None
+        self._kl: dict[tuple, float] = {}          # (mønt, minut) -> pris dengang
 
     # ---------- kurser ----------
     def _prices(self) -> dict[str, float]:
@@ -42,6 +43,36 @@ class BinanceBalance:
             return amount / DKK_PER_EUR * px["EURUSDT"]
         return 0.0
 
+    @staticmethod
+    def _ms(v, default: float) -> float:
+        """Tidspunkt i millisekunder fra Binances felter (tal eller 'YYYY-MM-DD HH:MM:SS' i UTC)."""
+        if isinstance(v, (int, float)):
+            return float(v)
+        try:
+            from datetime import datetime, timezone
+            return datetime.strptime(str(v)[:19], "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc).timestamp() * 1000
+        except ValueError:
+            return default
+
+    def _usd_at(self, asset: str, amount: float, ts_ms: float, px: dict) -> float:
+        """Hvad pengene var værd i USD, DA de kom ind eller ud (Binances egen 1-minutskurs). Så en krypto, der senere stiger eller
+        falder, ikke ændrer det indsatte beløb, og kursgevinsten tæller som gevinst. Uden kurs bruges dagens."""
+        if asset in STABLE:
+            return amount
+        key = (asset, int(ts_ms // 60000))
+        if key not in self._kl:
+            v = None
+            for q in ("USDT", "USDC"):
+                try:
+                    rows = self.api._req("GET", "/api/v3/klines", {"symbol": asset + q, "interval": "1m", "startTime": int(ts_ms), "limit": 1})
+                    if rows:
+                        v = float(rows[0][4])
+                        break
+                except Exception:
+                    pass
+            self._kl[key] = v if v else (self.usd(asset, 1.0, px) or 0.0)
+        return amount * self._kl[key]
+
     # ---------- saldo ----------
     def _spot_usd(self, px: dict) -> float:
         acct = self.api._req("GET", "/api/v3/account", {"omitZeroBalances": "true"}, signed=True)
@@ -60,20 +91,20 @@ class BinanceBalance:
         windows = [(t, min(t + step, now_ms)) for t in range(start, now_ms, step)]    # Binance giver højst 90 dage ad gangen
         for a, z in windows:
             for d in self.api._req("GET", "/sapi/v1/capital/deposit/hisrec", {"startTime": a, "endTime": z}, signed=True) or []:
-                if int(d.get("status", 0)) == 1:                  # 1 = gennemført
-                    total += self.usd(d["coin"], float(d["amount"]), px)
+                if int(d.get("status", 0)) in (1, 6):             # 1 = gennemført, 6 = krediteret (kan endnu ikke hæves)
+                    total += self._usd_at(d["coin"], float(d["amount"]), self._ms(d.get("insertTime"), now_ms), px)
             for w in self.api._req("GET", "/sapi/v1/capital/withdraw/history", {"startTime": a, "endTime": z}, signed=True) or []:
                 if int(w.get("status", 0)) == 6:                  # 6 = gennemført
-                    total -= self.usd(w["coin"], float(w["amount"]) + float(w.get("transactionFee") or 0), px)
+                    total -= self._usd_at(w["coin"], float(w["amount"]) + float(w.get("transactionFee") or 0), self._ms(w.get("applyTime"), now_ms), px)
         for kind, sign in (("0", 1), ("1", -1)):                  # bankoverførsler ind (0) og ud (1)
             res = self.api._req("GET", "/sapi/v1/fiat/orders", {"transactionType": kind, "beginTime": start}, signed=True) or {}
             for o in res.get("data") or []:
                 if o.get("status") in ("Successful", "Finished", "Completed"):
-                    total += sign * self.usd(o["fiatCurrency"], float(o["amount"]) - float(o.get("totalFee") or 0), px)
+                    total += sign * self._usd_at(o["fiatCurrency"], float(o["amount"]) - float(o.get("totalFee") or 0), self._ms(o.get("createTime"), now_ms), px)
         res = self.api._req("GET", "/sapi/v1/fiat/payments", {"transactionType": "0", "beginTime": start}, signed=True) or {}
         for p in res.get("data") or []:                          # kortkøb af krypto
             if p.get("status") in ("Completed", "Successful"):
-                total += self.usd(p["fiatCurrency"], float(p["sourceAmount"]), px)
+                total += self._usd_at(p["fiatCurrency"], float(p["sourceAmount"]), self._ms(p.get("createTime"), now_ms), px)
         return total
 
     def read(self) -> dict:

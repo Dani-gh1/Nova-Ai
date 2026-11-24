@@ -49,6 +49,16 @@ class BalanceTests(unittest.TestCase):
         t[0] += 31; b.read()
         self.assertGreater(len(api.calls), n)
 
+    def test_a_crypto_deposit_is_valued_when_it_arrived_and_credited_deposits_count(self):
+        api = self.spot(**{"/api/v3/klines": [[0, "3000", "3000", "3000", "3000"]],
+                           "/sapi/v1/capital/deposit/hisrec": [{"coin": "ETH", "amount": "0.01", "status": 6, "insertTime": 1_790_000_000_000}],
+                           "/sapi/v1/capital/withdraw/history": [], "/sapi/v1/fiat/payments": {"data": []},
+                           "/api/v3/account": {"balances": [{"asset": "ETH", "free": "0.01", "locked": "0"}]}})
+        r = BinanceBalance(api, None, now=lambda: 1_800_000_000).read()
+        self.assertEqual(r["deposited_usd"], 30.0)                      # 0,01 ETH til kursen DA (3000), ikke dagens 4000
+        self.assertEqual(r["balance_usd"], 40.0)
+        self.assertEqual(r["earned_usd"], 10.0)                         # kursgevinsten er gevinst, ikke indsat
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -224,6 +224,28 @@ class WalletFundingTests(unittest.TestCase):
         self.assertEqual(len([m for m in logs if "mangler POL" in m]), 1)
         self.assertEqual(k.problem, "")
 
+    def test_every_order_records_what_it_cost(self):
+        class B(FakeBroker):
+            def open_pos(self, sym, side, usd, lev, px):
+                return {"qty": 0.0099, "usd": usd, "id": "o1", "fee_usd": 0.1}      # fik 1 % mindre end prisen sagde
+
+            def close_pos(self, sym, pos, px):
+                return {"qty": pos["qty"], "usd": pos["qty"] * px * 0.99, "id": "o2", "fee_usd": 0.1}
+
+        k = Kasse(["binance-spot"], mode="1", brokers={"binance-spot": B({"ETHUSDT": 1000.0})}, log=lambda m: None)
+        v = k.venues["binance-spot"]
+        v.state["cash"] = 100.0
+        v.refresh({"ETHUSDT": ("long", 10.0, 1)})
+        v.open_missing({"ETHUSDT": ("long", 10.0, 1)})
+        o = v.state["orders"][-1]
+        self.assertEqual((o["side"], o["fee_usd"]), ("ÅBN", 0.1))
+        self.assertAlmostEqual(o["cost_usd"], 10.0 - 0.0099 * 1000.0, places=4)
+        self.assertAlmostEqual(o["cost_pct"], 1.0, places=2)
+        v.close_missing({})
+        o = v.state["orders"][-1]
+        self.assertEqual(o["side"], "LUK")
+        self.assertAlmostEqual(o["cost_usd"], 0.0099 * 1000.0 * 0.01, places=3)
+
 
 class PlanTests(unittest.TestCase):
     def test_positions_and_plan_follow_the_portfolio_slots(self):

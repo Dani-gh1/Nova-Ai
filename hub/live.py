@@ -192,13 +192,33 @@ class BinanceSpot(BinanceAPI):
         r = self._req("POST", "/api/v3/order", {"symbol": symbol, "side": "BUY", "type": "MARKET", "quoteOrderQty": f"{usd:.2f}"}, signed=True)
         base = self.filters()[symbol]["base"]
         fee_base = sum(float(f["commission"]) for f in r.get("fills", []) if f.get("commissionAsset") == base)
-        return {"qty": float(r["executedQty"]) - fee_base, "usd": float(r["cummulativeQuoteQty"]), "id": r.get("orderId")}
+        return {"qty": float(r["executedQty"]) - fee_base, "usd": float(r["cummulativeQuoteQty"]), "id": r.get("orderId"),
+                "fee_usd": self._fee_usd(r, base)}
 
     def close_pos(self, symbol: str, pos: dict, px: float) -> dict:
         q = self._round(pos["qty"], self.filters()[symbol]["step"])
         r = self._req("POST", "/api/v3/order", {"symbol": symbol, "side": "SELL", "type": "MARKET", "quantity": q}, signed=True)
         fee_q = sum(float(f["commission"]) for f in r.get("fills", []) if f.get("commissionAsset") == "USDT")
-        return {"qty": float(r["executedQty"]), "usd": float(r["cummulativeQuoteQty"]) - fee_q, "id": r.get("orderId")}
+        return {"qty": float(r["executedQty"]), "usd": float(r["cummulativeQuoteQty"]) - fee_q, "id": r.get("orderId"),
+                "fee_usd": self._fee_usd(r, self.filters()[symbol]["base"])}
+
+    def _fee_usd(self, r: dict, base: str) -> float:
+        """Gebyret, Binance faktisk tog på ordren, i USD (uanset om det blev taget i USDT, i mønten eller i BNB)."""
+        tot = 0.0
+        for f in r.get("fills", []):
+            c, a = float(f.get("commission") or 0), f.get("commissionAsset")
+            if not c:
+                continue
+            if a in ("USDT", "USDC"):
+                tot += c
+            elif a == base:
+                tot += c * float(f["price"])
+            else:
+                try:
+                    tot += c * float(self._req("GET", "/api/v3/ticker/price", {"symbol": a + "USDT"})["price"])
+                except Exception:
+                    pass
+        return round(tot, 6)
 
 
 class BinanceFutures(BinanceAPI):
@@ -337,7 +357,7 @@ class VenueAccount:
             st["cash"] += r["usd"]
             st["fees"] += max(0.0, worth - r["usd"])
             st["holdings"].pop(sym)
-            self._note("LUK", sym, pos["side"], r, px)
+            self._note("LUK", sym, pos["side"], r, px, cost=worth - r["usd"])
 
     def wants(self, targets: dict) -> float:
         """Beløb til de positioner, der skal åbnes."""
@@ -364,11 +384,14 @@ class VenueAccount:
             else:
                 st["fees"] += r["usd"] - r["qty"] * px
             st["holdings"][sym] = pos
-            self._note("ÅBN", sym, side, r, px)
+            self._note("ÅBN", sym, side, r, px, cost=(r["usd"] - r["margin"]) if self.meta["kind"] == "futures" else r["usd"] - r["qty"] * px)
 
-    def _note(self, what: str, sym: str, side: str, r: dict, px: float) -> None:
+    def _note(self, what: str, sym: str, side: str, r: dict, px: float, cost: float | None = None) -> None:
+        """`cost` = alt, ordren kostede mod den pris, vi så (gebyr + prisforskel + prisvirkning); fee_usd = børsens eget gebyr."""
         o = {"ts": round(self.now()), "venue": self.meta["name"], "side": what, "dir": side, "symbol": sym, "qty": r["qty"],
-             "usd": round(r["usd"], 4), "price": px, "id": r.get("id"), "sim": self.mode == "dry"}
+             "usd": round(r["usd"], 4), "price": px, "id": r.get("id"), "sim": self.mode == "dry",
+             "cost_usd": None if cost is None else round(cost, 4),
+             "cost_pct": None if cost is None or not r["usd"] else round(cost / r["usd"] * 100, 3), "fee_usd": r.get("fee_usd")}
         self.state["orders"] = (self.state["orders"] + [o])[-200:]
         self.log(f"Live{' (simulering)' if self.mode == 'dry' else ''}: {what} {side} {sym} på {self.meta['name']} for {r['usd']:.2f} USD")
 
