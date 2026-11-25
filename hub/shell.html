@@ -735,7 +735,7 @@ function pickDay(d) {
 function vCalendar() {
   const sm = DATA.sm;
   view(topbar(h("span")), h("h1", { class: "title" }, "Afkastkalender"), h("p", { class: "sub" }, "Tryk på en dag for at se dagens handler"),
-    calendarCard(sm), dayPanel(sm));
+    calendarCard(sm), sm && sm.recalculated ? h("p", { class: "note", style: "margin:-4px 4px 14px" }, sm.recalculated.note) : null, dayPanel(sm));
 }
 /* Månedskalender: hvad Nova Bot har tjent hver dag (grøn = overskud, rød = tab) */
 function calendarCard(sm) {
