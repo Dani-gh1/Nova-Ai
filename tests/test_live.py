@@ -271,6 +271,65 @@ class PlanTests(unittest.TestCase):
         self.assertEqual(plan["binance-futures"], {"BTCUSDT": ("long", 10.0, 1.0), "ETHUSDT": ("short", 10.0, 3.0)})
         self.assertEqual(len(names), 2)
 
+    def test_bare_coin_symbols_become_binance_pairs_in_the_accounts_currency(self):
+        from unittest import mock
+        from hub.live import binance_symbol
+        self.assertEqual([binance_symbol(s, "USDC") for s in ("BTC", "btcusdt", "ETH/USDT", "SOLUSDC")], ["BTCUSDC", "BTCUSDC", "ETHUSDC", "SOLUSDC"])
+        data = {"trades": {"open": [{"strategy": "Momentum", "symbol": "BTC", "side": "long"}, {"strategy": "Momentum", "symbol": "ETH", "side": "long"}]}}
+        held = {"id": "orion:momentum", "name": "Momentum", "bot": "orion", "bot_name": "Krypto"}
+        with mock.patch.dict(os.environ, {"HUB_LIVE_VENUES": "binance-spot", "BINANCE_QUOTE": "USDC"}):
+            plan, _ = live_plan([(held, 1.0)], {"orion": {"key": "orion", "adapter": "orion"}}, 20.0, data_of=lambda b: data)
+        self.assertEqual(plan["binance-spot"], {"BTCUSDC": ("long", 10.0, 1.0), "ETHUSDC": ("long", 10.0, 1.0)})
+
+    def test_an_eu_account_trades_and_counts_cash_in_usdc(self):
+        from unittest import mock
+        from hub.live import BinanceSpot
+
+        class Opener:
+            def __call__(self, req):
+                import io, json as js
+                p = req.full_url.split("?")[0]
+                ans = {"/api/v3/exchangeInfo": {"symbols": [
+                    {"symbol": "BTCUSDT", "status": "TRADING", "quoteAsset": "USDT", "baseAsset": "BTC", "filters": []},
+                    {"symbol": "BTCUSDC", "status": "TRADING", "quoteAsset": "USDC", "baseAsset": "BTC",
+                     "filters": [{"filterType": "LOT_SIZE", "stepSize": "0.00001"}, {"filterType": "NOTIONAL", "minNotional": "5"}]}]},
+                       "/api/v3/account": {"balances": [{"asset": "USDT", "free": "50"}, {"asset": "USDC", "free": "16.4"}]}}[p.replace("https://api.binance.com", "")]
+                class R(io.BytesIO):
+                    def __enter__(self): return self
+                    def __exit__(self, *a): return False
+                return R(js.dumps(ans).encode())
+        with mock.patch.dict(os.environ, {"BINANCE_QUOTE": "USDC"}):
+            b = BinanceSpot("k", "s", opener=Opener())
+            self.assertEqual(list(b.filters()), ["BTCUSDC"])                         # kun de par, kontoen må handle
+            k = Kasse(["binance-spot"], mode="1", brokers={"binance-spot": b}, log=lambda m: None)
+            k.sync_cash()
+        self.assertAlmostEqual(k.venues["binance-spot"].state["cash"], 16.4)          # USDC tæller, USDT gør ikke
+
+    def test_with_usdc_the_wallet_gets_usdc_directly_without_a_conversion_order(self):
+        from unittest import mock
+        from hub.solana import SOL_MINT
+        orders, sent = [], []
+
+        class Home(FakeBroker):
+            def open_pos(self, sym, side, usd, lev, px):
+                orders.append(sym)
+                return {"qty": 0.05, "usd": usd, "id": "x"}
+
+            def withdraw(self, coin, network, address, amount):
+                sent.append((coin, round(amount, 2)))
+
+        class Wallet(FakeBroker):
+            address = "9tBe"
+
+            def tokens(self):
+                return {SOL_MINT: 0.0}
+        with mock.patch.dict(os.environ, {"BINANCE_QUOTE": "USDC"}):
+            k = Kasse(["binance-spot", "solana"], mode="1", brokers={"binance-spot": Home({}), "solana": Wallet({})}, log=lambda m: None)
+            k.home().state["cash"] = 100.0
+            k._fund_wallet("solana", k.venues["solana"], 30.0, k.home(), {"binance-spot": 100.0})
+        self.assertEqual(orders, ["SOLUSDC"])                                          # kun gas købes; ingen USDCUSDT-ordre
+        self.assertEqual(sent, [("SOL", 0.05), ("USDC", 31.0)])
+
     def test_only_bots_that_can_trade_for_real(self):
         bots = [{"key": "orion", "adapter": "orion"}, {"key": "atlas", "adapter": "stocks"}, {"key": "quasar", "adapter": "quasar"},
                 {"key": "x", "adapter": "orion", "disabled": True}]

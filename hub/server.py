@@ -808,6 +808,9 @@ def live_plan(weights, bots_by_key: dict, total_usd: float, data_of=None) -> tup
         if venue is None:
             continue
         pos = positions_for(sl, data_of(bot), VENUES[venue]["kind"])
+        if VENUES[venue]["group"] == "binance":          # krypto-botterne skriver 'BTC': Binance skal have 'BTCUSDC' (eller 'BTCUSDT')
+            from .live import binance_symbol
+            pos = [(binance_symbol(s), side, lev) for s, side, lev in pos]
         names.append(f"{sl['name']} ({sl['bot_name']})")
         for sym, side, lev in pos:
             cur = plan.setdefault(venue, {}).get(sym)

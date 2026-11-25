@@ -35,7 +35,23 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 MAX_POSITIONS = 8            # højst så mange positioner pr. marked (små beløb: hver ordre skal over børsens minimum)
-MIN_ORDER_USD = 6.0          # Binance kræver mindst 5 USDT pr. ordre (futures: notional)
+MIN_ORDER_USD = 6.0          # Binance kræver mindst 5 USDT/USDC pr. ordre (futures: notional)
+
+
+def binance_quote() -> str:
+    """Den mønt, Binance spot handler i. EU-konti må ikke handle USDT-par (MiCA), kun USDC/EUR: sæt BINANCE_QUOTE=USDC."""
+    return (os.environ.get("BINANCE_QUOTE") or "USDT").strip().upper()
+
+
+def binance_symbol(sym: str, quote: str | None = None) -> str:
+    """Strategiens mønt -> Binances handelspar: 'BTC', 'BTCUSDT' og 'BTC/USDT' bliver alle til 'BTC' + quote."""
+    quote = quote or binance_quote()
+    s = str(sym).upper().replace("/", "").replace("-", "").replace("_", "")
+    for q in ("USDT", "USDC", "FDUSD", "BUSD"):
+        if s.endswith(q) and len(s) > len(q):
+            s = s[:-len(q)]
+            break
+    return s + quote
 MAX_LEVERAGE = 2.0           # loft over gearing med rigtige penge, uanset hvad strategien bruger
 MIN_TRANSFER_USD = 5.0
 USD_DKK = 6.9                # kun til visning og indskud i kroner
@@ -179,7 +195,7 @@ class BinanceSpot(BinanceAPI):
             info = self._req("GET", "/api/v3/exchangeInfo", {"permissions": "SPOT"})
             out = {}
             for s in info.get("symbols", []):
-                if s.get("status") != "TRADING" or s.get("quoteAsset") != "USDT":
+                if s.get("status") != "TRADING" or s.get("quoteAsset") != binance_quote():
                     continue
                 f = {x["filterType"]: x for x in s.get("filters", [])}
                 out[s["symbol"]] = {"step": float((f.get("LOT_SIZE") or {}).get("stepSize", 0) or 0),
@@ -198,7 +214,7 @@ class BinanceSpot(BinanceAPI):
     def close_pos(self, symbol: str, pos: dict, px: float) -> dict:
         q = self._round(pos["qty"], self.filters()[symbol]["step"])
         r = self._req("POST", "/api/v3/order", {"symbol": symbol, "side": "SELL", "type": "MARKET", "quantity": q}, signed=True)
-        fee_q = sum(float(f["commission"]) for f in r.get("fills", []) if f.get("commissionAsset") == "USDT")
+        fee_q = sum(float(f["commission"]) for f in r.get("fills", []) if f.get("commissionAsset") == binance_quote())
         return {"qty": float(r["executedQty"]), "usd": float(r["cummulativeQuoteQty"]) - fee_q, "id": r.get("orderId"),
                 "fee_usd": self._fee_usd(r, self.filters()[symbol]["base"])}
 
@@ -529,7 +545,7 @@ class Kasse:
                     v.state["cash"] = sum(float(b["availableBalance"]) for b in bal if b.get("asset") in ("USDT", "USDC"))
                 else:
                     acct = v.broker._req("GET", "/api/v3/account", {"omitZeroBalances": "true"}, signed=True)
-                    v.state["cash"] = sum(float(b["free"]) for b in acct.get("balances", []) if b.get("asset") == "USDT")
+                    v.state["cash"] = sum(float(b["free"]) for b in acct.get("balances", []) if b.get("asset") == binance_quote())
             except Exception as e:
                 v.problem = f"Kan ikke læse saldoen: {e}"[:160]
 
@@ -603,14 +619,17 @@ class Kasse:
                 from .base import ETH
                 gas = dst.broker.balance(ETH)
             if gas < low and home.state["cash"] >= buy_usd + TRANSFER_MIN_USD:
-                r = b.open_pos(f"{coin}USDT", "long", buy_usd, 1, 0)
+                r = b.open_pos(binance_symbol(coin), "long", buy_usd, 1, 0)
                 home.state["cash"] -= r["usd"]
                 b.withdraw(coin, cfg["network"], to, r["qty"])
                 self.log(f"Kasse: sender {r['qty']:.5f} {coin} til {dst.meta['name']} til netværksgebyrer")
             amt = min(short + 1.0, max(0.0, min(spare.get(home.venue, 0.0), home.state["cash"])))
             if amt < TRANSFER_MIN_USD:
                 return
-            r = b.open_pos("USDCUSDT", "long", amt, 1, 0)   # USDT -> USDC (wallets bruger USDC)
+            if binance_quote() == "USDC":                  # kontanterne er allerede USDC: send dem direkte
+                r = {"qty": round(amt, 2), "usd": round(amt, 2)}
+            else:
+                r = b.open_pos("USDCUSDT", "long", amt, 1, 0)   # USDT -> USDC (wallets bruger USDC)
             home.state["cash"] -= r["usd"]
             b.withdraw("USDC", cfg["network"], to, r["qty"])
             pend[k] = {"usd": r["qty"], "ts": round(self.now()), "before": dst.state["cash"]}
