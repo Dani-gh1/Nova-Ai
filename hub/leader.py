@@ -78,7 +78,9 @@ class SmartLeader(SmartBot):
         for cid, (c, _s) in allc.items():
             v, tr = c["raw_now"], c.get("trades") or 0
             b = bases.get(cid)
-            if b is None or tr < b["trades"]:                  # ny strategi, eller den er startet forfra: mål fra nu
+            if b is None and tr >= 0 and any(p[0] <= start for p in c.get("curve") or [] if isinstance(p, (list, tuple)) and p):
+                b = bases[cid] = {"v": self._value_at(c.get("curve"), start, v), "trades": tr, "t": start}   # fandtes ved midnat: mål derfra
+            elif b is None or tr < b["trades"]:                # ny i dag, eller startet forfra: mål fra nu
                 b = bases[cid] = {"v": v, "trades": tr, "t": now}
             b["trades"] = max(b["trades"], tr)
             base = b["v"]

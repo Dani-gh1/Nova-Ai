@@ -94,6 +94,15 @@ class LeaderTests(unittest.TestCase):
         self.sm.step()
         self.assertEqual(self.sm.view()["following"], "Ny")
 
+    def test_a_bot_started_midday_measures_from_midnight_and_buys_the_leader_at_once(self):
+        rs = self.sm._round_start(self.clk.t + 60)
+        self.clk.t += 60
+        a = {**cand("Steg i nat", 3.0), "curve": [[rs - 3600, 0.0], [rs + 1, 0.0], [self.clk.t - 30, 3.0]]}     # +3 % siden midnat
+        b = {**cand("Flad", 5.0), "curve": [[rs - 3600, 5.0], [self.clk.t - 30, 5.0]]}                          # stod på 5 % hele dagen
+        self.sm.feed("b", [a, b])
+        self.sm.step()
+        self.assertEqual(self.sm.view()["following"], "Steg i nat")
+
     def test_a_switch_records_the_result_of_the_sold_strategy(self):
         self.tick(0, 0)
         self.tick(2, 0)

@@ -143,8 +143,6 @@ h1.title{font-size:30px;line-height:1.15;letter-spacing:-.03em;margin:0 0 4px;fo
 .chips::-webkit-scrollbar{display:none}
 .chip{border:1px solid var(--line2);background:var(--card);border-radius:99px;padding:11px 17px;white-space:nowrap;color:var(--ink);font-weight:550;flex:none}
 .chip[aria-pressed=true]{border-color:var(--violet);color:var(--ink);background:var(--violet-d);box-shadow:0 0 24px rgba(157,140,255,.25)}
-.rk{font-size:11px;font-weight:700;border-radius:8px;padding:2px 7px;flex:none;letter-spacing:.01em}
-.rk.Lav{background:var(--blue-d);color:var(--blue)}.rk.Mellem{background:var(--violet-d);color:var(--violet)}.rk.Høj{background:var(--neg-d);color:var(--neg)}
 
 /* nøgletal */
 .kgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
@@ -368,7 +366,6 @@ function ago(s) {
   if (s < 86400) return `${Math.round(s / 3600)} t. siden`;
   return `${Math.round(s / 86400)} d. siden`;
 }
-const riskTag = (r) => r ? h("span", { class: "rk " + r, title: "Risiko ud fra strategiens største fald" }, r) : null;
 
 /* ---------- perioder (1D 1U 1M 3M 1Å ALT) ---------- */
 const PERIODS = [["1d", "1D", 86400, "24t", "seneste døgn"], ["1u", "1U", 7 * 86400, "7d", "seneste uge"], ["1m", "1M", 30 * 86400, "1m", "seneste måned"],
@@ -685,25 +682,20 @@ function realCard(live) {
 }
 
 /* ---------- 3. STRATEGIER ---------- */
-let showAll = false, RISKF = "alle";
+let showAll = false;
 function vStrategies() {
-  const { rows, sm } = DATA, conf = (rows || []).filter((b) => b.configured), bad = issuesOf(rows);
-  const all = rankings(rows), list = RISKF === "alle" ? all : all.filter((s) => s.risk === RISKF);
-  view(topbar(h("span")), h("h1", { class: "title" }, "Strategier"), h("p", { class: "sub" }, "Afkast, risiko og historik for alle strategier"),
+  const { rows, sm } = DATA, conf = (rows || []).filter((b) => b.configured), bad = issuesOf(rows), all = rankings(rows);
+  view(topbar(h("span")), h("h1", { class: "title" }, "Strategier"), h("p", { class: "sub" }, "Afkast og historik for alle strategier"),
     section("Dagens bedste", null, raceCard(sm)),
     h("div", { class: "sh" }, h("h2", {}, "Afkast pr. strategi"), h("span", { class: "mute", style: "font-size:13px" }, `${all.filter((s) => s.r > 0).length} af ${all.length} i plus`)),
-    h("div", { style: "margin-bottom:10px" }, periodTabs()),
-    h("div", { class: "chips", role: "group", "aria-label": "Risiko" }, [["alle", "Alle"], ["Lav", "Lav risiko"], ["Mellem", "Mellem"], ["Høj", "Høj risiko"]].map(([k, t]) =>
-      h("button", { class: "chip", type: "button", "aria-pressed": String(RISKF === k), onclick: () => { RISKF = k; showAll = false; render(true); } }, t))),
-    allStrategiesCard(list),
-    h("p", { class: "note", style: "margin:-4px 4px 0" }, "Risiko ud fra strategiens største fald: lav under 5 %, mellem under 15 %, ellers høj."),
+    h("div", { style: "margin-bottom:12px" }, periodTabs()),
+    allStrategiesCard(all),
     section("Markeder", h("span", { class: "mute", style: "font-size:13px" }, `${conf.length - bad.length}/${conf.length} kører`), marketsCard(conf)));
 }
 function raceCard(sm) {
   const L = (sm && sm.leaders) || [], top = Math.max(...L.map((x) => Math.abs(x.gain)), 0.01);
-  const riskOf = (name, bot) => { const b = (DATA.rows || []).find((x) => x.name === bot), s = b && (b.strategies || []).find((x) => x.name === name); return s && s.risk; };
   return h("div", { class: "card tight" }, L.length ? L.map((x, i) => h("div", { class: "row" }, h("span", { class: "rank", style: x.held ? "color:var(--violet)" : null }, String(i + 1)),
-    h("div", { class: "t" }, h("b", {}, h("span", {}, x.name), riskTag(riskOf(x.name, x.bot_name))), h("small", {}, x.bot_name + (x.held ? " · botten følger den" : "")),
+    h("div", { class: "t" }, h("b", {}, h("span", {}, x.name)), h("small", {}, x.bot_name + (x.held ? " · botten følger den" : "")),
       h("div", { class: "bar2" }, h("i", { class: x.gain > 0 ? "pos" : "", style: `width:${Math.max(3, Math.abs(x.gain) / top * 100)}%` }))),
     h("div", { class: "v num " + tone(x.gain) }, pct(x.gain)))) : h("div", { class: "empty" }, "Ingen strategi er steget endnu i dag."),
     h("p", { class: "note", style: "margin-bottom:12px" }, "Målt siden midnat. Botten følger altid nr. 1."));
@@ -717,7 +709,7 @@ function rankings(rows) {
 function allStrategiesCard(all) {
   const list = showAll ? all : all.slice(0, 12);
   return h("div", { class: "card tight" }, list.length ? list.map((s, i) => h("a", { class: "row", href: stratHref(s.bot.key, s.key ?? s.name) },
-    h("span", { class: "rank" }, String(i + 1)), h("div", { class: "t" }, h("b", {}, h("span", {}, s.name), riskTag(s.risk)),
+    h("span", { class: "rank" }, String(i + 1)), h("div", { class: "t" }, h("b", {}, h("span", {}, s.name)),
       h("small", {}, `${s.bot.name} · ${s.trades} handler${s.win_rate != null ? ` · ${nf(s.win_rate, 0)} % vundet` : ""}`)),
     h("div", { class: "v num " + tone(s.r) }, pct(s.r)))) : h("div", { class: "empty" }, "Ingen strategier her i perioden."),
     all.length > 12 ? h("button", { class: "pillbtn", type: "button", style: "display:block;margin:12px auto 14px",
@@ -994,13 +986,13 @@ function vStrategy() {
   const ret = o.ret || {};
   view(backbar(h("span", { class: "badge grey" }, b.name)),
     h("h1", { class: "title" }, s.name), h("p", { class: "sub" }, s.description || b.name),
-    h("div", { class: "card pf" }, h("div", { class: "head" }, h("span", { class: "lbl" }, "Afkast " + per()[4]), riskTag(o.risk)),
+    h("div", { class: "card pf" }, h("div", { class: "head" }, h("span", { class: "lbl" }, "Afkast " + per()[4])),
       h("div", { class: "big num " + tone(shown) }, pct(shown)),
       chartBox("", w, (v) => pct(v)), periodTabs()),
     section("Historiske resultater", null, h("div", { class: "card" }, h("div", { class: "hist" },
       PERIODS.map(([, t, , k]) => { const v = ret[k] != null ? ret[k] : (k === "max" ? s.return_pct : null);
         return h("div", {}, h("small", {}, t), h("b", { class: "num " + tone(v) }, pct(v))); })))),
-    h("div", { class: "kgrid" }, kpi("Risiko", o.risk || "–", o.max_dd != null ? `største fald ${nf(o.max_dd, 1)} %` : "ikke nok data", o.risk === "Høj" ? "neg" : o.risk === "Lav" ? "blu" : "vio"),
+    h("div", { class: "kgrid" }, kpi("I alt", pct(s.return_pct), "siden strategien startede", tone(s.return_pct)),
       kpi("Vundet", s.win_rate == null ? "–" : nf(s.win_rate, 0) + " %", `${s.trades ?? 0} lukkede i alt`),
       kpi("Åbne nu", String(open.length), "positioner"), kpi("Handler", String(closed.length), per()[4])),
     section("Handler", null, h("div", { class: "card tight" }, open.length + closed.length ?
