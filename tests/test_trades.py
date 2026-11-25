@@ -46,6 +46,14 @@ class TradeTests(unittest.TestCase):
         self.assertAlmostEqual(t["cost_usd"], 0.5 + 1.0 + (99000 * 0.0012 - 117.8), places=3)
         self.assertEqual((t["symbol"], t["size_usd"]), ("PEPE (base)", 100.5))
 
+    def test_a_sale_far_below_the_price_is_named_as_an_empty_pool(self):
+        p = self.dir / "c2.sqlite3"
+        db(p, "CREATE TABLE positions (id, epoch, account_id, shadow, strategy_key, chain, symbol, opened_at, entry_price, size_usd, tokens,"
+              " entry_cost_usd, entry_impact, status, closed_at, exit_price, proceeds_usd, pnl_usd, pnl_pct)",
+           [(1, 1, 1, 0, "lang", "base", "RUG", 10, 0.001, 100.0, 100000.0, 100.0, 0.0, "closed", 20, 0.001, 20.0, -80.0, -80.0)], "positions")
+        labels = [c[0] for c in T.comet("comet", p)[0]["costs"]]
+        self.assertIn("Salg langt under kursen (tom pulje eller rug pull)", labels)
+
     def test_prediction_markets_convert_percent_of_the_nominal_account_to_dollars(self):
         p = self.dir / "d.sqlite3"
         db(p, "CREATE TABLE trades (id, epoch, strategy, title, side, opened_ts, closed_ts, entry_price, contracts, cost, fee, slippage,"

@@ -84,7 +84,9 @@ def comet(key: str, path: Path) -> list[dict]:
             costs.append(_cost(f"DEX-gebyr og prisvirkning ved køb ({(r['entry_impact'] or 0) * 100:.2f} % prisvirkning)".replace(".", ","),
                                usd=max(0.0, size - tokens * r["entry_price"])))
         if r["status"] == "closed" and r["proceeds_usd"] is not None and r["exit_price"] and tokens:
-            costs.append(_cost("DEX-gebyr, gas og prisvirkning ved salg", usd=max(0.0, tokens * r["exit_price"] - r["proceeds_usd"])))
+            sale = max(0.0, tokens * r["exit_price"] - r["proceeds_usd"])
+            big = sale > 0.10 * (r["entry_cost_usd"] or size or 1)         # over 10 %: puljen var (næsten) tom, fx rug pull
+            costs.append(_cost("Salg langt under kursen (tom pulje eller rug pull)" if big else "DEX-gebyr, gas og prisvirkning ved salg", usd=sale))
         for c in costs:
             c[2] = round(c[1] / (r["entry_cost_usd"] or size) * 100, 4) if c[1] is not None and (r["entry_cost_usd"] or size) else None
         out.append(_trade(key, r["strategy_key"], f"{r['symbol']} ({r['chain']})", "long", r["opened_at"],
