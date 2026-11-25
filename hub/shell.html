@@ -144,6 +144,15 @@ h1.title{font-size:30px;line-height:1.15;letter-spacing:-.03em;margin:0 0 4px;fo
 .chip{border:1px solid var(--line2);background:var(--card);border-radius:99px;padding:11px 17px;white-space:nowrap;color:var(--ink);font-weight:550;flex:none}
 .chip[aria-pressed=true]{border-color:var(--violet);color:var(--ink);background:var(--violet-d);box-shadow:0 0 24px rgba(157,140,255,.25)}
 
+/* alle handler */
+.trow{width:100%;text-align:left;color:inherit}
+.trx{margin:-4px 0 10px;padding:10px 12px;border-radius:14px;background:rgba(255,255,255,.03);border:1px solid var(--line)}
+.trx .kv{padding:8px 0;font-size:13.5px}
+.trx .kv span{display:flex;align-items:center;gap:6px;min-width:0}
+.kind{font-size:10.5px;font-weight:700;border-radius:6px;padding:1px 6px;white-space:nowrap}
+.kind.registreret{background:var(--blue-d);color:var(--blue)}.kind.sats{background:var(--violet-d);color:var(--violet)}.kind.indregnet{background:rgba(255,255,255,.07);color:var(--ink2)}
+.trx .tot{border-top:1px solid var(--line2);font-weight:700}
+
 /* nøgletal */
 .kgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
 .kgrid.three{grid-template-columns:repeat(3,1fr)}
@@ -390,7 +399,7 @@ const atOrBefore = (pts, t) => [...pts].reverse().find((p) => p[0] <= t) || pts[
 let DATA = { rows: null, live: null, sm: null }, POS = null, STRAT = null, R = { name: "hjem" }, lastKey = "", ANIM = true, failed = false, loading = false;
 const TABS = [["hjem", "Dashboard", "home"], ["investeringer", "Investeringer", "pie"], ["strategier", "Strategier", "chart"], ["kalender", "Kalender", "cal"], ["profil", "Profil", "user"]];
 const ALIAS = { analyse: "strategier", indstillinger: "profil" };
-const TAB_OF = { historik: "hjem", bot: "profil" };
+const TAB_OF = { historik: "hjem", bot: "profil", handler: "investeringer" };
 const FULL = new Set(["indsaet", "udbetal", "s"]);                    // fuldskærm: ingen bundmenu
 const CALM = new Set(["indsaet", "udbetal", "profil"]);                // tegnes ikke om hvert 15. sekund (der skrives i felterne)
 const stratHref = (bot, key) => `#s/${encodeURIComponent(bot)}/${encodeURIComponent(key)}`;
@@ -432,6 +441,7 @@ function route() {
     const want = R.a;
     api("/api/bot/" + encodeURIComponent(want)).then((d) => { if (R.name === "s" && R.a === want) { STRAT = d; render(true); } }).catch(() => {});
   }
+  if (R.name === "handler") { TR.bot = R.a || ""; TR.strat = R.b || ""; TR.real = false; TR.status = ""; TR.limit = 100; TR.open.clear(); TR.data = null; loadTrades(); }
   if (R.name === "investeringer" && !POS) api("/api/positions").then((d) => { POS = d; if (R.name === "investeringer") render(true); }).catch(() => {});
   render(true); window.scrollTo(0, 0);
 }
@@ -620,7 +630,7 @@ function vInvest() {
       kpi("Investeret", P && P.value_kr != null ? cash(P.value_kr) : "–", "papir"),
       kpi("Positioner", String(pos.length), "åbne nu"),
       kpi("Urealiseret", known.length ? cash(unreal, true) : "–", known.length ? `${known.length} med kurs` : "ikke oplyst", tone(unreal))),
-    section("Aktive positioner", null, h("div", { class: "card tight" }, !P ? h("div", { class: "empty" }, "Henter positioner…") : pos.length ? pos.map((p) => {
+    section("Aktive positioner", seeAll("#handler", "Alle handler"), h("div", { class: "card tight" }, !P ? h("div", { class: "empty" }, "Henter positioner…") : pos.length ? pos.map((p) => {
       const short = /short|sell|sælg/i.test(p.side || "");
       return h("div", { class: "row" }, h("span", { class: "ic " + (short ? "neg" : p.pnl_pct < 0 ? "neg" : "") }, icon(short ? "down" : "up")),
         h("div", { class: "t" }, h("b", {}, h("span", {}, String(p.symbol)), h("span", { class: "badge " + (short ? "neg" : "blu") }, short ? "Short" : "Long")),
@@ -784,6 +794,62 @@ function dayPanel(sm) {
           h("div", { class: "v num" }, cash(o.usd * RATE())))))] : null]];
 }
 
+/* ---------- ALLE HANDLER: købspris, salgspris og alle omkostninger ---------- */
+const TR = { key: "", data: null, loading: false, open: new Set(), real: false, status: "", bot: "", strat: "", limit: 100 };
+const KIND = { registreret: "registreret", sats: "fast sats", indregnet: "i prisen" };
+function loadTrades() {
+  const p = new URLSearchParams();
+  if (TR.real) p.set("real", "1"); else { if (TR.bot) p.set("bot", TR.bot); if (TR.strat) p.set("strategy", TR.strat); if (TR.status) p.set("status", TR.status); }
+  p.set("limit", String(TR.limit));
+  const key = p.toString();
+  TR.key = key; TR.loading = true;
+  api("/api/trades?" + key).then((d) => { if (TR.key === key) { TR.data = d; TR.loading = false; if (R.name === "handler") render(true); } })
+    .catch(() => { if (TR.key === key) { TR.loading = false; TR.data = { error: true }; if (R.name === "handler") render(true); } });
+}
+function vTrades() {
+  const d = TR.data, rows = (DATA.rows || []).filter((b) => b.configured), mk = (k) => (rows.find((b) => b.key === k) || {}).name || k;
+  const set = (patch) => { Object.assign(TR, patch, { limit: 100 }); TR.open.clear(); loadTrades(); render(true); };
+  const chip = (on, t, fn) => h("button", { class: "chip", type: "button", "aria-pressed": String(on), onclick: fn }, t);
+  const sname = TR.strat && d && d.trades && d.trades[0] ? (d.trades[0].strategy_name || TR.strat) : TR.strat;
+  const list = (d && d.trades) || [];
+  view(backbar(), h("h1", { class: "title" }, "Alle handler"),
+    h("p", { class: "sub" }, TR.strat ? `${sname} · ${mk(TR.bot)}` : "Købspris, salgspris og alle omkostninger"),
+    h("div", { class: "chips" }, chip(!TR.real, "Papirhandler", () => set({ real: false })), chip(TR.real, "Rigtige penge", () => set({ real: true, bot: "", strat: "" }))),
+    !TR.real ? h("div", { class: "chips" }, [["", "Alle"], ["closed", "Lukkede"], ["open", "Åbne"]].map(([k, t]) => chip(TR.status === k, t, () => set({ status: k })))) : null,
+    !TR.real && !TR.strat ? h("div", { class: "chips" }, chip(!TR.bot, "Alle markeder", () => set({ bot: "" })), rows.map((b) => chip(TR.bot === b.key, b.name, () => set({ bot: b.key })))) : null,
+    d && !d.error ? h("div", { class: "kgrid", style: "margin-top:8px" }, kpi("Handler", nf(d.total, 0), TR.real ? "med rigtige penge" : "i alt"),
+      kpi("Omkostning pr. handel", d.avg_cost_pct == null ? "–" : nf(d.avg_cost_pct, 2) + " %", "gennemsnit, lukkede handler", "neg")) : null,
+    TR.loading && !d ? h("div", { class: "sk", style: "height:300px" }) : !d || d.error ? h("div", { class: "card" }, h("div", { class: "empty" }, "Kunne ikke hente handlerne. Prøv igen.")) :
+      h("div", { class: "card tight" }, list.length ? list.map(tradeRow) : h("div", { class: "empty" }, TR.real ? "Ingen rigtige handler endnu." : "Ingen handler her.")),
+    d && d.total > list.length ? h("button", { class: "pillbtn", type: "button", style: "display:block;margin:4px auto 14px",
+      onclick: () => { TR.limit += 100; loadTrades(); } }, TR.loading ? "Henter…" : `Vis flere (${nf(list.length, 0)} af ${nf(d.total, 0)})`) : null,
+    h("p", { class: "note" }, "Tryk på en handel for at se alle omkostninger. ", h("span", { class: "kind registreret" }, "registreret"), " = botten har gemt beløbet. ",
+      h("span", { class: "kind sats" }, "fast sats"), " = bottens faste gebyr. ", h("span", { class: "kind indregnet" }, "i prisen"), " = omkostningen ligger i købs- eller salgsprisen."));
+}
+function tradeRow(t) {
+  const k = `${t.bot}|${t.strategy}|${t.symbol}|${t.opened}|${t.order_id || ""}`, on = TR.open.has(k), real = !!t.real;
+  const rows = DATA.rows || [], market = real ? t.strategy : ((rows.find((b) => b.key === t.bot) || {}).name || t.bot);
+  const res = real ? null : t.pnl_pct;
+  const head = h("button", { class: "row trow", type: "button", "aria-expanded": String(on), onclick: () => { on ? TR.open.delete(k) : TR.open.add(k); render(true); } },
+    h("span", { class: "ic " + (real ? "vio" : t.closed == null ? "blu" : res < 0 ? "neg" : "") }, icon(real ? "swap" : t.closed == null ? "clock" : res < 0 ? "down" : "up")),
+    h("div", { class: "t" }, h("b", {}, h("span", {}, real ? `${t.side} ${t.symbol}` : String(t.symbol))),
+      h("small", {}, real ? `${market} · ${when(t.opened)}` : `${t.strategy_name || t.strategy} · ${market}`),
+      real ? null : h("small", {}, `${when(t.opened)}${t.closed ? " → " + when(t.closed) : " · åben"}`)),
+    h("div", { class: "v num" }, real ? cash((t.size_usd || 0) * RATE()) : h("span", { class: tone(res) }, res == null ? "åben" : pct(res)),
+      h("small", { class: "neg" }, t.cost_pct != null ? `omk. ${nf(t.cost_pct, 2)} %` : t.cost_usd != null ? `omk. ${cash(t.cost_usd * RATE())}` : "omk. i prisen")));
+  if (!on) return head;
+  const kv = (a, b, cls) => h("div", { class: "kv " + (cls || "") }, h("span", {}, a), h("b", { class: "num" }, b));
+  const money = (usd) => usd == null ? "" : cash(usd * RATE());
+  return [head, h("div", { class: "trx" },
+    real ? [kv("Markedspris lige før", price(t.market_price)), kv(t.side === "Køb" ? "Din købspris" : "Din salgspris", price(t.entry ?? t.exit)), kv("Mængde", t.qty == null ? "–" : nf(t.qty, 6)),
+      kv("Beløb", money(t.size_usd))]
+      : [kv("Købspris", price(t.entry)), kv("Salgspris", t.closed ? price(t.exit) : "åben"), t.size_usd != null ? kv("Størrelse", money(t.size_usd)) : null,
+        kv("Resultat efter omkostninger", res == null ? "–" : `${pct(res)}${t.pnl_usd != null ? " (" + cash(t.pnl_usd * RATE(), true) + ")" : ""}`, tone(res))],
+    (t.costs || []).map(([label, usd, p, kind]) => h("div", { class: "kv" }, h("span", {}, label, h("span", { class: "kind " + kind }, KIND[kind] || kind)),
+      h("b", { class: "num neg" }, [money(usd), p != null ? `${usd != null ? " · " : ""}${nf(p, 3)} %` : (usd == null ? "ikke oplyst" : "")].join("")))),
+    kv("Omkostninger i alt", `${money(t.cost_usd)}${t.cost_pct != null ? `${t.cost_usd != null ? " · " : ""}${nf(t.cost_pct, 3)} %` : t.cost_usd == null ? "–" : ""}`, "tot neg"))];
+}
+
 /* ---------- historik (fra dashboardet) ---------- */
 function activities() {
   const { live, sm } = DATA, real = live && live.real, out = [], r = RATE();
@@ -840,6 +906,7 @@ function vProfile() {
     h("div", { class: "card tight" },
       link("#bot", "bot", "Investeringsbot", "Status, styring og grænser"),
       link("#historik", "clock", "Historik", "Indbetalinger, handler og gevinster"),
+      link("#handler", "swap", "Alle handler", "Købspris, salgspris og alle omkostninger"),
       link("#indsaet", "wallet", "Indsæt penge", "Bankoverførsel eller krypto"),
       link("#udbetal", "bank", "Hæv penge", "Til din bank eller Revolut")),
     section("Visning", null, h("div", { class: "card tight" },
@@ -995,7 +1062,7 @@ function vStrategy() {
     h("div", { class: "kgrid" }, kpi("I alt", pct(s.return_pct), "siden strategien startede", tone(s.return_pct)),
       kpi("Vundet", s.win_rate == null ? "–" : nf(s.win_rate, 0) + " %", `${s.trades ?? 0} lukkede i alt`),
       kpi("Åbne nu", String(open.length), "positioner"), kpi("Handler", String(closed.length), per()[4])),
-    section("Handler", null, h("div", { class: "card tight" }, open.length + closed.length ?
+    section("Handler", seeAll(`#handler/${encodeURIComponent(R.a)}/${encodeURIComponent(String(s.key))}`, "Med omkostninger"), h("div", { class: "card tight" }, open.length + closed.length ?
       [...open.map((t) => ({ ...t, isOpen: true })), ...closed].sort((a, z) => z.ts - a.ts).slice(0, 60).map((t) => h("div", { class: "row" },
         h("span", { class: "ic " + (t.isOpen ? "blu" : t.result_pct < 0 ? "neg" : "") }, icon(t.isOpen ? "clock" : t.result_pct < 0 ? "down" : "up")),
         h("div", { class: "t" }, h("b", {}, String(t.symbol)), h("small", {}, `${when(t.ts)}${t.side ? " · " + t.side : ""}${t.isOpen ? " · åben" : ""}`)),
@@ -1005,7 +1072,7 @@ function vStrategy() {
 }
 
 const VIEWS = { hjem: vHome, investeringer: vInvest, strategier: vStrategies, kalender: vCalendar, profil: vProfile,
-  historik: vHistory, bot: vBot, indsaet: vFlow, udbetal: vFlow, s: vStrategy };
+  historik: vHistory, bot: vBot, handler: vTrades, indsaet: vFlow, udbetal: vFlow, s: vStrategy };
 
 /* ---------- start ---------- */
 let rz;

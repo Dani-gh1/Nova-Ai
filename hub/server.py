@@ -553,6 +553,8 @@ def make_handler(bots: list[dict], throttle: Throttle | None = None, ratelimit: 
     ratelimit = ratelimit or (RateLimit() if public else None)
     overview = Overview(bots)
     secret = session_secret() if password else b""
+    from .trades import TradeBook, real_trades
+    tradebook = TradeBook(BOTS_DIR)
 
     class Handler(BaseHTTPRequestHandler):
         def _send(self, code: int, ctype: str, body: bytes, extra: dict | None = None):
@@ -638,6 +640,20 @@ def make_handler(bots: list[dict], throttle: Throttle | None = None, ratelimit: 
                     return self._send(200, "application/json", json.dumps(out).encode())
                 if path == "/api/overview":
                     return self._send(200, "application/json", json.dumps(overview.get()).encode())
+                if path == "/api/trades":
+                    qs = urllib.parse.parse_qs(query)
+                    arg = lambda k, d="": (qs.get(k) or [d])[0]
+                    try:
+                        limit, offset = max(1, min(500, int(arg("limit", "100")))), max(0, int(arg("offset", "0")))
+                    except ValueError:
+                        limit, offset = 100, 0
+                    if arg("real") == "1":
+                        rows = sorted(real_trades(overview.live), key=lambda t: -(t["opened"] or 0))
+                        out = {"total": len(rows), "offset": offset, "trades": rows[offset:offset + limit], "avg_cost_pct": None}
+                    else:
+                        names = {(b["key"], str(s.get("key"))): s.get("name") for b in overview.get() for s in b.get("strategies") or []}
+                        out = tradebook.query(arg("bot"), arg("strategy"), arg("status"), limit, offset, names)
+                    return self._send(200, "application/json", json.dumps(out).encode())
                 if path == "/api/positions":
                     overview.get()
                     return self._send(200, "application/json", json.dumps(nova_positions(overview, by_key)).encode())
