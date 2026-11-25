@@ -330,6 +330,15 @@ class PlanTests(unittest.TestCase):
         self.assertEqual(orders, ["SOLUSDC"])                                          # kun gas købes; ingen USDCUSDT-ordre
         self.assertEqual(sent, [("SOL", 0.05), ("USDC", 31.0)])
 
+    def test_a_buy_never_asks_for_more_than_the_account_holds(self):
+        from hub.live import BinanceSpot
+        sent = []
+        b = BinanceSpot("k", "s")
+        b._filters = {"BTCUSDC": {"step": 0.00001, "min": 5.0, "base": "BTC"}}
+        b._req = lambda m, p, params=None, signed=False, base=None: sent.append(params) or {"executedQty": "0.0001", "cummulativeQuoteQty": "16.47", "fills": []}
+        b.open_pos("BTCUSDC", "long", 16.47713184, 1, 0)
+        self.assertEqual(sent[0]["quoteOrderQty"], "16.47")                         # før: 16.48 > 16.477 -> "insufficient balance"
+
     def test_only_bots_that_can_trade_for_real(self):
         bots = [{"key": "orion", "adapter": "orion"}, {"key": "atlas", "adapter": "stocks"}, {"key": "quasar", "adapter": "quasar"},
                 {"key": "x", "adapter": "orion", "disabled": True}]

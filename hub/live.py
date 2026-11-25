@@ -205,7 +205,8 @@ class BinanceSpot(BinanceAPI):
         return self._filters
 
     def open_pos(self, symbol: str, side: str, usd: float, lev: float, px: float) -> dict:
-        r = self._req("POST", "/api/v3/order", {"symbol": symbol, "side": "BUY", "type": "MARKET", "quoteOrderQty": f"{usd:.2f}"}, signed=True)
+        q = math.floor(usd * 100) / 100                    # rund NED: aldrig købe for mere, end der står på kontoen
+        r = self._req("POST", "/api/v3/order", {"symbol": symbol, "side": "BUY", "type": "MARKET", "quoteOrderQty": f"{q:.2f}"}, signed=True)
         base = self.filters()[symbol]["base"]
         fee_base = sum(float(f["commission"]) for f in r.get("fills", []) if f.get("commissionAsset") == base)
         return {"qty": float(r["executedQty"]) - fee_base, "usd": float(r["cummulativeQuoteQty"]), "id": r.get("orderId"),
